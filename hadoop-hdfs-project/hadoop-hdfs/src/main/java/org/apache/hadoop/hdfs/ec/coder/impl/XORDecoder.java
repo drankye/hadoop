@@ -26,7 +26,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.help.ParityInputStream;
+import org.apache.hadoop.hdfs.ec.coder.impl.help.ParityInputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;

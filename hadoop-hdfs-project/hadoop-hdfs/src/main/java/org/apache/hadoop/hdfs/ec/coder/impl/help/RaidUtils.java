@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.ec.help;
+package org.apache.hadoop.hdfs.ec.coder.impl.help;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;

@@ -5,7 +5,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.ec.coder.Encoder;
-import org.apache.hadoop.hdfs.ec.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;

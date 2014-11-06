@@ -19,7 +19,7 @@
 package org.apache.hadoop.hdfs.ec.coder.impl;
 
 import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
-import org.apache.hadoop.hdfs.ec.help.GaloisField;
+import org.apache.hadoop.hdfs.ec.coder.impl.help.GaloisField;
 
 public class ReedSolomonCode implements ErasureCode {
 

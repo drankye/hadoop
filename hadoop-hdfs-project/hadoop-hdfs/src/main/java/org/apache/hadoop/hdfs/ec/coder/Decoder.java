@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.BlockMissingException;
-import org.apache.hadoop.hdfs.ec.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
