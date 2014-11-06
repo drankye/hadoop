@@ -23,8 +23,7 @@ import org.w3c.dom.Text;
 import org.xml.sax.SAXException;
 
 public class ECSchemaLoader {
-	public static final Log LOG = LogFactory
-			.getLog(ECSchemaLoader.class.getName()); 
+	public static final Log LOG = LogFactory.getLog(ECSchemaLoader.class.getName());
 	
 	private static final String CODER_CONF_PREFIX = "hadoop.hdfs.ec.erasurecodec.codec.";
 
@@ -67,12 +66,12 @@ public class ECSchemaLoader {
 	 * @throws SAXException
 	 *             if config file is malformed.
 	 */
-	public synchronized List<ErasureCodec> loadSchema(Configuration conf) throws IOException,
+	public synchronized List<ECSchema> loadSchema(Configuration conf) throws IOException,
 			ParserConfigurationException, SAXException,
 			ECConfigurationException {
 		File confFile = getConfigurationFile(conf);
 		if (confFile == null) {
-			return new ArrayList<ErasureCodec>();
+			return new ArrayList<ECSchema>();
 		}
 		LOG.info("Loading ec configuration file " + confFile);
 
@@ -87,14 +86,14 @@ public class ECSchemaLoader {
 					"Bad fair scheduler config "
 							+ "file: top-level element not <allocations>");
 		NodeList elements = root.getChildNodes();
-		List<ErasureCodec> codecs = new ArrayList<ErasureCodec>();
+		List<ECSchema> codecs = new ArrayList<ECSchema>();
 		for (int i = 0; i < elements.getLength(); i++) {
 			Node node = elements.item(i);
 			if (node instanceof Element) {
 				Element element = (Element) node;
 				if ("ecschema".equals(element.getTagName())) {
-					ErasureCodec codec = loadCodec(element);
-					if (conf.get(CODER_CONF_PREFIX + codec.getErasureCoder()) != null) {
+          ECSchema codec = loadCodec(element);
+					if (conf.get(CODER_CONF_PREFIX + codec.getCodecName()) != null) {
 						codecs.add(codec);
 					}
 				} else {
@@ -108,7 +107,7 @@ public class ECSchemaLoader {
 	/**
 	   * Loads a erasure codec from a codec element in the configuration file
 	   */
-	  private ErasureCodec loadCodec(Element element) {
+	  private ECSchema loadCodec(Element element) {
 	    String codecName = element.getAttribute("name");
 	    Map<String, String> ecProperties = new HashMap<String, String>();
 	    String erasureCoder = null;
@@ -132,8 +131,8 @@ public class ECSchemaLoader {
 	    	  ecProperties.put(tagName, value);
 	      }
 	    }
-	    
-	    ErasureCodec codec = new ErasureCodec(codecName, ecProperties, erasureCoder);
+
+      ECSchema codec = new ECSchema(codecName, ecProperties, erasureCoder);
 	    return codec;
 	  }
 }

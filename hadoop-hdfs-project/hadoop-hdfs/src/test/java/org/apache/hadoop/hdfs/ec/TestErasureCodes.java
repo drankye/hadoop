@@ -17,13 +17,13 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-
 import junit.framework.TestCase;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
 import org.apache.hadoop.hdfs.ec.coder.impl.ReedSolomonCode;
+
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
 
 public class TestErasureCodes extends TestCase {
   final int TEST_CODES = 100;

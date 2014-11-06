@@ -10,6 +10,12 @@ public class ECSchema {
   private int dataBlocks;
   private int parityBlocks;
 
+  public ECSchema(String codecName, Map<String, String> options, String codec) {
+    this.codecName = codecName;
+    this.options = options;
+    this.codecName = codec;
+  }
+
   public String getSchemaName() {
     return schemaName;
   }
@@ -44,4 +50,23 @@ public class ECSchema {
     return parityBlocks;
   }
 
+  public void setSchemaName(String schemaName) {
+    this.schemaName = schemaName;
+  }
+
+  public void setCodecName(String codecName) {
+    this.codecName = codecName;
+  }
+
+  public void setOptions(Map<String, String> options) {
+    this.options = options;
+  }
+
+  public void setDataBlocks(int dataBlocks) {
+    this.dataBlocks = dataBlocks;
+  }
+
+  public void setParityBlocks(int parityBlocks) {
+    this.parityBlocks = parityBlocks;
+  }
 }
