@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.BlockMissingException;
-import org.apache.hadoop.hdfs.ec.ErasureCode;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
 import org.apache.hadoop.hdfs.ec.coder.Decoder;
 import org.apache.hadoop.hdfs.ec.help.RaidUtils;
 

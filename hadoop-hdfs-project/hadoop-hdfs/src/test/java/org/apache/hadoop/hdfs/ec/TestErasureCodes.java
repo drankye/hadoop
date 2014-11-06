@@ -22,6 +22,7 @@ import java.util.Random;
 import java.util.Set;
 
 import junit.framework.TestCase;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
 import org.apache.hadoop.hdfs.ec.coder.impl.ReedSolomonCode;
 
 public class TestErasureCodes extends TestCase {
