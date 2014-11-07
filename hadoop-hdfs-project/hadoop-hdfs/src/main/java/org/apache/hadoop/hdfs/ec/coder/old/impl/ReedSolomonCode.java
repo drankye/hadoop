@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
-import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.GaloisField;
+import org.apache.hadoop.hdfs.ec.coder.old.ErasureCode;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
 public class ReedSolomonCode implements ErasureCode {
 

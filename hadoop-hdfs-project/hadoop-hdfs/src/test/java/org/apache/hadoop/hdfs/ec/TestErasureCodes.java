@@ -18,8 +18,8 @@
 package org.apache.hadoop.hdfs.ec;
 
 import junit.framework.TestCase;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
-import org.apache.hadoop.hdfs.ec.coder.impl.ReedSolomonCode;
+import org.apache.hadoop.hdfs.ec.coder.old.ErasureCode;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.ReedSolomonCode;
 
 import java.util.HashSet;
 import java.util.Random;

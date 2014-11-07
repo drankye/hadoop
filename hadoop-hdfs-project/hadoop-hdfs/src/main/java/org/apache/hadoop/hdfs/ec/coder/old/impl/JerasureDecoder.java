@@ -1,53 +1,47 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.BlockMissingException;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCode;
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.old.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.RaidUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ReedSolomonDecoder extends Decoder {
-  public static final Log LOG = LogFactory.getLog(
-      "org.apache.hadoop.raid.ReedSolomonDecoder");
-  private ErasureCode reedSolomonCode;
+public class JerasureDecoder extends Decoder {
 
-  public ReedSolomonDecoder(
-      Configuration conf, int stripeSize, int paritySize) {
+  public static final Log LOG = LogFactory.getLog(
+      "org.apache.hadoop.raid.JerasureDecoder");
+
+  public JerasureDecoder(Configuration conf, int stripeSize, int paritySize) {
     super(conf, stripeSize, paritySize);
-    this.reedSolomonCode = new ReedSolomonCode(stripeSize, paritySize);
+    JerasureDeInit(stripeSize, paritySize, 8, 8192);
+  }
+
+  public native static int JerasureDeInit(int k, int m, int w, int packetsize);
+
+  public native static int JerasureDecode(ByteBuffer[] alldata, int[] erasured, int blocksize);
+
+  public native static int JerasureDeEnd();
+  static {
+    System.loadLibrary("jerasurejni");
+  }
+
+  public void end() {
+    JerasureDeEnd();
   }
 
   @Override
-  protected void fixErasedBlock(
-      FileSystem fs, Path srcFile,
-      FileSystem parityFs, Path parityFile,
-      long blockSize, long errorOffset, long bytesToSkip, long limit,
-      OutputStream out) throws IOException {
+  protected void fixErasedBlock(FileSystem fs, Path srcFile,
+                                FileSystem parityFs, Path parityFile, long blockSize,
+                                long errorOffset, long bytesToSkip, long limit, OutputStream out)
+      throws IOException {
+
     FSDataInputStream[] inputs = new FSDataInputStream[stripeSize + paritySize];
     int[] erasedLocations = buildInputs(fs, srcFile, parityFs, parityFile,
         errorOffset, inputs);
@@ -55,13 +49,14 @@ public class ReedSolomonDecoder extends Decoder {
     int erasedLocationToFix = paritySize + blockIdxInStripe;
     writeFixedBlock(inputs, erasedLocations, erasedLocationToFix,
         bytesToSkip, limit, out);
+
   }
 
   protected int[] buildInputs(FileSystem fs, Path srcFile,
                               FileSystem parityFs, Path parityFile,
                               long errorOffset, FSDataInputStream[] inputs)
       throws IOException {
-    LOG.info("Building inputs to recover block starting at " + errorOffset);
+    System.out.println("Building inputs to recover block starting at " + errorOffset);
     FileStatus srcStat = fs.getFileStatus(srcFile);
     long blockSize = srcStat.getBlockSize();
     long blockIdx = (int) (errorOffset / blockSize);
@@ -131,20 +126,30 @@ public class ReedSolomonDecoder extends Decoder {
       long limit,
       OutputStream out) throws IOException {
 
-    LOG.info("Need to write " + (limit - skipBytes) +
+    LOG.debug("Need to write " + (limit - skipBytes) +
         " bytes for erased location index " + erasedLocationToFix);
     int[] tmp = new int[inputs.length];
     int[] decoded = new int[erasedLocations.length];
     long toDiscard = skipBytes;
-    long start, end, readTotal = 0, writeTotal = 0, calTotal = 0, allstart, allend, alltime;
+    ByteBuffer[] readByteBuf = new ByteBuffer[stripeSize + paritySize];
+    long start, end, readTotal = 0, writeTotal = 0, calTotal = 0, memTotal = 0, allstart, allend, alltime;
+
+    start = System.nanoTime();
+    for (int i = 0; i < stripeSize + paritySize; i++) {
+      readByteBuf[i] = ByteBuffer.allocateDirect(bufSize);
+    }
+    end = System.nanoTime();
+    memTotal += end - start;
 
     allstart = System.nanoTime();
     // Loop while the number of skipped + written bytes is less than the max.
     for (long written = 0; skipBytes + written < limit; ) {
+
       start = System.nanoTime();
       erasedLocations = readFromInputs(inputs, erasedLocations, limit);
       end = System.nanoTime();
       readTotal += end - start;
+
       if (decoded.length != erasedLocations.length) {
         decoded = new int[erasedLocations.length];
       }
@@ -155,38 +160,49 @@ public class ReedSolomonDecoder extends Decoder {
         continue;
       }
 
+
       start = System.nanoTime();
-      // Decoded bufSize amount of data.
-      for (int i = 0; i < bufSize; i++) {
-        performDecode(readBufs, writeBufs, i, tmp, erasedLocations, decoded);
+
+      for (int i = 0; i < stripeSize + paritySize; i++) {
+        readByteBuf[i].position(0);
+        readByteBuf[i].put(readBufs[i]);
       }
+      end = System.nanoTime();
+      memTotal += end - start;
+
+      start = System.nanoTime();
+      JerasureDecode(readByteBuf, erasedLocations, bufSize);
       end = System.nanoTime();
       calTotal += end - start;
 
-
       for (int i = 0; i < erasedLocations.length; i++) {
-        if (erasedLocations[i] == erasedLocationToFix) {
-          toWrite -= toDiscard;
-          start = System.nanoTime();
-          out.write(writeBufs[i], (int) toDiscard, toWrite);
-          end = System.nanoTime();
-          writeTotal += end - start;
-          toDiscard = 0;
-          written += toWrite;
-          LOG.debug("Wrote " + toWrite + " bytes for erased location index " +
-              erasedLocationToFix);
-          break;
-        }
-      }
+        int index = erasedLocations[i];
+        toWrite -= toDiscard;
+        start = System.nanoTime();
+        readByteBuf[index].position(0);
+        readByteBuf[index].get(readBufs[index], 0, readByteBuf[index].remaining());
+        end = System.nanoTime();
+        memTotal += end - start;
+        start = System.nanoTime();
+        out.write(readBufs[index], (int) toDiscard, toWrite);
+        end = System.nanoTime();
+        writeTotal += end - start;
+        toDiscard = 0;
+        written += toWrite;
+        LOG.debug("Wrote " + toWrite + " bytes for erased location index " +
+            erasedLocationToFix);
 
+        break;
+      }
     }
+    //JerasureDeEnd();
     allend = System.nanoTime();
     alltime = allend - allstart;
-    System.out.println("[RS decode fix one block] readTotal:" + readTotal / 1000 + ", writeTotal:" + writeTotal / 1000
-        + ", calTotal:" + calTotal / 1000 + ", all:" + alltime / 1000);
-    System.out.printf("read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%\n",
+    System.out.println("[JE decode fix one block] readTotal:" + readTotal / 1000 + ", writeTotal:" + writeTotal / 1000
+        + ", calTotal:" + calTotal / 1000 + ", memTotal:" + memTotal / 1000 + ", all:" + alltime / 1000);
+    System.out.printf("read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%, mem:%3.2f%%\n",
         (float) readTotal * 100 / alltime, (float) writeTotal * 100 / alltime,
-        (float) calTotal * 100 / alltime);
+        (float) calTotal * 100 / alltime, (float) memTotal * 100 / alltime);
   }
 
   int[] readFromInputs(
@@ -220,7 +236,7 @@ public class ReedSolomonDecoder extends Decoder {
       newErasedLocations[newErasedLocations.length - 1] = i;
       erasedLocations = newErasedLocations;
 
-      LOG.info("Using zeros for stream " + i);
+      System.out.println("Using zeros for stream " + i + ", since read data error");
       inputs[i] = new FSDataInputStream(
           new RaidUtils.ZeroInputStream(curPos + limit));
       inputs[i].seek(curPos);
@@ -229,19 +245,7 @@ public class ReedSolomonDecoder extends Decoder {
     return erasedLocations;
   }
 
-  void performDecode(byte[][] readBufs, byte[][] writeBufs,
-                     int idx, int[] inputs,
-                     int[] erasedLocations, int[] decoded) {
-    for (int i = 0; i < decoded.length; i++) {
-      decoded[i] = 0;
-    }
-    for (int i = 0; i < inputs.length; i++) {
-      inputs[i] = readBufs[i][idx] & 0x000000FF;
-    }
-    reedSolomonCode.decode(inputs, erasedLocations, decoded);
-    for (int i = 0; i < decoded.length; i++) {
-      writeBufs[i][idx] = (byte) decoded[i];
-    }
+  protected void finalize() {
+    JerasureDeEnd();
   }
-
 }

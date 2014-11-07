@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.ec.coder.Encoder;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.ParityInputStream;
+import org.apache.hadoop.hdfs.ec.coder.old.Encoder;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.ParityInputStream;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;

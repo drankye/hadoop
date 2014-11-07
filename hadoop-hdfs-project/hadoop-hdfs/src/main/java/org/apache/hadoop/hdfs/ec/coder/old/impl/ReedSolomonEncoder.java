@@ -15,43 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.ec.coder.old.ErasureCode;
 import org.apache.hadoop.hdfs.ec.coder.Encoder;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.RaidUtils;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 
-public class ISAEncoder extends Encoder {
+public class ReedSolomonEncoder extends Encoder {
   public static final Log LOG = LogFactory.getLog(
-      "org.apache.hadoop.raid.ISAEncoder");
+      "org.apache.hadoop.raid.ReedSolomonEncoder");
+  private ErasureCode reedSolomonCode;
 
-  public ISAEncoder(
+  public ReedSolomonEncoder(
       Configuration conf, int stripeSize, int paritySize) {
     super(conf, stripeSize, paritySize);
-    isaEnInit(stripeSize, paritySize);
-  }
-
-  public static native int isaEnInit(int stripeSize, int paritySize);
-
-  public static native int isaEncode(ByteBuffer[] data, ByteBuffer[] code, int blocksize);
-
-  public static native int isaEnEnd();
-  static {
-    System.loadLibrary("isajni");
-  }
-
-  public void end() {
-    isaEnEnd();
+    this.reedSolomonCode = new ReedSolomonCode(stripeSize, paritySize);
   }
 
   protected void encodeStripe(
@@ -61,22 +49,14 @@ public class ISAEncoder extends Encoder {
       OutputStream[] outs,
       Progressable reporter) throws IOException {
 
-    ByteBuffer[] readByteBuf = new ByteBuffer[stripeSize];
-    ByteBuffer[] writeByteBuf = new ByteBuffer[paritySize];
-
-    for (int i = 0; i < stripeSize; i++) {
-      readByteBuf[i] = ByteBuffer.allocateDirect(bufSize);
-    }
-
-    for (int i = 0; i < paritySize; i++) {
-      writeByteBuf[i] = ByteBuffer.allocateDirect(bufSize);
-    }
-
-    long start, end, readTotal = 0, writeTotal = 0, memTotal = 0, calTotal = 0, allstart, allend, alltime;
+    int[] data = new int[stripeSize];
+    int[] code = new int[paritySize];
+    long start, end, readTotal = 0, writeTotal = 0, calTotal = 0, allstart, allend, alltime;
 
     allstart = System.nanoTime();
     for (long encoded = 0; encoded < blockSize; encoded += bufSize) {
       // Read some data from each block = bufSize.
+      //blocks.length = stripeSize
       start = System.nanoTime();
       for (int i = 0; i < blocks.length; i++) {
         RaidUtils.readTillEnd(blocks[i], readBufs[i], true);
@@ -85,31 +65,12 @@ public class ISAEncoder extends Encoder {
       readTotal += end - start;
 
       start = System.nanoTime();
-      for (int i = 0; i < stripeSize; i++) {
-        readByteBuf[i].position(0);
-        readByteBuf[i].put(readBufs[i]);
-      }
-
-      for (int i = 0; i < paritySize; i++) {
-        writeByteBuf[i].position(0);
-        writeByteBuf[i].put(writeBufs[i]);
-      }
-      end = System.nanoTime();
-      memTotal += end - start;
       // Encode the data read.
-      start = System.nanoTime();
-      isaEncode(readByteBuf, writeByteBuf, bufSize);
+      for (int j = 0; j < bufSize; j++) {
+        performEncode(readBufs, writeBufs, j, data, code);
+      }
       end = System.nanoTime();
       calTotal += end - start;
-
-      start = System.nanoTime();
-      for (int rdbuf = 0; rdbuf < paritySize; rdbuf++) {
-        writeByteBuf[rdbuf].position(0);
-        writeByteBuf[rdbuf].get(writeBufs[rdbuf], 0, writeByteBuf[rdbuf].remaining());
-      }
-      end = System.nanoTime();
-      memTotal += end - start;
-
 
       start = System.nanoTime();
       // Now that we have some data to write, send it to the temp files.
@@ -118,24 +79,40 @@ public class ISAEncoder extends Encoder {
       }
       end = System.nanoTime();
       writeTotal += end - start;
+
       if (reporter != null) {
         reporter.progress();
       }
     }
+
     allend = System.nanoTime();
     alltime = allend - allstart;
-    System.out.println("[ISA encode one strip] readTotal:" + readTotal / 1000 + ", writeTotal:" + writeTotal / 1000 + ", calTotal" + calTotal / 1000 + ", memTotal" + memTotal / 1000 + ", all:" + alltime / 1000);
-    System.out.printf("read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%, mem:%3.2f%%\n",
+    System.out.println("[RS encode one strip] readTotal:" + readTotal / 1000 + ", writeTotal:" + writeTotal / 1000
+        + ", calTotal:" + calTotal / 1000 + ", all:" + alltime / 1000);
+    System.out.printf("read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%\n",
         (float) readTotal * 100 / alltime, (float) writeTotal * 100 / alltime,
-        (float) calTotal * 100 / alltime, (float) memTotal * 100 / alltime);
+        (float) calTotal * 100 / alltime);
   }
 
+  void performEncode(byte[][] readBufs, byte[][] writeBufs, int idx,
+                     int[] data, int[] code) {
+    for (int i = 0; i < paritySize; i++) {
+      code[i] = 0;
+    }
+    for (int i = 0; i < stripeSize; i++) {
+      data[i] = readBufs[i][idx] & 0x000000FF;
+    }
+    reedSolomonCode.encode(data, code);
+    for (int i = 0; i < paritySize; i++) {
+      writeBufs[i][idx] = (byte) code[i];
+    }
+  }
+
+  @Override
   public Path getParityTempPath() {
+
     return null;
-    // return new Path(RaidNode.isaTempPrefix(conf));
+    //    return new Path(RaidNode.rsTempPrefix(conf));
   }
 
-  protected void finalize() {
-    isaEnEnd();
-  }
 }

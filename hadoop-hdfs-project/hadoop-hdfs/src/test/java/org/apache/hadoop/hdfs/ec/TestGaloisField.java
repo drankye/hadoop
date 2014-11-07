@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 import junit.framework.TestCase;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.GaloisField;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
 public class TestGaloisField extends TestCase {
 

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,8 +25,8 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.ParityInputStream;
+import org.apache.hadoop.hdfs.ec.coder.old.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.ParityInputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;

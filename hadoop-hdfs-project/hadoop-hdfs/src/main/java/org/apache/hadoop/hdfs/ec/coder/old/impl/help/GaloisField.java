@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.coder.impl.help;
+package org.apache.hadoop.hdfs.ec.coder.old.impl.help;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.ec.coder.impl.help;
+package org.apache.hadoop.hdfs.ec.coder.old.impl.help;
 
 
 import org.apache.hadoop.util.Progressable;

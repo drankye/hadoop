@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.ec.coder;
+package org.apache.hadoop.hdfs.ec.coder.old;
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -22,7 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.RaidUtils;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.*;

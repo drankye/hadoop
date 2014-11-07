@@ -16,45 +16,30 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.ec.coder.impl;
+package org.apache.hadoop.hdfs.ec.coder.old.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.BlockMissingException;
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.impl.help.RaidUtils;
+import org.apache.hadoop.hdfs.ec.coder.old.ErasureCode;
+import org.apache.hadoop.hdfs.ec.coder.old.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.RaidUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ISADecoder extends Decoder {
-
+public class ReedSolomonDecoder extends Decoder {
   public static final Log LOG = LogFactory.getLog(
-      "org.apache.hadoop.raid.ISADecoder");
+      "org.apache.hadoop.raid.ReedSolomonDecoder");
+  private ErasureCode reedSolomonCode;
 
-  public ISADecoder(
+  public ReedSolomonDecoder(
       Configuration conf, int stripeSize, int paritySize) {
     super(conf, stripeSize, paritySize);
-    isaDeInit(stripeSize, paritySize);
-  }
-
-  public native static int isaDeInit(int stripeSize, int paritySize);
-
-  public native static int isaDecode(ByteBuffer[] alldata, int[] erasured, int blockSize);
-
-  ;
-
-  public native static int isaDeEnd();
-  static {
-    System.loadLibrary("isajni");
-  }
-
-  public void end() {
-    isaDeEnd();
+    this.reedSolomonCode = new ReedSolomonCode(stripeSize, paritySize);
   }
 
   @Override
@@ -63,7 +48,6 @@ public class ISADecoder extends Decoder {
       FileSystem parityFs, Path parityFile,
       long blockSize, long errorOffset, long bytesToSkip, long limit,
       OutputStream out) throws IOException {
-
     FSDataInputStream[] inputs = new FSDataInputStream[stripeSize + paritySize];
     int[] erasedLocations = buildInputs(fs, srcFile, parityFs, parityFile,
         errorOffset, inputs);
@@ -77,6 +61,7 @@ public class ISADecoder extends Decoder {
                               FileSystem parityFs, Path parityFile,
                               long errorOffset, FSDataInputStream[] inputs)
       throws IOException {
+    LOG.info("Building inputs to recover block starting at " + errorOffset);
     FileStatus srcStat = fs.getFileStatus(srcFile);
     long blockSize = srcStat.getBlockSize();
     long blockIdx = (int) (errorOffset / blockSize);
@@ -86,7 +71,7 @@ public class ISADecoder extends Decoder {
     ArrayList<Integer> erasedLocations = new ArrayList<Integer>();
     // First open streams to the parity blocks.
     for (int i = 0; i < paritySize; i++) {
-      long offset = blockSize * i;
+      long offset = blockSize * (stripeIdx * paritySize + i);
       FSDataInputStream in = parityFs.open(
           parityFile, conf.getInt("io.file.buffer.size", 64 * 1024));
       in.seek(offset);
@@ -151,27 +136,15 @@ public class ISADecoder extends Decoder {
     int[] tmp = new int[inputs.length];
     int[] decoded = new int[erasedLocations.length];
     long toDiscard = skipBytes;
-
-    ByteBuffer[] readByteBuf = new ByteBuffer[stripeSize + paritySize];
-    long start, end, readTotal = 0, writeTotal = 0, calTotal = 0, memTotal = 0, allstart, allend, alltime;
-
-    start = System.nanoTime();
-    for (int i = 0; i < stripeSize + paritySize; i++) {
-      readByteBuf[i] = ByteBuffer.allocateDirect(bufSize);
-    }
-    end = System.nanoTime();
-    memTotal += end - start;
+    long start, end, readTotal = 0, writeTotal = 0, calTotal = 0, allstart, allend, alltime;
 
     allstart = System.nanoTime();
-
-
     // Loop while the number of skipped + written bytes is less than the max.
     for (long written = 0; skipBytes + written < limit; ) {
       start = System.nanoTime();
       erasedLocations = readFromInputs(inputs, erasedLocations, limit);
       end = System.nanoTime();
       readTotal += end - start;
-
       if (decoded.length != erasedLocations.length) {
         decoded = new int[erasedLocations.length];
       }
@@ -182,55 +155,38 @@ public class ISADecoder extends Decoder {
         continue;
       }
 
+      start = System.nanoTime();
       // Decoded bufSize amount of data.
-
-      start = System.nanoTime();
-      for (int i = 0; i < stripeSize + paritySize; i++) {
-        readByteBuf[i].position(0);
-        readByteBuf[i].put(readBufs[i]);
+      for (int i = 0; i < bufSize; i++) {
+        performDecode(readBufs, writeBufs, i, tmp, erasedLocations, decoded);
       }
-      end = System.nanoTime();
-      memTotal += end - start;
-
-      start = System.nanoTime();
-      isaDecode(readByteBuf, erasedLocations, bufSize);
       end = System.nanoTime();
       calTotal += end - start;
 
+
       for (int i = 0; i < erasedLocations.length; i++) {
-        int index = erasedLocations[i];
-        toWrite -= toDiscard;
-        start = System.nanoTime();
-        readByteBuf[index].position(0);
-        readByteBuf[index].get(readBufs[index], 0, readByteBuf[index].remaining());
-        end = System.nanoTime();
-        memTotal += end - start;
-
-        start = System.nanoTime();
-        out.write(readBufs[index], (int) toDiscard, toWrite);
-        end = System.nanoTime();
-        writeTotal += end - start;
-
-        toDiscard = 0;
-        written += toWrite;
-        LOG.debug("Wrote " + toWrite + " bytes for erased location index " +
-            erasedLocationToFix);
-        break;
-
+        if (erasedLocations[i] == erasedLocationToFix) {
+          toWrite -= toDiscard;
+          start = System.nanoTime();
+          out.write(writeBufs[i], (int) toDiscard, toWrite);
+          end = System.nanoTime();
+          writeTotal += end - start;
+          toDiscard = 0;
+          written += toWrite;
+          LOG.debug("Wrote " + toWrite + " bytes for erased location index " +
+              erasedLocationToFix);
+          break;
+        }
       }
 
     }
     allend = System.nanoTime();
     alltime = allend - allstart;
-    System.out.println("[ISA decode fix one block] readTotal:" + readTotal
-        / 1000 + ", writeTotal:" + writeTotal / 1000 + ", calTotal"
-        + calTotal / 1000 + ", memTotal" + memTotal / 1000 + ", all:"
-        + alltime / 1000);
-    System.out.printf(
-        "read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%, mem:%3.2f%%\n",
-        (float) readTotal * 100 / alltime, (float) writeTotal * 100
-            / alltime, (float) calTotal * 100 / alltime,
-        (float) memTotal * 100 / alltime);
+    System.out.println("[RS decode fix one block] readTotal:" + readTotal / 1000 + ", writeTotal:" + writeTotal / 1000
+        + ", calTotal:" + calTotal / 1000 + ", all:" + alltime / 1000);
+    System.out.printf("read:%3.2f%%, write:%3.2f%%, cal:%3.2f%%\n",
+        (float) readTotal * 100 / alltime, (float) writeTotal * 100 / alltime,
+        (float) calTotal * 100 / alltime);
   }
 
   int[] readFromInputs(
@@ -273,8 +229,19 @@ public class ISADecoder extends Decoder {
     return erasedLocations;
   }
 
-  protected void finalize() {
-    isaDeEnd();
+  void performDecode(byte[][] readBufs, byte[][] writeBufs,
+                     int idx, int[] inputs,
+                     int[] erasedLocations, int[] decoded) {
+    for (int i = 0; i < decoded.length; i++) {
+      decoded[i] = 0;
+    }
+    for (int i = 0; i < inputs.length; i++) {
+      inputs[i] = readBufs[i][idx] & 0x000000FF;
+    }
+    reedSolomonCode.decode(inputs, erasedLocations, decoded);
+    for (int i = 0; i < decoded.length; i++) {
+      writeBufs[i][idx] = (byte) decoded[i];
+    }
   }
 
 }
