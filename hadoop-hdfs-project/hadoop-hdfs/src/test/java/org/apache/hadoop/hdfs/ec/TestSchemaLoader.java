@@ -10,7 +10,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestECSchemaLoader {
+public class TestSchemaLoader {
 
 	final static String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/tmp")).getAbsolutePath();
@@ -46,21 +46,21 @@ public class TestECSchemaLoader {
 		conf.set("hadoop.hdfs.ec.codec.codec.LRC",
 				"hadoop.hdfs.ec.codec.codec.IsaLRC");
 
-    ECSchemaLoader schemaLoader = new ECSchemaLoader();
-		List<ECSchema> codecs = schemaLoader.loadSchema(conf);
+    SchemaLoader schemaLoader = new SchemaLoader();
+		List<ECSchema> schemas = schemaLoader.loadSchema(conf);
 
-		System.out.println("chenlin:" + codecs.size());
-		for (int i = 0; i < codecs.size(); i++) {
-			System.out.println(codecs.get(i).getCodecName());
+		System.out.println("Schemas:" + schemas.size());
+		for (int i = 0; i < schemas.size(); i++) {
+			System.out.println(schemas.get(i).getCodecName());
 		}
-		assertEquals(1, codecs.size());
-		assertEquals("RSk6m3", codecs.get(0).getCodecName());
-		assertEquals(3, codecs.get(0).getOptions().size());
-		assertEquals("6", codecs.get(0).getOptions().get("k"));
-		assertEquals("3", codecs.get(0).getOptions().get("m"));
+		assertEquals(1, schemas.size());
+		assertEquals("RSk6m3", schemas.get(0).getCodecName());
+		assertEquals(3, schemas.get(0).getOptions().size());
+		assertEquals("6", schemas.get(0).getOptions().get("k"));
+		assertEquals("3", schemas.get(0).getOptions().get("m"));
 		assertEquals("RS-Jerasure",
-				codecs.get(0).getOptions().get("codec"));
-		assertEquals("RS-Jerasure", codecs.get(0).getCodecName());
+				schemas.get(0).getOptions().get("codec"));
+		assertEquals("RS-Jerasure", schemas.get(0).getCodecName());
 
 	}
 }

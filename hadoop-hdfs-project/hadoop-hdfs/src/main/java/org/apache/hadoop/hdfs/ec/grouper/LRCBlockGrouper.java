@@ -15,19 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.coder;
+package org.apache.hadoop.hdfs.ec.grouper;
 
-import java.nio.ByteBuffer;
+import org.apache.hadoop.hdfs.ExtendedBlockId;
+import org.apache.hadoop.hdfs.ec.BlockGroup;
 
-public class ECChunk {
+import java.util.List;
 
-  private ByteBuffer chunkBuffer;
+/**
+ * A BlockGrouper for LRC codec
+ */
+public class LRCBlockGrouper extends BlockGrouper {
 
-  public ECChunk(ByteBuffer buffer) {
-    this.chunkBuffer = buffer;
+
+  @Override
+  public BlockGroup makeBlockGroup(List<ExtendedBlockId> dataBlocks,
+                                   List<ExtendedBlockId> parityBlocks) {
+    return null;
   }
 
-  public ByteBuffer getChunkBuffer() {
-    return chunkBuffer;
+  @Override
+  public boolean anyRecoverable(BlockGroup blockGroup) {
+    return false;
+  }
+
+  @Override
+  public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
+    return null;
   }
 }

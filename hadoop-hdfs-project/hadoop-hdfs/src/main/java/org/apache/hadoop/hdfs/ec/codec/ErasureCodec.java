@@ -17,12 +17,9 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ExtendedBlockId;
-import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
-
-import java.util.List;
+import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 
 /**
  * Erasure Codec to be managed by ECManager and used by ECWorker
@@ -35,18 +32,19 @@ public abstract class ErasureCodec {
     this.schema = schema;
   }
 
-  public String getCodecName() {
+  public String getName() {
     return schema.getCodecName();
   }
 
+  protected ECSchema getSchema() {
+    return schema;
+  }
+
   /**
-   * Calculating and organizing BlockGroup, to be called by ECManager
-   * @param dataBlocks Data blocks to compute parity blocks against
-   * @param parityBlocks To be computed parity blocks
+   * Create block grouper, to be called by ECManager
    * @return
    */
-  public abstract BlockGroup makeBlockGroup(List<ExtendedBlockId> dataBlocks,
-                                            List<ExtendedBlockId> parityBlocks);
+  public abstract BlockGrouper createBlockGrouper();
 
   /**
    * Create Erasure Coder, to be called by ECWorker

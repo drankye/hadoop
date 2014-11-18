@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
-import java.util.List;
+import org.apache.hadoop.hdfs.ec.ECChunk;
 
 /**
  * Erasure Coder for encoding and decoding of ECChunks

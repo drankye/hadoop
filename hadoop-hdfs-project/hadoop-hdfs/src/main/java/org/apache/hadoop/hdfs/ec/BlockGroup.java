@@ -21,7 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * In simple case like RS codec, only one SubBlockGroup;
+ * An encoding/decoding work unit that contains necessary information for a
+ * erasure codec and coder to perform the work. It can be persisted and stored
+ * in NameNode as part of the meta; and transferred to DataNode as part of encoding
+ * or decoding command for the corresponding coder to do the work.
+ *
+ * In simple case like RS codec, a BlockGroup contains only one SubBlockGroup;
  * in LRC codec, there're 3 SubBlockGroups, 2 local group plus 1 global group.
  */
 public class BlockGroup {

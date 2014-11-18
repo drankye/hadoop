@@ -17,21 +17,30 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-public class SubBlockGroup {
+import org.apache.hadoop.hdfs.ExtendedBlockId;
 
-  private ECBlock[] dataBlocks;
-  private ECBlock[] parityBlocks;
+import java.util.List;
 
-  public SubBlockGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    this.dataBlocks = dataBlocks;
-    this.parityBlocks = parityBlocks;
+public class ECBlock {
+
+  private ExtendedBlockId blockId;
+  private boolean isParity;
+  private boolean isMissing;
+
+  public ECBlock(ExtendedBlockId blockId, boolean isParity) {
+    this.blockId = blockId;
+    this.isParity = isParity;
   }
 
-  public ECBlock[] getParityBlocks() {
-    return parityBlocks;
+  public void setMissing(boolean isMissing) {
+    this.isMissing = isMissing;
   }
 
-  public ECBlock[] getDataBlocks() {
-    return dataBlocks;
+  public boolean isParity() {
+    return isParity;
+  }
+
+  public boolean isMissing() {
+    return isMissing;
   }
 }

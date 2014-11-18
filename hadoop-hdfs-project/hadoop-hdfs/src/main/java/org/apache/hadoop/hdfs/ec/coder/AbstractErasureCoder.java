@@ -17,8 +17,16 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
+import org.apache.hadoop.hdfs.ec.ECChunk;
+import org.apache.hadoop.hdfs.ec.ECSchema;
+
 public class AbstractErasureCoder implements ErasureCoder {
 
+  private ECSchema schema;
+
+  public void initWith(ECSchema schema) {
+    this.schema = schema;
+  }
 
   @Override
   public void encode(ECChunk[] dataChunks, ECChunk outputChunk) {

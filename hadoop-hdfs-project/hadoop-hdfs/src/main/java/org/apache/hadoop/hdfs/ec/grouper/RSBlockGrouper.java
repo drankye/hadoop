@@ -15,23 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec;
+package org.apache.hadoop.hdfs.ec.grouper;
 
-public class SubBlockGroup {
+import org.apache.hadoop.hdfs.ExtendedBlockId;
+import org.apache.hadoop.hdfs.ec.BlockGroup;
 
-  private ECBlock[] dataBlocks;
-  private ECBlock[] parityBlocks;
+import java.util.List;
 
-  public SubBlockGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    this.dataBlocks = dataBlocks;
-    this.parityBlocks = parityBlocks;
+/**
+ * A BlockGrouper for RS codec
+ */
+public class RSBlockGrouper extends BlockGrouper {
+
+
+  @Override
+  public BlockGroup makeBlockGroup(List<ExtendedBlockId> dataBlocks,
+                                   List<ExtendedBlockId> parityBlocks) {
+    return null;
   }
 
-  public ECBlock[] getParityBlocks() {
-    return parityBlocks;
+  @Override
+  public boolean anyRecoverable(BlockGroup blockGroup) {
+    return false;
   }
 
-  public ECBlock[] getDataBlocks() {
-    return dataBlocks;
+  @Override
+  public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
+    return null;
   }
 }

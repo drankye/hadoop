@@ -17,26 +17,18 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ExtendedBlockId;
-import org.apache.hadoop.hdfs.ec.BlockGroup;
-
-import java.util.List;
+import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
+import org.apache.hadoop.hdfs.ec.grouper.RSBlockGrouper;
 
 /**
  * Reed-Solomon codec
  */
 public abstract class RSErasureCodec extends ErasureCodec {
 
-
-  /**
-   * Calculating BlockGroup according to Reed-Solomon algorithm
-   * @param dataBlocks Data blocks to compute parity blocks against
-   * @param parityBlocks To be computed parity blocks
-   * @return
-   */
-  @Override
-  public BlockGroup makeBlockGroup(List<ExtendedBlockId> dataBlocks, List<ExtendedBlockId> parityBlocks) {
-    return null;
+  public BlockGrouper createBlockGrouper() {
+    BlockGrouper blockGrouper = new RSBlockGrouper();
+    blockGrouper.initWith(getSchema());
+    return blockGrouper;
   }
 
 }

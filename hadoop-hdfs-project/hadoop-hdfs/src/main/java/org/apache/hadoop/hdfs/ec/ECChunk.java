@@ -17,18 +17,17 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
+import java.nio.ByteBuffer;
 
-/**
- * Thrown when the EC configuration file is malformed.
- */
-public class ECConfigurationException extends Exception {
-	private static final long serialVersionUID = 4046517047810854249L;
+public class ECChunk {
 
-	public ECConfigurationException(String message) {
-		super(message);
-	}
+  private ByteBuffer chunkBuffer;
 
-	public ECConfigurationException(String message, Throwable t) {
-		super(message, t);
-	}
+  public ECChunk(ByteBuffer buffer) {
+    this.chunkBuffer = buffer;
+  }
+
+  public ByteBuffer getChunkBuffer() {
+    return chunkBuffer;
+  }
 }
