@@ -63,8 +63,8 @@ public class NativeLibraryChecker {
     boolean lz4Loaded = nativeHadoopLoaded;
     boolean bzip2Loaded = Bzip2Factory.isNativeBzip2Loaded(conf);
     boolean openSslLoaded = false;
-    boolean winutilsExists = false;
 
+    boolean winutilsExists = false;
     String openSslDetail = "";
     String hadoopLibraryName = "";
     String zlibLibraryName = "";

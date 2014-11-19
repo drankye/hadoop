@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
+import java.nio.ByteBuffer;
+
 /**
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */
@@ -55,65 +57,37 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
    * This method would be overridden in the subclass, 
    * so that the subclass will have its own encodeBulk behavior. 
    */
-  public void encodeBulk(byte[][] inputs, byte[][] outputs) {
-    final int stripeSize = stripeSize();
-    final int paritySize = paritySize();
-    assert (stripeSize == inputs.length);
-    assert (paritySize == outputs.length);
-    int[] data = new int[stripeSize];
-    int[] code = new int[paritySize];
-
-    for (int j = 0; j < outputs[0].length; j++) {
-      for (int i = 0; i < paritySize; i++) {
-        code[i] = 0;
-      }
-      for (int i = 0; i < stripeSize; i++) {
-        data[i] = inputs[i][j] & 0x000000FF;
-      }
-      encode(data, code);
-      for (int i = 0; i < paritySize; i++) {
-        outputs[i][j] = (byte) code[i];
-      }
-    }
+  public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
+    // TODO
   }
 
   /**
    * This method would be overridden in the subclass, 
    * so that the subclass will have its own decodeBulk behavior. 
    */
-  public void decodeBulk(byte[][] readBufs, byte[][] writeBufs,
+  public void decodeBulk(ByteBuffer[] readBufs, ByteBuffer[] writeBufs,
       int[] erasedLocations, int[] locationsToRead, int[] locationsNotToRead) {
-    int[] tmpInput = new int[readBufs.length];
-    int[] tmpOutput = new int[erasedLocations.length];
-
-    int numBytes = readBufs[0].length;
-    for (int idx = 0; idx < numBytes; idx++) {
-      for (int i = 0; i < tmpOutput.length; i++) {
-        tmpOutput[i] = 0;
-      }
-      for (int i = 0; i < tmpInput.length; i++) {
-        tmpInput[i] = readBufs[i][idx] & 0x000000FF;
-      }
-      decode(tmpInput, erasedLocations, tmpOutput, locationsToRead,
-          locationsNotToRead);
-      for (int i = 0; i < tmpOutput.length; i++) {
-        writeBufs[i][idx] = (byte) tmpOutput[i];
-      }
-    }
+    // TODO
   }
 
   /**
    * The number of elements in the message.
    */
-  public int stripeSize();
+  public int stripeSize() {
+    return -1;
+  }
 
   /**
    * The number of elements in the code.
    */
-  public int paritySize();
+  public int paritySize() {
+    return -1;
+  }
 
   /**
    * Number of bits for each symbol.
    */
-  public int symbolSize();
+  public int symbolSize() {
+    return -1;
+  }
 }
