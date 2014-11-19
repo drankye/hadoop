@@ -18,16 +18,21 @@
 package org.apache.hadoop.hdfs.ec;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class ECChunk {
 
-  private ByteBuffer chunkBuffer;
+	private ByteBuffer chunkBuffer;
 
-  public ECChunk(ByteBuffer buffer) {
-    this.chunkBuffer = buffer;
-  }
+	public ECChunk(ByteBuffer buffer) {
+		this.chunkBuffer = buffer;
+	}
 
-  public ByteBuffer getChunkBuffer() {
-    return chunkBuffer;
-  }
+	public ByteBuffer getChunkBuffer() {
+		return chunkBuffer;
+	}
+
+	public void fillZero() {
+		Arrays.fill(chunkBuffer.array(), (byte) 0);
+	}
 }

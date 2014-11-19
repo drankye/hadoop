@@ -17,8 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
-import com.sun.corba.se.impl.ior.ByteBuffer;
-
+import java.nio.ByteBuffer;
 /**
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */
@@ -65,15 +64,10 @@ public interface RawErasureCoder {
   /**
    * The number of elements in the message.
    */
-  public int stripeSize();
+  public int dataSize();
 
   /**
    * The number of elements in the code.
    */
   public int paritySize();
-
-  /**
-   * Number of bits for each symbol.
-   */
-  public int symbolSize();
 }
