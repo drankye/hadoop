@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.coder.old.impl.help;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -287,6 +288,33 @@ public class GaloisField {
 			}
 		}
 	}
+	
+	/**
+	   * A "bulk" version of the solveVandermondeSystem
+	   */
+	  public void solveVandermondeSystem(int[] x, ByteBuffer[] y, 
+	                                     int len, int dataLen) {
+	    assert(x.length <= len && y.length <= len);
+	    for (int i = 0; i < len - 1; i++) {
+	      for (int j = len - 1; j > i; j--) {
+	        for (int k = 0; k < dataLen; k++) {
+	          y[j].array()[k] = (byte)(y[j].array()[k] ^ mulTable[x[i]][y[j - 1].array()[k] & 0x000000FF]);
+	        }
+	      }
+	    }
+	    for (int i = len - 1; i >= 0; i--) {
+	      for (int j = i + 1; j < len; j++) {
+	        for (int k = 0; k < dataLen; k++) {
+	          y[j].array()[k] = (byte)(divTable[y[j].array()[k] & 0x000000FF][x[j] ^ x[j - i - 1]]);
+	        }
+	      }
+	      for (int j = i; j < len - 1; j++) {
+	        for (int k = 0; k < dataLen; k++) {
+	          y[j].array()[k] = (byte)(y[j].array()[k] ^ y[j + 1].array()[k]);
+	        }
+	      }
+	    }
+	  }
 
 	/**
 	 * Compute the multiplication of two polynomials. The index in the array
@@ -385,6 +413,26 @@ public class GaloisField {
 		}
 		return result;
 	}
+	
+	/**
+	   * A "bulk" version of the substitute.
+	   * Tends to be 2X faster than the "int" substitute in a loop.
+	   * 
+	   * @param p input polynomial
+	   * @param q store the return result
+	   * @param x input field
+	   */
+	  public void substitute(ByteBuffer[] p, ByteBuffer q, int x) {
+	    int y = 1;
+	    for (int i = 0; i < p.length; i++) {
+	      byte[] pi = p[i].array();
+	      for (int j = 0; j < pi.length; j++) {
+	        int pij = pi[j] & 0x000000FF;
+	        q.array()[j] = (byte)(q.array()[j] ^ mulTable[pij][y]);
+	      }
+	      y = mulTable[x][y];
+	    }
+	  }
 
 	/**
 	 * from hdfs-raid 

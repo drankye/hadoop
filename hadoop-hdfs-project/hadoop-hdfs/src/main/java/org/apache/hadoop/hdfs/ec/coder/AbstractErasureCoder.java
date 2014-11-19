@@ -39,12 +39,12 @@ public class AbstractErasureCoder implements ErasureCoder {
   }
 
   @Override
-  public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk outputChunk) {
+  public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, String annotation, ECChunk outputChunk) {
 
   }
 
   @Override
-  public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk[] outputChunks) {
+  public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, String annotation, ECChunk[] outputChunks) {
 
   }
 }

@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.ec.coder;
 
 import org.apache.hadoop.hdfs.ec.ECSchema;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
 import java.nio.ByteBuffer;
 
@@ -25,8 +26,10 @@ import java.nio.ByteBuffer;
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */
 public class AbstractRawErasureCoder implements RawErasureCoder {
+	private GaloisField GF = GaloisField.getInstance();
 	private int dataSize;
 	private int paritySize;
+	
 	
 	public AbstractRawErasureCoder(int dataSize, int paritySize) {
 		this.dataSize = dataSize;
@@ -141,5 +144,10 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
 			int[] erasedLocations, int[] locationsToRead,
 			int[] locationsNotToRead) {
 		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public int symbolSize() {
+		return (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
 	}
 }

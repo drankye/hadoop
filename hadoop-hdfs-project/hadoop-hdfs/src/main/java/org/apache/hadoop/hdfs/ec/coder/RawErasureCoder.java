@@ -70,4 +70,6 @@ public interface RawErasureCoder {
    * The number of elements in the code.
    */
   public int paritySize();
+  
+  public int symbolSize();
 }
