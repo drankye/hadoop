@@ -22,7 +22,7 @@ import org.apache.hadoop.hdfs.ec.ECSchema;
 
 public class AbstractErasureCoder implements ErasureCoder {
 
-  private ECSchema schema;
+  protected ECSchema schema;
 
   public void initWith(ECSchema schema) {
     this.schema = schema;
