@@ -59,9 +59,8 @@ public interface RawErasureCoder {
    * This method would be overridden in the subclass, 
    * so that the subclass will have its own decodeBulk behavior. 
    */
-  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs,
-      int[] erasedLocations, int[] locationsToRead, int[] locationsNotToRead);
-
+  public void decode(ByteBuffer[] readBufs, ByteBuffer[] writeBufs, int[] erasedLocation);
+  
   /**
    * The number of elements in the message.
    */

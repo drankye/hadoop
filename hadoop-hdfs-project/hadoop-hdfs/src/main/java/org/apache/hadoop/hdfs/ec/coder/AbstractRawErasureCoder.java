@@ -25,9 +25,9 @@ import java.nio.ByteBuffer;
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */
 public class AbstractRawErasureCoder implements RawErasureCoder {
-	private GaloisField GF = GaloisField.getInstance();
-	private int dataSize;
-	private int paritySize;
+	protected GaloisField GF = GaloisField.getInstance();
+	protected int dataSize;
+	protected int paritySize;
 	
 	
 	public AbstractRawErasureCoder(int dataSize, int paritySize) {
@@ -98,32 +98,9 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
 		}
 	}
 
-	/**
-	 * This method would be overridden in the subclass, so that the subclass
-	 * will have its own decodeBulk behavior.
-	 */
-	public void decodeBulk(byte[][] readBufs, byte[][] writeBufs,
-			int[] erasedLocations, int[] locationsToRead,
-			int[] locationsNotToRead) {
-//		int[] tmpInput = new int[readBufs.length];
-//		int[] tmpOutput = new int[erasedLocations.length];
-//
-//		int numBytes = readBufs[0].length;
-//		for (int idx = 0; idx < numBytes; idx++) {
-//			for (int i = 0; i < tmpOutput.length; i++) {
-//				tmpOutput[i] = 0;
-//			}
-//			for (int i = 0; i < tmpInput.length; i++) {
-//				tmpInput[i] = readBufs[i][idx] & 0x000000FF;
-//			}
-//			decode(tmpInput, erasedLocations, tmpOutput, locationsToRead,
-//					locationsNotToRead);
-//			for (int i = 0; i < tmpOutput.length; i++) {
-//				writeBufs[i][idx] = (byte) tmpOutput[i];
-//			}
-//		}
-	}
-
+	@Override
+	public void decode(ByteBuffer[] readBufs, ByteBuffer[] writeBufs, int[] erasedLocation) {}
+	
 	/**
 	 * The number of elements in the message.
 	 */
@@ -138,12 +115,6 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
 		return paritySize;
 	}
 
-	@Override
-	public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs,
-			int[] erasedLocations, int[] locationsToRead,
-			int[] locationsNotToRead) {
-		// TODO Auto-generated method stub
-	}
 
 	@Override
 	public int symbolSize() {
