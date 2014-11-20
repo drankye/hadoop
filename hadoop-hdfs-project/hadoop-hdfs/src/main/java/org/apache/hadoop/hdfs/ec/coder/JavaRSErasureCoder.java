@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.apache.hadoop.hdfs.ec.ECChunk;
+import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
 import java.nio.ByteBuffer;
@@ -24,7 +25,9 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 	
 	private RawErasureCoder rawErasureCoder;
 
-	public JavaRSErasureCoder() {
+	@Override
+	public void initWith(ECSchema schema) {
+		super.initWith(schema);
 		init(schema.getDataBlocks(), schema.getParityBlocks());
 	}
 
@@ -96,14 +99,23 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		ArrayList<Integer> erasedLocation = getErasedLocation(annotation);
 		decode(readChunks, outputChunks, erasedLocation);
 	}
+	
+	public int symbolSize() {
+		return rawErasureCoder.symbolSize();
+	}
 
-	private static ArrayList<Integer> getErasedLocation(final String annotation) {
+	private ArrayList<Integer> getErasedLocation(final String annotation) {
 		ArrayList<Integer> erasedLocationArrayList = new ArrayList<Integer>();
 
 		for (int i = 0; i < annotation.length(); i += 2) {
 			char c = annotation.charAt(i);
 			if (c == '_') {
-				erasedLocationArrayList.add(i / 2);
+				int erasedIndexInString = i / 2;
+				if (erasedIndexInString >= schema.getDataBlocks() ) {
+					erasedLocationArrayList.add(erasedIndexInString - schema.getDataBlocks());
+				} else {
+					erasedLocationArrayList.add(erasedIndexInString + schema.getParityBlocks());
+				}
 			}
 		}
 
