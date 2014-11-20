@@ -18,16 +18,57 @@
 package org.apache.hadoop.hdfs.ec;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class ECChunk {
 
-  private ByteBuffer chunkBuffer;
+	private ByteBuffer chunkBuffer;
 
-  public ECChunk(ByteBuffer buffer) {
-    this.chunkBuffer = buffer;
-  }
+	public ECChunk(ByteBuffer buffer) {
+		this.chunkBuffer = buffer;
+	}
 
-  public ByteBuffer getChunkBuffer() {
-    return chunkBuffer;
-  }
+	public ByteBuffer getChunkBuffer() {
+		return chunkBuffer;
+	}
+	
+	public void setChunkBuffer(ByteBuffer buffer) {
+		this.chunkBuffer = buffer;
+	}
+
+	public void fillZero() {
+		Arrays.fill(chunkBuffer.array(), (byte) 0);
+	}
+	
+	@Override
+	public ECChunk clone() {
+		byte[] oldBytes = chunkBuffer.array();
+	    byte[] copiedBytes = new byte[oldBytes.length];
+	    System.arraycopy(oldBytes, 0, copiedBytes, 0, oldBytes.length);
+	    ByteBuffer duplicate = ByteBuffer.wrap(copiedBytes);
+	    return new ECChunk(duplicate);
+	}
+	
+	@Override
+	public boolean equals(Object object) {
+		if (object == null || !(object instanceof ECChunk)) {
+			return false;
+		}
+		ECChunk annotherChunk = (ECChunk)object;
+		return annotherChunk.chunkBuffer.equals(this.chunkBuffer);
+	};
+	
+	@Override
+	public int hashCode() {
+		return chunkBuffer.hashCode() + 1;
+	};
+	
+	@Override
+	public String toString() {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < chunkBuffer.array().length; i++) {
+			sb.append(chunkBuffer.array()[i] + " ");
+		}
+		return sb.toString();
+	}
 }

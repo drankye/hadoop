@@ -29,8 +29,8 @@ public interface ErasureCoder {
   public void encode(ECChunk[] dataChunks, ECChunk[] outputChunks);
 
   public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks,
-                     ECChunk outputChunk);
+                     String annotation, ECChunk outputChunk);
 
   public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks,
-                     ECChunk[] outputChunks);
+                     String annotation, ECChunk[] outputChunks);
 }

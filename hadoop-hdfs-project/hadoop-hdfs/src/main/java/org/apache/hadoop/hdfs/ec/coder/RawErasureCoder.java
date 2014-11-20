@@ -65,15 +65,12 @@ public interface RawErasureCoder {
   /**
    * The number of elements in the message.
    */
-  public int stripeSize();
+  public int dataSize();
 
   /**
    * The number of elements in the code.
    */
   public int paritySize();
-
-  /**
-   * Number of bits for each symbol.
-   */
+  
   public int symbolSize();
 }
