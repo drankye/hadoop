@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.server.namenode.ec;
+package org.apache.hadoop.hdfs.ec;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
@@ -27,7 +27,7 @@ import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
 
 import junit.framework.TestCase;
 
-public class TestErasureCodes extends TestCase {
+public class TestRawErasureCodes extends TestCase {
 	final int TEST_CODES = 100;
 	final int TEST_TIMES = 1000;
 	final Random RAND = new Random();
