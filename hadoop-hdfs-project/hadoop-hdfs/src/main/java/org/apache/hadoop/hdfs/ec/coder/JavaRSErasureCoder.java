@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.ec.coder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.ECSchema;
@@ -122,7 +123,7 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		return erasedLocationArrayList;
 	}
 
-	private void decode(ECChunk[] readBufs, ECChunk[] writeBufs, ArrayList<Integer> erasedLocation) {
+	private void decode(ECChunk[] readBufs, ECChunk[] writeBufs, List<Integer> erasedLocation) {
 		if (erasedLocation.size() == 0) {
 			return;
 		}
