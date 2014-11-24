@@ -39,12 +39,10 @@ public class TestErasureCodes extends TestCase {
 		ECSchema schema = new ECSchema("", null, "");
 		schema.setDataBlocks(dataSize);
 		schema.setParityBlocks(paritySize);
-
 		AbstractErasureCoder ec = new JavaRSErasureCoder();
 		ec.initWith(schema);
 
-		int symbolMax = (int) Math.pow(2,
-				((JavaRSErasureCoder) ec).symbolSize());
+		int symbolMax = (int) Math.pow(2, ((JavaRSErasureCoder)ec).symbolSize());
 		ECChunk[] message = new ECChunk[dataSize];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
@@ -52,8 +50,7 @@ public class TestErasureCodes extends TestCase {
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-			message[i] = new ECChunk(buffer);
+			message[i] = new ECChunk(ByteBuffer.wrap(byteArray));
 		}
 		ECChunk[] parity = new ECChunk[paritySize];
 		for (int i = 0; i < paritySize; i++) {

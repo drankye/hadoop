@@ -18,12 +18,13 @@
 package org.apache.hadoop.hdfs.ec;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
-import org.apache.hadoop.hdfs.ec.ECChunk;
-import org.apache.hadoop.hdfs.ec.ECSchema;
-import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.JavaRSRawErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.RawErasureCoder;
 
 import junit.framework.TestCase;
 
@@ -32,72 +33,116 @@ public class TestRawErasureCodes extends TestCase {
 	final int TEST_TIMES = 1000;
 	final Random RAND = new Random();
 
+	public void testEncodeDecodeInt() {
+		for (int n = 0; n < TEST_CODES; n++) {
+			int dataSize = RAND.nextInt(99) + 1; // 1, 2, 3, ... 100
+			int paritySize = RAND.nextInt(9) + 1; // 1, 2, 3, 4, ... 10
+			RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize,
+					paritySize);
+			for (int m = 0; m < TEST_TIMES; m++) {
+				int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
+				int[] message = new int[dataSize];
+				for (int i = 0; i < dataSize; i++) {
+					message[i] = RAND.nextInt(symbolMax);
+				}
+				int[] parity = new int[paritySize];
+				rawEc.encode(message, parity);
+				int[] data = new int[dataSize + paritySize];
+				int[] copy = new int[data.length];
+				for (int i = 0; i < paritySize; i++) {
+					data[i] = parity[i];
+					copy[i] = parity[i];
+				}
+				for (int i = 0; i < dataSize; i++) {
+					data[i + paritySize] = message[i];
+					copy[i + paritySize] = message[i];
+				}
+				int erasedLen = paritySize == 1 ? 1 : RAND
+						.nextInt(paritySize - 1) + 1;
+				int[] erasedLocations = randomErasedLocation(erasedLen,
+						data.length);
+				for (int i = 0; i < erasedLocations.length; i++) {
+					data[erasedLocations[i]] = 0;
+				}
+				int[] erasedValues = new int[erasedLen];
+				rawEc.decode(data, erasedLocations, erasedValues);
+				for (int i = 0; i < erasedLen; i++) {
+					assertEquals("Decode failed", copy[erasedLocations[i]],
+							erasedValues[i]);
+				}
+			}
+		}
+	}
+
 	public void testRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
 
-		ECSchema schema = new ECSchema("", null, "");
-		schema.setDataBlocks(dataSize);
-		schema.setParityBlocks(paritySize);
+		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize);
 
-		AbstractErasureCoder ec = new JavaRSErasureCoder();
-		ec.initWith(schema);
-
-		int symbolMax = (int) Math.pow(2,
-				((JavaRSErasureCoder) ec).symbolSize());
-		ECChunk[] message = new ECChunk[dataSize];
+		int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
+		ByteBuffer[] message = new ByteBuffer[dataSize];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-			message[i] = new ECChunk(buffer);
+			message[i] = ByteBuffer.wrap(byteArray);
 		}
-		ECChunk[] parity = new ECChunk[paritySize];
+		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
-			parity[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
+			parity[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
 		long encodeStart = System.currentTimeMillis();
 
-		ECChunk[] tmpIn = new ECChunk[dataSize];
-		ECChunk[] tmpOut = new ECChunk[paritySize];
+		ByteBuffer[] tmpIn = new ByteBuffer[dataSize];
+		ByteBuffer[] tmpOut = new ByteBuffer[paritySize];
 		for (int i = 0; i < tmpOut.length; i++) {
-			tmpOut[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
+			tmpOut[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
-		for (int j = 0; j < dataSize; j++)
-			tmpIn[j] = message[j].clone();
-		ec.encode(tmpIn, tmpOut);
+		for (int i = 0; i < dataSize; i++) {
+			byte[] cpByte = Arrays.copyOfRange(message[i].array(), 0, message[i].array().length);
+			tmpIn[i] = ByteBuffer.wrap(cpByte);
+		}
+		rawEc.encode(tmpIn, tmpOut);
 		// Copy parity.
-		for (int j = 0; j < paritySize; j++)
-			parity[j] = tmpOut[j].clone();
+		for (int i = 0; i < paritySize; i++) {
+			byte[] cpByte = Arrays.copyOfRange(tmpOut[i].array(), 0, tmpOut[i].array().length);
+			parity[i] = ByteBuffer.wrap(cpByte);
+		}
 		long encodeEnd = System.currentTimeMillis();
 		float encodeMSecs = (encodeEnd - encodeStart);
 		System.out.println("Time to encode rs = " + encodeMSecs + "msec ("
-				+ message[0].getChunkBuffer().array().length
-				/ (1000 * encodeMSecs) + " MB/s)");
+				+ message[0].array().length / (1000 * encodeMSecs) + " MB/s)");
 
-		String erasedAnnotation = "__D2__D4D5__D7";
-		ECChunk[] erasedValues = new ECChunk[4];
+		int[] erasedLocations = new int[] { 4, 1, 5, 7 };
+		ByteBuffer[] erasedValues = new ByteBuffer[4];
 		for (int i = 0; i < erasedValues.length; i++) {
-			erasedValues[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
+			erasedValues[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
-		ECChunk copy = message[0].clone();
-		message[0].setChunkBuffer(ByteBuffer.wrap(new byte[bufsize]));
+		byte[] cpByte = Arrays.copyOfRange(message[0].array(), 0, message[0].array().length);
+		ByteBuffer copy = ByteBuffer.wrap(cpByte);
+
+		ByteBuffer[] data = new ByteBuffer[paritySize + dataSize];
+		for (int i = 0; i < paritySize; i++) {
+			data[i] = parity[i];
+		}
+		data[paritySize] = ByteBuffer.wrap(new byte[bufsize]);
+		for (int i = 1; i < dataSize; i++) {
+			data[i + paritySize] = message[i];
+		}
 
 		long decodeStart = System.currentTimeMillis();
-		ec.decode(message, parity, erasedAnnotation, erasedValues);
-		message[0] = erasedValues[0];
+		rawEc.decode(data, erasedValues, erasedLocations);
 		long decodeEnd = System.currentTimeMillis();
 		float decodeMSecs = (decodeEnd - decodeStart);
 		System.out.println("Time to decode = " + decodeMSecs + "msec ("
-				+ message[0].getChunkBuffer().array().length
-				/ (1000 * decodeMSecs) + " MB/s)");
-		assertTrue("Decode failed", copy.equals(message[0]));
+				+ message[0].array().length / (1000 * decodeMSecs) + " MB/s)");
+		assertTrue("Decode failed", copy.equals(erasedValues[0]));
 	}
 
-	public void testRSEncodeDecodeBulk() {
+	public void testRSEncodeDecodeByteBuffer() {
 		// verify the production size.
 		verifyRSEncodeDecode(10, 4);
 
@@ -106,54 +151,63 @@ public class TestRawErasureCodes extends TestCase {
 	}
 
 	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		ECSchema schema = new ECSchema("", null, "");
-		schema.setDataBlocks(dataSize);
-		schema.setParityBlocks(paritySize);
+		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize);
 
-		AbstractErasureCoder ec = new JavaRSErasureCoder();
-		ec.initWith(schema);
-
-		int symbolMax = (int) Math.pow(2,
-				((JavaRSErasureCoder) ec).symbolSize());
-		ECChunk[] message = new ECChunk[dataSize];
-		ECChunk[] cpMessage = new ECChunk[dataSize];
-		int bufsize = 1024 * 1024 * 10;
+		int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
+		ByteBuffer[] message = new ByteBuffer[dataSize];
+		ByteBuffer[] cpMessage = new ByteBuffer[dataSize];
+		int bufsize = 3;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-			message[i] = new ECChunk(buffer);
-			cpMessage[i] = message[i].clone();
+			message[i] = ByteBuffer.wrap(byteArray);
+			byte[] cpByte = Arrays.copyOfRange(message[i].array(), 0, message[i].array().length);
+			cpMessage[i] = ByteBuffer.wrap(cpByte);
 		}
-		ECChunk[] parity = new ECChunk[paritySize];
+		
+		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
-			parity[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
+			parity[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
 
 		// encode.
-		ec.encode(cpMessage, parity);
+		rawEc.encode(cpMessage, parity);
 
 		int erasedLocation = RAND.nextInt(dataSize);
-		String annotation = generateAnnotation(erasedLocation);
-		ECChunk copy = message[erasedLocation].clone();
-		message[erasedLocation].setChunkBuffer(ByteBuffer
-				.wrap(new byte[bufsize]));
-
+		
+		byte[] copyByte = Arrays.copyOfRange(message[erasedLocation].array(), 0, message[erasedLocation].array().length);
+		ByteBuffer copy = ByteBuffer.wrap(copyByte);
+		message[erasedLocation] = ByteBuffer.wrap(new byte[bufsize]);
+		
 		// test decode
-		ECChunk[] output = new ECChunk[1];
-		output[0] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		ec.decode(message, parity, annotation, output);
-		assertTrue("Decode failed", copy.equals(output[0]));
+		ByteBuffer[] data = new ByteBuffer[dataSize + paritySize];
+		for (int i = 0; i < paritySize; i++) {
+			data[i] = parity[i];
+		}
+
+		for (int i = 0; i < dataSize; i++) {
+			data[i + paritySize] = message[i];
+		}
+		ByteBuffer[] writeBufs = new ByteBuffer[1];
+		writeBufs[0] = ByteBuffer.wrap(new byte[bufsize]);
+		rawEc.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
+		assertTrue("Decode failed", copy.equals(writeBufs[0]));
 	}
 
-	private String generateAnnotation(int erasedLocation) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < erasedLocation; i++) {
-			sb.append("XX");
+	private int[] randomErasedLocation(int erasedLen, int dataLen) {
+		int[] erasedLocations = new int[erasedLen];
+		for (int i = 0; i < erasedLen; i++) {
+			Set<Integer> s = new HashSet<Integer>();
+			while (s.size() != erasedLen) {
+				s.add(RAND.nextInt(dataLen));
+			}
+			int t = 0;
+			for (int erased : s) {
+				erasedLocations[t++] = erased;
+			}
 		}
-		sb.append("__");
-		return sb.toString();
+		return erasedLocations;
 	}
 }
