@@ -31,12 +31,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ISADecoder extends Decoder {
+public class IsaReedSolomonDecoder extends Decoder {
 
-  public static final Log LOG = LogFactory.getLog(
-      "org.apache.hadoop.raid.ISADecoder");
+  public static final Log LOG = LogFactory.getLog(IsaReedSolomonDecoder.class);
 
-  public ISADecoder(
+  public IsaReedSolomonDecoder(
       Configuration conf, int stripeSize, int paritySize) {
     super(conf, stripeSize, paritySize);
     isaDeInit(stripeSize, paritySize);

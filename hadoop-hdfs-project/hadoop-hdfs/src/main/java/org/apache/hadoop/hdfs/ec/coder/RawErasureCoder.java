@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.ec.coder;
 
 import java.nio.ByteBuffer;
+
 /**
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */

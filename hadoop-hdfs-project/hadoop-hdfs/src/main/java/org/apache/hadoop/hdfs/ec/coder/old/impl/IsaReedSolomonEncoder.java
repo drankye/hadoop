@@ -31,11 +31,10 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 
-public class ISAEncoder extends Encoder {
-  public static final Log LOG = LogFactory.getLog(
-      "org.apache.hadoop.raid.ISAEncoder");
+public class IsaReedSolomonEncoder extends Encoder {
+  public static final Log LOG = LogFactory.getLog(IsaReedSolomonEncoder.class);
 
-  public ISAEncoder(
+  public IsaReedSolomonEncoder(
       Configuration conf, int stripeSize, int paritySize) {
     super(conf, stripeSize, paritySize);
     isaEnInit(stripeSize, paritySize);

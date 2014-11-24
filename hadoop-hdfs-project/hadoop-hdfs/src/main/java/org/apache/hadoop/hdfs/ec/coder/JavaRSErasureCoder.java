@@ -1,14 +1,12 @@
 package org.apache.hadoop.hdfs.ec.coder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The codes is base on ReedSolomonCode in hadoop-raid
