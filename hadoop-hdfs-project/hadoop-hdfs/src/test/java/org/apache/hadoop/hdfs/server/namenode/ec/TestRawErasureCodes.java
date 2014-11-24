@@ -24,6 +24,8 @@ import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.JavaRSRawErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.RawErasureCoder;
 
 import junit.framework.TestCase;
 
@@ -36,24 +38,17 @@ public class TestRawErasureCodes extends TestCase {
 		int dataSize = 10;
 		int paritySize = 4;
 
-		ECSchema schema = new ECSchema("", null, "");
-		schema.setDataBlocks(dataSize);
-		schema.setParityBlocks(paritySize);
+		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize);
 
-		AbstractErasureCoder ec = new JavaRSErasureCoder();
-		ec.initWith(schema);
-
-		int symbolMax = (int) Math.pow(2,
-				((JavaRSErasureCoder) ec).symbolSize());
-		ECChunk[] message = new ECChunk[dataSize];
+		int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
+		ByteBuffer[] message = new ByteBuffer[dataSize];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-			message[i] = new ECChunk(buffer);
+			message[i] = ByteBuffer.wrap(byteArray);
 		}
 		ECChunk[] parity = new ECChunk[paritySize];
 		for (int i = 0; i < paritySize; i++) {
