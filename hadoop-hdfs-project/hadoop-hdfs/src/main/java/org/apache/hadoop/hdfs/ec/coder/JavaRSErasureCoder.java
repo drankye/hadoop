@@ -32,7 +32,6 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		ByteBuffer[] outputByteBuffers = changeToByteBufferArray(outputChunks);
 		
 		rawErasureCoder.encode(dataByteBuffers, outputByteBuffers);
-		outputChunks = changeToChunkArray(outputByteBuffers);
 	}
 
 	@Override
@@ -88,15 +87,6 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		return buffers;
 	}
 	
-	private ECChunk[] changeToChunkArray(ByteBuffer[] writeBufs) {
-		ECChunk[] chunks = new ECChunk[writeBufs.length];
-		
-		for (int i = 0; i < writeBufs.length; i++) {
-			chunks[i] = new ECChunk(writeBufs[i]);
-		}
-		return chunks;
-	}
-
 	private ECChunk[] combineArrays(ECChunk[] array1, ECChunk[] array2) {
 		ECChunk[] result = new ECChunk[array1.length + array2.length];
 		for (int i = 0; i < array1.length; ++i) {

@@ -63,6 +63,10 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 		}
 	}
 
+	/**
+	 * This function (actually, the GF.remainder() function) will modify
+	 * the "inputs" parameter.
+	 */
 	@Override
 	public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
 		assert (dataSize == inputs.length);
