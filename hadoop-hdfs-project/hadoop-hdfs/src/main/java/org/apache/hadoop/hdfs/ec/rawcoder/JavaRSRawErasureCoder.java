@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.ec.coder.raw;
+package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
 
