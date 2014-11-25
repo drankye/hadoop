@@ -23,8 +23,8 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.hadoop.hdfs.ec.coder.JavaRSRawErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.RawErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.raw.JavaRSRawErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.raw.RawErasureCoder;
 
 import junit.framework.TestCase;
 

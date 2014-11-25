@@ -32,6 +32,7 @@ import java.util.List;
 public class BlockGroup {
 
   private List<SubBlockGroup> subGroups = new ArrayList<SubBlockGroup>();
+  private String annotation;
 
   public List<SubBlockGroup> getSubGroups() {
     return subGroups;
@@ -39,5 +40,9 @@ public class BlockGroup {
 
   public void addSubGroup(SubBlockGroup subGroup) {
     subGroups.add(subGroup);
+  }
+  
+  public void setAnnotation(String annotation) {
+	  this.annotation = annotation;
   }
 }

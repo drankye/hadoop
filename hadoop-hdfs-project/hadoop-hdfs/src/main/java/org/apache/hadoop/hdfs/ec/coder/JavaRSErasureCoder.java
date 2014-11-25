@@ -2,6 +2,8 @@ package org.apache.hadoop.hdfs.ec.coder;
 
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.ECSchema;
+import org.apache.hadoop.hdfs.ec.coder.raw.JavaRSRawErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.raw.RawErasureCoder;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
