@@ -115,9 +115,16 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
 		return paritySize;
 	}
 
-
 	@Override
 	public int symbolSize() {
 		return (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
 	}
+
+  /**
+   * Chunk buffer size for an encod()/decode() call
+   * @return
+   */
+  public int getChunkSize() {
+    return 16 * 1024;
+  }
 }
