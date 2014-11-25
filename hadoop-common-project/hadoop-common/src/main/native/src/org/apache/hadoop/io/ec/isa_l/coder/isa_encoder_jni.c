@@ -68,7 +68,7 @@ static void make_key(){
     (void) pthread_key_create(&de_key, NULL);
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix){
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
@@ -116,8 +116,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_encode
-  (JNIEnv * env, jclass myclass, jobjectArray data, jobjectArray code, jint blockSize){
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_encode
+  (JNIEnv * env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
 
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
@@ -149,14 +149,14 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
             pCodecParameter->code[m] = (u8 *)env->GetDirectBufferAddress(pCodecParameter->codebuf[m]);
         }
         
-        ec_encode_data(blockSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
+        ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
         for(int m = 0; m < codeLen; m++){
             env->SetObjectArrayElement(code, m, pCodecParameter->codebuf[m]);
         }
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_destroy
   (JNIEnv * env, jclass myclass){
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
