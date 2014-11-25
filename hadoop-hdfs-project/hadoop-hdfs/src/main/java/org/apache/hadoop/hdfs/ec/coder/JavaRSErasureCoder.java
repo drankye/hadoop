@@ -20,6 +20,13 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 	@Override
 	public void initWith(ECSchema schema) {
 		super.initWith(schema);
+		
+		//FIXME get data size and parity size from schema options
+		String dataSize = schema.getOptions().get("k");
+		schema.setDataBlocks(Integer.parseInt(dataSize));
+		String paritySize = schema.getOptions().get("m");
+		schema.setParityBlocks(Integer.parseInt(paritySize));
+		
 		rawErasureCoder = new JavaRSRawErasureCoder(schema.getDataBlocks(), schema.getParityBlocks());
 	}
 

@@ -17,30 +17,77 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Random;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.DFSTestUtil;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.ECSchema;
-import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoder;
+import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
+import org.apache.hadoop.net.NetUtils;
+import org.junit.Test;
 
-import junit.framework.TestCase;
-
-public class TestErasureCodes extends TestCase {
+public class TestErasureCodes {
 	final int TEST_CODES = 100;
 	final int TEST_TIMES = 1000;
 	final Random RAND = new Random();
+	
+	private static final String TEST_DIR = new File(System.getProperty(
+			"test.build.data", "/Users")).getAbsolutePath();
+	private static final int BLOCK_SIZE = 1024;
+	
+	@Test
+	public void verifyEncodeDecode() throws IOException {
+		final int blockCount = 4;
+		
+		Configuration conf = new HdfsConfiguration();
+		List<LocatedBlock> blocks = write(conf, blockCount);
+		assertTrue(blocks.size() == blockCount);
+		
+	}
 
+	private List<LocatedBlock> write(Configuration conf, int blockCount) throws IOException {
+		int numDataNodes = 1;
+		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
+		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
+		cluster.waitActive();
+		FileSystem fileSys = cluster.getFileSystem();
+		DFSTestUtil.createFile(fileSys, new Path(TEST_DIR), BLOCK_SIZE * blockCount, (short)1, 0);
+		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(TEST_DIR));
+		return blocks;
+	}
+	
 	public void testRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
-
-		ECSchema schema = new ECSchema("", null, "");
-		schema.setDataBlocks(dataSize);
-		schema.setParityBlocks(paritySize);
-		AbstractErasureCoder ec = new JavaRSErasureCoder();
-		ec.initWith(schema);
+		
+		ErasureCodec codec = null;
+		try {
+			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(dataSize, paritySize);
+			codec = ErasureCodec.createErasureCodec(schema);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		if (codec == null) {
+			assertTrue(false);
+		}
+		
+		ErasureCoder ec = codec.createErasureCoder();
 
 		int symbolMax = (int) Math.pow(2, ((JavaRSErasureCoder)ec).symbolSize());
 		ECChunk[] message = new ECChunk[dataSize];
@@ -75,6 +122,10 @@ public class TestErasureCodes extends TestCase {
 				+ message[0].getChunkBuffer().array().length
 				/ (1000 * encodeMSecs) + " MB/s)");
 
+		
+		
+		
+		
 		String erasedAnnotation = "__D2__D4D5__D7";
 		ECChunk[] erasedValues = new ECChunk[4];
 		for (int i = 0; i < erasedValues.length; i++) {
@@ -103,12 +154,18 @@ public class TestErasureCodes extends TestCase {
 	}
 
 	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		ECSchema schema = new ECSchema("", null, "");
-		schema.setDataBlocks(dataSize);
-		schema.setParityBlocks(paritySize);
-
-		AbstractErasureCoder ec = new JavaRSErasureCoder();
-		ec.initWith(schema);
+		ErasureCodec codec = null;
+		try {
+			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(dataSize, paritySize);
+			codec = ErasureCodec.createErasureCodec(schema);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		if (codec == null) {
+			assertTrue(false);
+		}
+		
+		ErasureCoder ec = codec.createErasureCoder();
 
 		int symbolMax = (int) Math.pow(2,
 				((JavaRSErasureCoder) ec).symbolSize());

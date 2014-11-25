@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.ec.codec;
 
+import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
 
@@ -10,7 +11,9 @@ public class JavaRSErasureCodec extends RSErasureCodec{
 
 	@Override
 	public ErasureCoder createErasureCoder() {
-		return new JavaRSErasureCoder();
+		AbstractErasureCoder erasureCoder = new JavaRSErasureCoder();
+		erasureCoder.initWith(getSchema());
+		return erasureCoder;
 	}
 
 } 

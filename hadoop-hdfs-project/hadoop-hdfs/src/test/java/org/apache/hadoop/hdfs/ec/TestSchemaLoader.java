@@ -13,7 +13,7 @@ import static org.junit.Assert.assertEquals;
 public class TestSchemaLoader {
 
 	final static String TEST_DIR = new File(System.getProperty(
-			"test.build.data", "/tmp")).getAbsolutePath();
+			"test.build.data", "/Users")).getAbsolutePath();
 
 	final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs")
 			.getAbsolutePath();
@@ -39,11 +39,11 @@ public class TestSchemaLoader {
 
 		Configuration conf = new Configuration();
 		conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
-		conf.set("hadoop.hdfs.ec.codec.codec.RS-Jerasure",
+		conf.set("hadoop.hdfs.ec.erasurecodec.codec.RS-Jerasure",
 				"hadoop.hdfs.ec.codec.codec.JerasureRS");
-		conf.set("hadoop.hdfs.ec.codec.codec.RS-ISA",
+		conf.set("hadoop.hdfs.ec.erasurecodec.codec.RS-ISA",
 				"hadoop.hdfs.ec.codec.codec.IsaRS");
-		conf.set("hadoop.hdfs.ec.codec.codec.LRC",
+		conf.set("hadoop.hdfs.ec.erasurecodec.codec.LRC",
 				"hadoop.hdfs.ec.codec.codec.IsaLRC");
 
     SchemaLoader schemaLoader = new SchemaLoader();
@@ -62,5 +62,29 @@ public class TestSchemaLoader {
 				schemas.get(0).getOptions().get("codec"));
 		assertEquals("RS-Jerasure", schemas.get(0).getCodecName());
 
+	}
+	
+	public static ECSchema loadRSJavaSchema(int dataSize, int paritySize) throws Exception{
+		PrintWriter out = new PrintWriter(new FileWriter(SCHEMA_FILE));
+		out.println("<?xml version=\"1.0\"?>");
+		out.println("<schemas>");
+		out.println("  <schema name=\"RSJava\">");
+		out.println("    <k>" + dataSize + "</k>");
+		out.println("    <m>" + paritySize + "</m>");
+		out.println("    <codec>RS-Java</codec>");
+		out.println("  </schema>");
+		out.println("</schemas>");
+		out.close();
+
+		Configuration conf = new Configuration();
+		conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
+		conf.set("hadoop.hdfs.ec.erasurecodec.codec.RS-Java",
+				"org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");
+
+		SchemaLoader schemaLoader = new SchemaLoader();
+		List<ECSchema> schemas = schemaLoader.loadSchema(conf);
+		assertEquals(1, schemas.size());
+		
+		return schemas.get(0);
 	}
 }

@@ -22,6 +22,7 @@ import java.util.Map;
 public class ECSchema {
 
   private String schemaName;
+  private String schemaClassName;
   private String codecName;
   private Map<String, String> options;
   private int dataBlocks;
@@ -39,6 +40,16 @@ public class ECSchema {
 
   public String getCodecName() {
     return codecName;
+  }
+  
+  
+
+  public String getSchemaClassName() {
+	return schemaClassName;
+  }
+
+  public void setSchemaClassName(String schemaClassName) {
+	this.schemaClassName = schemaClassName;
   }
 
   /**

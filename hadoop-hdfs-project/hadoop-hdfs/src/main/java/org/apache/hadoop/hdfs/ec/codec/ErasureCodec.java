@@ -25,7 +25,6 @@ import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
  * Erasure Codec to be managed by ECManager and used by ECWorker
  */
 public abstract class ErasureCodec {
-
   private ECSchema schema;
 
   public void initWith(ECSchema schema) {
@@ -54,8 +53,7 @@ public abstract class ErasureCodec {
 
 
   public static ErasureCodec createErasureCodec(ECSchema schema) throws Exception {
-    String codecName = schema.getCodecName();
-    String codecClassName = null; // TODO: convert from codecName
+    String codecClassName = schema.getSchemaClassName();
     Class codecClass = Class.forName(codecClassName);
     ErasureCodec codec = (ErasureCodec) codecClass.newInstance();
     codec.initWith(schema);

@@ -75,8 +75,10 @@ public class SchemaLoader {
         Element element = (Element) node;
         if ("schema".equals(element.getTagName())) {
           ECSchema codec = loadSchema(element);
-          if (conf.get(CODEC_CONF_PREFIX + codec.getCodecName()) != null) {
-            codecs.add(codec);
+          String codecClassName = conf.get(CODEC_CONF_PREFIX + codec.getCodecName());
+          if (codecClassName != null) {
+        	  codec.setSchemaClassName(codecClassName);
+        	  codecs.add(codec);
           }
         } else {
           LOG.warn("Bad element in EC schema configuration file: " + element.getTagName());
