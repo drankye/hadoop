@@ -18,7 +18,6 @@
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet.TH;
 
 import java.nio.ByteBuffer;
 
