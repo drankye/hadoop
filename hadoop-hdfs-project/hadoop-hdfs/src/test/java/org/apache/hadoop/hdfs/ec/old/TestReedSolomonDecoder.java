@@ -22,20 +22,19 @@ import java.io.File;
 import java.io.IOException;
 
 import junit.framework.TestCase;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.ReedSolomonDecoder;
+import org.apache.hadoop.hdfs.ec.coder.old.impl.ReedSolomonEncoder;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.RaidDFSUtil;
-import org.apache.hadoop.hdfs.TestRaidDfs;
-import org.apache.hadoop.mapred.Reporter;
 
 
 public class TestReedSolomonDecoder extends TestCase {

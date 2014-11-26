@@ -30,10 +30,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.DistributedRaidFileSystem;
-import org.apache.hadoop.hdfs.TestRaidDfs;
-import org.apache.hadoop.mapred.Reporter;
-import org.apache.hadoop.raid.RaidNode;
 
 
 public class TestReedSolomonEncoder extends TestCase {
@@ -55,14 +51,14 @@ public class TestReedSolomonEncoder extends TestCase {
     long blockSize = 8192;
     Path file1 = new Path("/user/raidtest/file1");
     Path parityFile1 = new Path("/rsraid/user/raidtest/file1");
-    long crc1 = TestRaidDfs.createTestFilePartialLastBlock(fileSys, file1,
+    long crc1 = org.apache.hadoop.hdfs.ec.old.TestRaidDfs.createTestFilePartialLastBlock(fileSys, file1,
                                                           1, 25, blockSize);
     try {
       ReedSolomonEncoder encoder = new ReedSolomonEncoder(
         conf, stripeSize, paritySize);
       short parityRepl = 1;
       encoder.encodeFile(fileSys, file1, fileSys, parityFile1, parityRepl,
-        Reporter.NULL);
+        org.apache.hadoop.hdfs.ec.old.Reporter.NULL);
 
       FileStatus parityStat = fileSys.getFileStatus(parityFile1);
       assertEquals(4*8192*3, parityStat.getLen());
