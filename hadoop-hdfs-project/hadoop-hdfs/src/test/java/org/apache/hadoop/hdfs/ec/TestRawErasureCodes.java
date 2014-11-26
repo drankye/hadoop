@@ -38,7 +38,7 @@ public class TestRawErasureCodes extends TestCase {
 			int dataSize = RAND.nextInt(99) + 1; // 1, 2, 3, ... 100
 			int paritySize = RAND.nextInt(9) + 1; // 1, 2, 3, 4, ... 10
 			RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize,
-					paritySize);
+					paritySize, 16*1024);
 			for (int m = 0; m < TEST_TIMES; m++) {
 				int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
 				int[] message = new int[dataSize];
@@ -78,7 +78,7 @@ public class TestRawErasureCodes extends TestCase {
 		int dataSize = 10;
 		int paritySize = 4;
 
-		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize);
+		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize, 16*1024);
 
 		int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
 		ByteBuffer[] message = new ByteBuffer[dataSize];
@@ -151,7 +151,7 @@ public class TestRawErasureCodes extends TestCase {
 	}
 
 	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize);
+		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize, 16*1024);
 
 		int symbolMax = (int) Math.pow(2, rawEc.symbolSize());
 		ByteBuffer[] message = new ByteBuffer[dataSize];

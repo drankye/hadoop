@@ -22,12 +22,14 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.ClientContext;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
@@ -37,8 +39,10 @@ import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
+import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitCache;
 import org.apache.hadoop.net.NetUtils;
 import org.junit.Test;
 
@@ -51,9 +55,8 @@ public class TestErasureCodes {
 	
 	private static final String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/Users")).getAbsolutePath();
-	private static final int BLOCK_COUNT = 10;
 	private static final int BLOCK_SIZE = 1024;
-	private static final int BUFFER_SIZE = BLOCK_SIZE / 4;
+	private static final int BUFFER_SIZE = BLOCK_SIZE;
 	private static final int DATA_SIZE = 10;
 	private static final int PARITY_SIZE = 4;
 	
@@ -62,11 +65,11 @@ public class TestErasureCodes {
 		ErasureCoder ec = createEc();
 		
 		Configuration conf = new HdfsConfiguration();
-		List<LocatedBlock> blocks = write(conf, BLOCK_COUNT, ((JavaRSErasureCoder)ec).symbolSize());
-		assertTrue(blocks.size() == BLOCK_COUNT);
+		List<LocatedBlock> blocks = write(conf, DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize());
+		assertTrue(blocks != null);
+		assertTrue(blocks.size() == DATA_SIZE);
 		
-		//TODO
-		List<LocatedBlock> parityBlocks = encode(blocks);
+		List<LocatedBlock> parityBlocks = encode(conf, blocks);
 		
 	}
 
@@ -93,30 +96,69 @@ public class TestErasureCodes {
 		cluster.waitActive();
 		FileSystem fileSys = cluster.getFileSystem();
 		//create
-		DFSTestUtil.createFile(fileSys, new Path(TEST_DIR), BLOCK_SIZE * blockCount, (short)1, 0);
+		DFSTestUtil.createFile(fileSys, new Path(TEST_DIR), 0, (short)1, 0);
 		//write
-		for (int i = 0; i < BLOCK_COUNT; i++) {
+		for (int i = 0; i < blockCount; i++) {
 			byte[] byteArray = new byte[BLOCK_SIZE];
-			for (int j = 0; j < BUFFER_SIZE; j++) {
+			for (int j = 0; j < BLOCK_SIZE; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
 			
-			DFSTestUtil.writeFile(fileSys, new Path(TEST_DIR), byteArray);
+			DFSTestUtil.appendFile(fileSys, new Path(TEST_DIR), byteArray);
 		}
-		
 		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(TEST_DIR));
-		blocks.get(0).getBlock().getLocalBlock().write(out);
+		
 		return blocks;
 	}
 	
-	private List<LocatedBlock> encode(List<LocatedBlock> blocks) {
+	private List<LocatedBlock> encode(Configuration conf, List<LocatedBlock> blocks) {
 		for (int i = 0; i < blocks.size(); i++) {
-			ByteBuffer buffer = DFSTestUtil.readByteFile(f, bufferSize)
+			//XXX a block is a chunk here
+			byte[] chunkByteBuffer = new byte[BUFFER_SIZE];
+			readABlock(conf, blocks.get(i), chunkByteBuffer, i);
 		}
 		// TODO Auto-generated method stub
 		return null;
 	}
 	
+	private void readABlock(Configuration conf, LocatedBlock locatedBlock, byte[] chunkByteBuffer,
+			int i) {
+		ExtendedBlock block = locatedBlock.getBlock();
+	      File dataFile = MiniDFSCluster.getBlockFile(0, block);
+	      File metaFile = MiniDFSCluster.getBlockMetadataFile(0, block);
+
+	      ShortCircuitCache shortCircuitCache =
+	          ClientContext.getFromConf(conf).getShortCircuitCache();
+	      FileInputStream streams[] = {
+	          new FileInputStream(dataFile),
+	          new FileInputStream(metaFile)
+	      };
+	      dataIn = streams[0];
+	      metaIn = streams[1];
+	      ExtendedBlockId key = new ExtendedBlockId(block.getBlockId(),
+	          block.getBlockPoolId());
+	      raf = new RandomAccessFile(
+	          new File(sockDir.getDir().getAbsolutePath(),
+	            UUID.randomUUID().toString()), "rw");
+	      raf.setLength(8192);
+	      FileInputStream shmStream = new FileInputStream(raf.getFD());
+	      shm = new ShortCircuitShm(ShmId.createRandom(), shmStream);
+	      ShortCircuitReplica replica = 
+	          new ShortCircuitReplica(key, dataIn, metaIn, shortCircuitCache,
+	              Time.now(), shm.allocAndRegisterSlot(
+	                  ExtendedBlockId.fromExtendedBlock(block)));
+	      blockReaderLocal = new BlockReaderLocal.Builder(
+	              new DFSClient.Conf(conf)).
+	          setFilename(TEST_PATH.getName()).
+	          setBlock(block).
+	          setShortCircuitReplica(replica).
+	          setCachingStrategy(new CachingStrategy(false, readahead)).
+	          setVerifyChecksum(checksum).
+	          build();
+		// TODO Auto-generated method stub
+		
+	}
+
 	public void testRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;

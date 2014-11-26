@@ -714,13 +714,11 @@ public class DFSTestUtil {
   }
   
   /* Write the given bytes to the given file */
-  public static void writeFile(FileSystem fs, Path p, byte[] byteBuffer) 
+  public static void appendFile(FileSystem fs, Path p, byte[] byteBuffer) 
 		  throws IOException {
-	  if (fs.exists(p)) {
-		  fs.delete(p, true);
-	  }
+	  assert fs.exists(p);
 	  InputStream is = new ByteArrayInputStream(byteBuffer);
-	  FSDataOutputStream os = fs.create(p);
+	  FSDataOutputStream os = fs.append(p);
 	  IOUtils.copyBytes(is, os, byteBuffer.length, true);
   }
 
