@@ -27,7 +27,7 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		String paritySize = schema.getOptions().get("m");
 		schema.setParityBlocks(Integer.parseInt(paritySize));
 		
-		rawErasureCoder = new JavaRSRawErasureCoder(schema.getDataBlocks(), schema.getParityBlocks());
+		rawErasureCoder = new JavaRSRawErasureCoder(schema.getDataBlocks(), schema.getParityBlocks(), schema.getChunkSize());
 	}
 
 	@Override

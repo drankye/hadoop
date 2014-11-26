@@ -42,34 +42,79 @@ import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.net.NetUtils;
 import org.junit.Test;
 
+import com.sun.xml.bind.v2.runtime.output.Encoded;
+
 public class TestErasureCodes {
-	final int TEST_CODES = 100;
-	final int TEST_TIMES = 1000;
+//	final int TEST_CODES = 100;
+//	final int TEST_TIMES = 1000;
 	final Random RAND = new Random();
 	
 	private static final String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/Users")).getAbsolutePath();
+	private static final int BLOCK_COUNT = 10;
 	private static final int BLOCK_SIZE = 1024;
+	private static final int BUFFER_SIZE = BLOCK_SIZE / 4;
+	private static final int DATA_SIZE = 10;
+	private static final int PARITY_SIZE = 4;
 	
 	@Test
 	public void verifyEncodeDecode() throws IOException {
-		final int blockCount = 4;
+		ErasureCoder ec = createEc();
 		
 		Configuration conf = new HdfsConfiguration();
-		List<LocatedBlock> blocks = write(conf, blockCount);
-		assertTrue(blocks.size() == blockCount);
+		List<LocatedBlock> blocks = write(conf, BLOCK_COUNT, ((JavaRSErasureCoder)ec).symbolSize());
+		assertTrue(blocks.size() == BLOCK_COUNT);
+		
+		//TODO
+		List<LocatedBlock> parityBlocks = encode(blocks);
 		
 	}
 
-	private List<LocatedBlock> write(Configuration conf, int blockCount) throws IOException {
+	private ErasureCoder createEc() {
+		ErasureCodec codec = null;
+		try {
+			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(DATA_SIZE, PARITY_SIZE);
+			codec = ErasureCodec.createErasureCodec(schema);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		if (codec == null) {
+			assertTrue(false);
+		}
+		
+		ErasureCoder ec = codec.createErasureCoder();
+		return ec;
+	}
+
+	private List<LocatedBlock> write(Configuration conf, int blockCount, int symbolMax) throws IOException {
 		int numDataNodes = 1;
 		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
 		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
 		cluster.waitActive();
 		FileSystem fileSys = cluster.getFileSystem();
+		//create
 		DFSTestUtil.createFile(fileSys, new Path(TEST_DIR), BLOCK_SIZE * blockCount, (short)1, 0);
+		//write
+		for (int i = 0; i < BLOCK_COUNT; i++) {
+			byte[] byteArray = new byte[BLOCK_SIZE];
+			for (int j = 0; j < BUFFER_SIZE; j++) {
+				byteArray[j] = (byte) RAND.nextInt(symbolMax);
+			}
+			
+			DFSTestUtil.writeFile(fileSys, new Path(TEST_DIR), byteArray);
+		}
+		
 		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(TEST_DIR));
+		blocks.get(0).getBlock().getLocalBlock().write(out);
 		return blocks;
+	}
+	
+	private List<LocatedBlock> encode(List<LocatedBlock> blocks) {
+		for (int i = 0; i < blocks.size(); i++) {
+			ByteBuffer buffer = DFSTestUtil.readByteFile(f, bufferSize)
+		}
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 	public void testRSPerformance() {

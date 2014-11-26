@@ -51,14 +51,13 @@ public class TestReedSolomonEncoder extends TestCase {
     long blockSize = 8192;
     Path file1 = new Path("/user/raidtest/file1");
     Path parityFile1 = new Path("/rsraid/user/raidtest/file1");
-    long crc1 = org.apache.hadoop.hdfs.ec.old.TestRaidDfs.createTestFilePartialLastBlock(fileSys, file1,
-                                                          1, 25, blockSize);
+    long crc1 = 0;//TestRaidDfs.createTestFilePartialLastBlock(fileSys, file1, 1, 25, blockSize);
     try {
       ReedSolomonEncoder encoder = new ReedSolomonEncoder(
         conf, stripeSize, paritySize);
       short parityRepl = 1;
-      encoder.encodeFile(fileSys, file1, fileSys, parityFile1, parityRepl,
-        org.apache.hadoop.hdfs.ec.old.Reporter.NULL);
+      encoder.encodeFile(fileSys, file1, fileSys, parityFile1, parityRepl,null);
+//        org.apache.hadoop.hdfs.ec.old.Reporter.NULL);
 
       FileStatus parityStat = fileSys.getFileStatus(parityFile1);
       assertEquals(4*8192*3, parityStat.getLen());

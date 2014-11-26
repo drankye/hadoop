@@ -23,9 +23,9 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -694,7 +694,14 @@ public class DFSTestUtil {
     in.close();      
     return b.toString();
   }
-
+  
+  public static byte[] readByteFile(File f, int bufferSize) throws IOException {
+	  BufferedInputStream in = new BufferedInputStream(new FileInputStream(f));
+	  byte[] bytes = new byte[bufferSize];
+	  in.read(bytes);
+	  return bytes;
+  }
+  
   /* Write the given string to the given file */
   public static void writeFile(FileSystem fs, Path p, String s) 
       throws IOException {
@@ -704,6 +711,17 @@ public class DFSTestUtil {
     InputStream is = new ByteArrayInputStream(s.getBytes());
     FSDataOutputStream os = fs.create(p);
     IOUtils.copyBytes(is, os, s.length(), true);
+  }
+  
+  /* Write the given bytes to the given file */
+  public static void writeFile(FileSystem fs, Path p, byte[] byteBuffer) 
+		  throws IOException {
+	  if (fs.exists(p)) {
+		  fs.delete(p, true);
+	  }
+	  InputStream is = new ByteArrayInputStream(byteBuffer);
+	  FSDataOutputStream os = fs.create(p);
+	  IOUtils.copyBytes(is, os, byteBuffer.length, true);
   }
 
   /* Append the given string to the given file */

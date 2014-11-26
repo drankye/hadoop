@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet.TH;
 
 import java.nio.ByteBuffer;
 
@@ -28,11 +29,13 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
 	protected GaloisField GF = GaloisField.getInstance();
 	protected int dataSize;
 	protected int paritySize;
+	private int chunkSize;
 	
 	
-	public AbstractRawErasureCoder(int dataSize, int paritySize) {
+	public AbstractRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
 		this.dataSize = dataSize;
 		this.paritySize = paritySize;
+		this.chunkSize = chunkSize;
 	}
 	
 	/**
@@ -125,6 +128,6 @@ public class AbstractRawErasureCoder implements RawErasureCoder {
    * @return
    */
   public int getChunkSize() {
-    return 16 * 1024;
+	  return chunkSize;
   }
 }

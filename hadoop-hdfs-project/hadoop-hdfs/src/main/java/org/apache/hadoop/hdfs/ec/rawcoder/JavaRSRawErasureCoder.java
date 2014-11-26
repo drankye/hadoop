@@ -17,8 +17,8 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 	private int[] errSignature;
 	private int[] dataBuff;
 
-	public JavaRSRawErasureCoder(int dataSize, int paritySize) {
-		super(dataSize, paritySize);
+	public JavaRSRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
+		super(dataSize, paritySize, chunkSize);
 		init();
 	}
 
