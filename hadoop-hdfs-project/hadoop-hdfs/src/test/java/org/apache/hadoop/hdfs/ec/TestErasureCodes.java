@@ -22,14 +22,12 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.ClientContext;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
@@ -39,14 +37,9 @@ import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitCache;
-import org.apache.hadoop.net.NetUtils;
+import org.junit.Before;
 import org.junit.Test;
-
-import com.sun.xml.bind.v2.runtime.output.Encoded;
 
 public class TestErasureCodes {
 //	final int TEST_CODES = 100;
@@ -55,110 +48,85 @@ public class TestErasureCodes {
 	
 	private static final String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/Users")).getAbsolutePath();
+	private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
+	private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
+	
+	private Configuration conf;
+	private FileSystem fileSys;
+	
 	private static final int BLOCK_SIZE = 1024;
 	private static final int BUFFER_SIZE = BLOCK_SIZE;
 	private static final int DATA_SIZE = 10;
 	private static final int PARITY_SIZE = 4;
 	
+	private ByteBuffer[] message = new ByteBuffer[DATA_SIZE];
+	
+	@Before
+	public void init() throws IOException {
+		int numDataNodes = 1;
+		conf = new HdfsConfiguration();
+		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
+		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
+		cluster.waitActive();
+		fileSys = cluster.getFileSystem();
+	}
+	
 	@Test
-	public void verifyEncodeDecode() throws IOException {
+	public void verifyEncodeDecode() throws Exception {
 		ErasureCoder ec = createEc();
 		
-		Configuration conf = new HdfsConfiguration();
-		List<LocatedBlock> blocks = write(conf, DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize());
-		assertTrue(blocks != null);
+		List<LocatedBlock> blocks = write(DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize());
 		assertTrue(blocks.size() == DATA_SIZE);
 		
-		List<LocatedBlock> parityBlocks = encode(conf, blocks);
-		
+		List<LocatedBlock> parityBlocks = encode(ec);
+		assertTrue(parityBlocks.size() == PARITY_SIZE);
 	}
 
-	private ErasureCoder createEc() {
-		ErasureCodec codec = null;
-		try {
-			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(DATA_SIZE, PARITY_SIZE);
-			codec = ErasureCodec.createErasureCodec(schema);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		if (codec == null) {
-			assertTrue(false);
-		}
-		
+	private ErasureCoder createEc() throws Exception {
+		ECSchema schema = TestSchemaLoader.loadRSJavaSchema(DATA_SIZE, PARITY_SIZE);
+		ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
 		ErasureCoder ec = codec.createErasureCoder();
 		return ec;
 	}
 
-	private List<LocatedBlock> write(Configuration conf, int blockCount, int symbolMax) throws IOException {
-		int numDataNodes = 1;
-		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
-		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
-		cluster.waitActive();
-		FileSystem fileSys = cluster.getFileSystem();
+	private List<LocatedBlock> write(int blockCount, int symbolMax) throws IOException {
 		//create
-		DFSTestUtil.createFile(fileSys, new Path(TEST_DIR), 0, (short)1, 0);
+		DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short)1, 0);
 		//write
 		for (int i = 0; i < blockCount; i++) {
 			byte[] byteArray = new byte[BLOCK_SIZE];
 			for (int j = 0; j < BLOCK_SIZE; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			
-			DFSTestUtil.appendFile(fileSys, new Path(TEST_DIR), byteArray);
+			message[i] = ByteBuffer.wrap(byteArray);
+			DFSTestUtil.appendFile(fileSys, new Path(DATA_FILE), byteArray);
 		}
-		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(TEST_DIR));
+		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(DATA_FILE));
 		
 		return blocks;
 	}
 	
-	private List<LocatedBlock> encode(Configuration conf, List<LocatedBlock> blocks) {
-		for (int i = 0; i < blocks.size(); i++) {
-			//XXX a block is a chunk here
-			byte[] chunkByteBuffer = new byte[BUFFER_SIZE];
-			readABlock(conf, blocks.get(i), chunkByteBuffer, i);
+	private List<LocatedBlock> encode(ErasureCoder ec) throws IllegalArgumentException, IOException {
+		//encode
+		ECChunk[] messageChunks = new ECChunk[DATA_SIZE];
+		for (int i = 0; i < DATA_SIZE; i++) {
+			messageChunks[i] = new ECChunk(message[i]);
 		}
-		// TODO Auto-generated method stub
-		return null;
+		ECChunk[] parityChunks = new ECChunk[PARITY_SIZE];
+		for (int i = 0; i < PARITY_SIZE; i++) {
+			parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[BUFFER_SIZE]));
+		}
+		ec.encode(messageChunks, parityChunks);
+		//write
+		DFSTestUtil.createFile(fileSys, new Path(PARITY_FILE), 0, (short)1, 0);
+		for (int i = 0; i < PARITY_SIZE; i++) {
+			byte[] byteArray = parityChunks[i].getChunkBuffer().array();
+			DFSTestUtil.appendFile(fileSys, new Path(PARITY_FILE), byteArray);
+		}
+		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(PARITY_FILE));
+		return blocks;
 	}
 	
-	private void readABlock(Configuration conf, LocatedBlock locatedBlock, byte[] chunkByteBuffer,
-			int i) {
-		ExtendedBlock block = locatedBlock.getBlock();
-	      File dataFile = MiniDFSCluster.getBlockFile(0, block);
-	      File metaFile = MiniDFSCluster.getBlockMetadataFile(0, block);
-
-	      ShortCircuitCache shortCircuitCache =
-	          ClientContext.getFromConf(conf).getShortCircuitCache();
-	      FileInputStream streams[] = {
-	          new FileInputStream(dataFile),
-	          new FileInputStream(metaFile)
-	      };
-	      dataIn = streams[0];
-	      metaIn = streams[1];
-	      ExtendedBlockId key = new ExtendedBlockId(block.getBlockId(),
-	          block.getBlockPoolId());
-	      raf = new RandomAccessFile(
-	          new File(sockDir.getDir().getAbsolutePath(),
-	            UUID.randomUUID().toString()), "rw");
-	      raf.setLength(8192);
-	      FileInputStream shmStream = new FileInputStream(raf.getFD());
-	      shm = new ShortCircuitShm(ShmId.createRandom(), shmStream);
-	      ShortCircuitReplica replica = 
-	          new ShortCircuitReplica(key, dataIn, metaIn, shortCircuitCache,
-	              Time.now(), shm.allocAndRegisterSlot(
-	                  ExtendedBlockId.fromExtendedBlock(block)));
-	      blockReaderLocal = new BlockReaderLocal.Builder(
-	              new DFSClient.Conf(conf)).
-	          setFilename(TEST_PATH.getName()).
-	          setBlock(block).
-	          setShortCircuitReplica(replica).
-	          setCachingStrategy(new CachingStrategy(false, readahead)).
-	          setVerifyChecksum(checksum).
-	          build();
-		// TODO Auto-generated method stub
-		
-	}
-
 	public void testRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;

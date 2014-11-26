@@ -695,13 +695,6 @@ public class DFSTestUtil {
     return b.toString();
   }
   
-  public static byte[] readByteFile(File f, int bufferSize) throws IOException {
-	  BufferedInputStream in = new BufferedInputStream(new FileInputStream(f));
-	  byte[] bytes = new byte[bufferSize];
-	  in.read(bytes);
-	  return bytes;
-  }
-  
   /* Write the given string to the given file */
   public static void writeFile(FileSystem fs, Path p, String s) 
       throws IOException {

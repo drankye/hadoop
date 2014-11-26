@@ -56,6 +56,8 @@ import org.htrace.TraceScope;
  * <li>The client reads the file descriptors.</li>
  * </ul>
  */
+@VisibleForTesting
+public
 class BlockReaderLocal implements BlockReader {
   static final Log LOG = LogFactory.getLog(BlockReaderLocal.class);
 
