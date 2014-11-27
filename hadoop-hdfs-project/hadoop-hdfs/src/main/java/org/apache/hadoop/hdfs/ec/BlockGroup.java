@@ -45,4 +45,10 @@ public class BlockGroup {
   public void setAnnotation(String annotation) {
 	  this.annotation = annotation;
   }
+
+  public String getAnnotation() {
+	  return annotation;
+  }
+  
+  
 }

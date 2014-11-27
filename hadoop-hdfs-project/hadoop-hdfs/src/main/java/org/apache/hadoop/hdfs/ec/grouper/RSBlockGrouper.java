@@ -19,6 +19,8 @@ package org.apache.hadoop.hdfs.ec.grouper;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
 import org.apache.hadoop.hdfs.ec.BlockGroup;
+import org.apache.hadoop.hdfs.ec.ECBlock;
+import org.apache.hadoop.hdfs.ec.SubBlockGroup;
 
 import java.util.List;
 
@@ -31,7 +33,18 @@ public class RSBlockGrouper extends BlockGrouper {
   @Override
   public BlockGroup makeBlockGroup(List<ExtendedBlockId> dataBlocks,
                                    List<ExtendedBlockId> parityBlocks) {
-    return null;
+	  ECBlock[] dataEcBlocks = new ECBlock[dataBlocks.size()];
+	  for (int i = 0; i < dataBlocks.size(); i++) {
+		  dataEcBlocks[i] = new ECBlock(dataBlocks.get(i), false);
+	  }
+	  ECBlock[] parityEcBlocks = new ECBlock[parityBlocks.size()];
+	  for (int i = 0; i < parityBlocks.size(); i++) {
+		  parityEcBlocks[i] = new ECBlock(parityBlocks.get(i), true);
+	  }
+	  SubBlockGroup subBlockGroup = new SubBlockGroup(dataEcBlocks, parityEcBlocks);
+	  BlockGroup group = new BlockGroup();
+	  group.addSubGroup(subBlockGroup);
+	  return group;
   }
 
   @Override
@@ -41,6 +54,7 @@ public class RSBlockGrouper extends BlockGrouper {
 
   @Override
   public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
-    return null;
+	  //FIXME write for test
+	  return blockGroup;
   }
 }

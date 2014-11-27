@@ -22,14 +22,17 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.math3.linear.Array2DRowFieldMatrix;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
+import org.apache.hadoop.hdfs.ExtendedBlockId;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.ec.ECChunk;
@@ -38,8 +41,12 @@ import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
+import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.amazonaws.services.securitytoken.model.DecodeAuthorizationMessageRequest;
 
 public class TestErasureCodes {
 //	final int TEST_CODES = 100;
@@ -53,6 +60,7 @@ public class TestErasureCodes {
 	
 	private Configuration conf;
 	private FileSystem fileSys;
+	private DataNode dataNode;
 	
 	private static final int BLOCK_SIZE = 1024;
 	private static final int BUFFER_SIZE = BLOCK_SIZE;
@@ -69,27 +77,36 @@ public class TestErasureCodes {
 		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
 		cluster.waitActive();
 		fileSys = cluster.getFileSystem();
+		dataNode = cluster.getDataNodes().get(0);
 	}
 	
 	@Test
 	public void verifyEncodeDecode() throws Exception {
-		ErasureCoder ec = createEc();
-		
-		List<LocatedBlock> blocks = write(DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize());
-		assertTrue(blocks.size() == DATA_SIZE);
-		
-		List<LocatedBlock> parityBlocks = encode(ec);
-		assertTrue(parityBlocks.size() == PARITY_SIZE);
-	}
-
-	private ErasureCoder createEc() throws Exception {
 		ECSchema schema = TestSchemaLoader.loadRSJavaSchema(DATA_SIZE, PARITY_SIZE);
 		ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
 		ErasureCoder ec = codec.createErasureCoder();
-		return ec;
+		int erasedLocation = RAND.nextInt(DATA_SIZE);
+		
+		//write wrong message and correct parity to blocks
+		List<LocatedBlock> dataBlocks = write(DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize(), erasedLocation);
+		assertTrue(dataBlocks.size() == DATA_SIZE);
+		List<LocatedBlock> parityBlocks = encode(ec);
+		assertTrue(parityBlocks.size() == PARITY_SIZE);
+		
+		//make block group
+		List<ExtendedBlockId> dataBlockIds = getBlockIds(dataBlocks);
+		List<ExtendedBlockId> parityBlockIds = getBlockIds(parityBlocks);
+		BlockGroup blockGroup = codec.createBlockGrouper().makeBlockGroup(dataBlockIds, parityBlockIds);
+		
+		//decode
+		BlockGroup groupUseToRepairData = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
+		groupUseToRepairData.setAnnotation(generateAnnotation(erasedLocation));
+		ECChunk[] repairedData = decode(ec, groupUseToRepairData);
+		ByteBuffer copy = message[erasedLocation];
+		assertTrue(copy.equals(repairedData[0].getChunkBuffer()));
 	}
 
-	private List<LocatedBlock> write(int blockCount, int symbolMax) throws IOException {
+	private List<LocatedBlock> write(int blockCount, int symbolMax, int erasedLocation) throws IOException {
 		//create
 		DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short)1, 0);
 		//write
@@ -99,7 +116,12 @@ public class TestErasureCodes {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
 			message[i] = ByteBuffer.wrap(byteArray);
-			DFSTestUtil.appendFile(fileSys, new Path(DATA_FILE), byteArray);
+			if (i == erasedLocation) {
+				byte[] wrongMessage = new byte[BLOCK_SIZE];
+				DFSTestUtil.appendFile(fileSys, new Path(DATA_FILE), wrongMessage);
+			} else {
+				DFSTestUtil.appendFile(fileSys, new Path(DATA_FILE), byteArray);
+			}
 		}
 		List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(DATA_FILE));
 		
@@ -127,85 +149,30 @@ public class TestErasureCodes {
 		return blocks;
 	}
 	
-	public void testRSPerformance() {
-		int dataSize = 10;
-		int paritySize = 4;
-		
-		ErasureCodec codec = null;
-		try {
-			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(dataSize, paritySize);
-			codec = ErasureCodec.createErasureCodec(schema);
-		} catch (Exception e) {
-			e.printStackTrace();
+	private List<ExtendedBlockId> getBlockIds(List<LocatedBlock> dataBlocks) {
+		List<ExtendedBlockId> ids = new ArrayList<>();
+		for (LocatedBlock block : dataBlocks) {
+			ids.add(ExtendedBlockId.fromExtendedBlock(block.getBlock()));
 		}
-		if (codec == null) {
-			assertTrue(false);
-		}
+		return ids;
+	}
+	
+	private void decode(ErasureCoder ec, BlockGroup groupUseToRepairData) {
+		ECBlock[] dataEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
+		ECBlock[] parityEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
+		ECChunk[] dataChunks = getChunks(dataEcBlocks);
+		ECChunk[] parityChunks = getChunks(parityEcBlocks);
+		// TODO Auto-generated method stub
 		
-		ErasureCoder ec = codec.createErasureCoder();
-
-		int symbolMax = (int) Math.pow(2, ((JavaRSErasureCoder)ec).symbolSize());
-		ECChunk[] message = new ECChunk[dataSize];
-		int bufsize = 1024 * 1024 * 10;
-		for (int i = 0; i < dataSize; i++) {
-			byte[] byteArray = new byte[bufsize];
-			for (int j = 0; j < bufsize; j++) {
-				byteArray[j] = (byte) RAND.nextInt(symbolMax);
-			}
-			message[i] = new ECChunk(ByteBuffer.wrap(byteArray));
-		}
-		ECChunk[] parity = new ECChunk[paritySize];
-		for (int i = 0; i < paritySize; i++) {
-			parity[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		}
-		long encodeStart = System.currentTimeMillis();
-
-		ECChunk[] tmpIn = new ECChunk[dataSize];
-		ECChunk[] tmpOut = new ECChunk[paritySize];
-		for (int i = 0; i < tmpOut.length; i++) {
-			tmpOut[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		}
-		for (int j = 0; j < dataSize; j++)
-			tmpIn[j] = message[j].clone();
-		ec.encode(tmpIn, tmpOut);
-		// Copy parity.
-		for (int j = 0; j < paritySize; j++)
-			parity[j] = tmpOut[j].clone();
-		long encodeEnd = System.currentTimeMillis();
-		float encodeMSecs = (encodeEnd - encodeStart);
-		System.out.println("Time to encode rs = " + encodeMSecs + "msec ("
-				+ message[0].getChunkBuffer().array().length
-				/ (1000 * encodeMSecs) + " MB/s)");
-
-		
-		
-		
-		
-		String erasedAnnotation = "__D2__D4D5__D7";
-		ECChunk[] erasedValues = new ECChunk[4];
-		for (int i = 0; i < erasedValues.length; i++) {
-			erasedValues[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		}
-		ECChunk copy = message[0].clone();
-		message[0].setChunkBuffer(ByteBuffer.wrap(new byte[bufsize]));
-
-		long decodeStart = System.currentTimeMillis();
-		ec.decode(message, parity, erasedAnnotation, erasedValues);
-		message[0] = erasedValues[0];
-		long decodeEnd = System.currentTimeMillis();
-		float decodeMSecs = (decodeEnd - decodeStart);
-		System.out.println("Time to decode = " + decodeMSecs + "msec ("
-				+ message[0].getChunkBuffer().array().length
-				/ (1000 * decodeMSecs) + " MB/s)");
-		assertTrue("Decode failed", copy.equals(message[0]));
 	}
 
-	public void testRSEncodeDecodeBulk() {
-		// verify the production size.
-		verifyRSEncodeDecode(10, 4);
-
-		// verify a test size
-		verifyRSEncodeDecode(3, 3);
+	private ECChunk[] getChunks(ECBlock[] dataEcBlocks) {
+		ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
+		for (int i = 0; i < dataEcBlocks.length; i++) {
+			File blockFile = DataNodeTestUtils.getBlockFile(dataNode, bpid, dataEcBlocks[i].) 
+			
+		}
+		return null;
 	}
 
 	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
