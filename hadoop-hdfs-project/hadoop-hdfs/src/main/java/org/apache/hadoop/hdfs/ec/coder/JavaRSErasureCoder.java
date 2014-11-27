@@ -65,10 +65,6 @@ public class JavaRSErasureCoder extends RSErasureCoder {
 		rawErasureCoder.decode(readBufs, outputBufs, erasedLocationArray);
 	}
 	
-	public int symbolSize() {
-		return rawErasureCoder.symbolSize();
-	}
-
 	private List<Integer> getErasedLocation(final String annotation) {
 		List<Integer> erasedLocationArrayList = new ArrayList<Integer>();
 

@@ -23,31 +23,7 @@ import java.nio.ByteBuffer;
  * Raw Erasure Coder that corresponds to an erasure code algorithm
  */
 public interface RawErasureCoder {
-  /**
-   * Encodes the given message.
-   *
-   * @param message The data of the message. The data is present in the least
-   *                significant bits of each int. The number of data bits is
-   *                symbolSize(). The number of elements of message is
-   *                stripeSize().
-   * @param parity  (out) The information is present in the least
-   *                significant bits of each int. The number of parity bits is
-   *                symbolSize(). The number of elements in the code is
-   *                paritySize().
-   */
-  public void encode(int[] message, int[] parity);
 
-  /**
-   * Generates missing portions of data.
-   *
-   * @param data            The message and parity. The parity should be placed in the
-   *                        first part of the array. In each integer, the relevant portion
-   *                        is present in the least significant bits of each int.
-   *                        The number of elements in data is stripeSize() + paritySize().
-   * @param erasedLocations The indexes in data which are not available.
-   * @param erasedValues    (out)The decoded values corresponding to erasedLocations.
-   */
-  public void decode(int[] data, int[] erasedLocations, int[] erasedValues);
 
   /**
    * This method would be overridden in the subclass, 
@@ -59,17 +35,15 @@ public interface RawErasureCoder {
    * This method would be overridden in the subclass, 
    * so that the subclass will have its own decodeBulk behavior. 
    */
-  public void decode(ByteBuffer[] readBufs, ByteBuffer[] writeBufs, int[] erasedLocation);
+  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
   
   /**
-   * The number of elements in the message.
+   * The number of data elements in the code.
    */
   public int dataSize();
 
   /**
-   * The number of elements in the code.
+   * The number of parity elements in the code.
    */
   public int paritySize();
-  
-  public int symbolSize();
 }

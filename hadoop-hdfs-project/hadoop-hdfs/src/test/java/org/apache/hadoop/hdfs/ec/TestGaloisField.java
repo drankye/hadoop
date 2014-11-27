@@ -15,16 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.old;
+package org.apache.hadoop.hdfs.ec;
 
+import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.HashSet;
 
-import junit.framework.TestCase;
-import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
-
-public class TestGaloisField extends TestCase {
+/**
+ * Ported from HDFS-RAID
+ */
+public class TestGaloisField {
 
   final int TEST_TIMES = 10000;
   final Random RAND = new Random();
@@ -41,6 +45,7 @@ public class TestGaloisField extends TestCase {
     return result;
   }
 
+  @Test
   public void testGetInstance() {
     GaloisField gf1 = GaloisField.getInstance(256, 285);
     GaloisField gf2 = GaloisField.getInstance();
@@ -48,11 +53,12 @@ public class TestGaloisField extends TestCase {
     GaloisField gf4 = GaloisField.getInstance(128, 137);
     GaloisField gf5 = GaloisField.getInstance(512, 529);
     GaloisField gf6 = GaloisField.getInstance(512, 529);
-    assertTrue(gf1 == gf2);
-    assertTrue(gf3 == gf4);
-    assertTrue(gf5 == gf6);
+    Assert.assertTrue(gf1 == gf2);
+    Assert.assertTrue(gf3 == gf4);
+    Assert.assertTrue(gf5 == gf6);
   }
 
+  @Test
   public void testDistributivity() {
     for (int i = 0; i < TEST_TIMES; i++) {
       int a = RAND.nextInt(GF.getFieldSize());
@@ -60,11 +66,12 @@ public class TestGaloisField extends TestCase {
       int c = RAND.nextInt(GF.getFieldSize());
       int result1 = GF.multiply(a, GF.add(b, c));
       int result2 = GF.add(GF.multiply(a, b), GF.multiply(a, c));
-      assertTrue("Distributivity test #" + i + " failed: " + a + ", " + b + ", "
-                 + c, result1 == result2);
+      Assert.assertTrue("Distributivity test #" + i + " failed: " + a + ", " + b + ", "
+          + c, result1 == result2);
     }
   }
 
+  @Test
   public void testDevision() {
     for (int i = 0; i < TEST_TIMES; i++) {
       int a = RAND.nextInt(GF.getFieldSize());
@@ -73,11 +80,12 @@ public class TestGaloisField extends TestCase {
         continue;
       }
       int c = GF.divide(a, b);
-      assertTrue("Division test #" + i + " failed: " + a + "/" + b + " = " + c,
-                 a == GF.multiply(c, b));
+      Assert.assertTrue("Division test #" + i + " failed: " + a + "/" + b + " = " + c,
+          a == GF.multiply(c, b));
     }
   }
 
+  @Test
   public void testPower() {
     for (int i = 0; i < TEST_TIMES; i++) {
       int a = randGF();
@@ -91,6 +99,7 @@ public class TestGaloisField extends TestCase {
     }
   }
 
+  @Test
   public void testPolynomialDistributivity() {
     final int TEST_LEN = 15;
     for (int i = 0; i < TEST_TIMES; i++) {
@@ -99,11 +108,12 @@ public class TestGaloisField extends TestCase {
       int[] c = randGFPoly(RAND.nextInt(TEST_LEN - 1) + 1);
       int[] result1 = GF.multiply(a, GF.add(b, c));
       int[] result2 = GF.add(GF.multiply(a, b), GF.multiply(a, c));
-      assertTrue("Distributivity test on polynomials failed",
-                 java.util.Arrays.equals(result1, result2));
+      Assert.assertTrue("Distributivity test on polynomials failed",
+          java.util.Arrays.equals(result1, result2));
     }
   }
 
+  @Test
   public void testSubstitute() {
     final int TEST_LEN = 15;
     for (int i = 0; i < TEST_TIMES; i++) {
@@ -117,11 +127,12 @@ public class TestGaloisField extends TestCase {
       int result2 =
         GF.multiply(GF.multiply(GF.substitute(a, x), GF.substitute(b, x)),
                     GF.substitute(c, x));
-      assertTrue("Substitute test on polynomial failed",
-                 result1 == result2);
+      Assert.assertTrue("Substitute test on polynomial failed",
+          result1 == result2);
     }
   }
 
+  @Test
   public void testSolveVandermondeSystem() {
     final int TEST_LEN = 15;
     for (int i = 0; i < TEST_TIMES; i++) {
@@ -147,11 +158,12 @@ public class TestGaloisField extends TestCase {
       }
 
       GF.solveVandermondeSystem(x, y);
-      assertTrue("Solving Vandermonde system failed",
-                 java.util.Arrays.equals(y, z));
+      Assert.assertTrue("Solving Vandermonde system failed",
+          java.util.Arrays.equals(y, z));
     }
   }
 
+  @Test
   public void testRemainder() {
     final int TEST_LEN = 15;
     for (int i = 0; i < TEST_TIMES; i++) {
@@ -173,8 +185,8 @@ public class TestGaloisField extends TestCase {
       }
       GF.remainder(dividend, divisor);
       for (int j = 0; j < remainder.length; j++) {
-        assertTrue("Distributivity test on polynomials failed",
-                   dividend[j] == remainder[j]);
+        Assert.assertTrue("Distributivity test on polynomials failed",
+            dividend[j] == remainder[j]);
       }
     }
   }

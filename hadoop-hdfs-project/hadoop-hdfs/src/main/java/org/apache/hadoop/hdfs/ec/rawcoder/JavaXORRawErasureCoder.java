@@ -15,42 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.rawcoder.impl;
+package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public class IsaReedSolomonDecoder {
-  private int dataSize;
-  private int paritySize;
+/**
+ * A raw XOR Erasure Coder in pure Java, that can be used as fallback when native ones not available
+ * XOR code can be used by some high level codes like LRC coder to encode its local groups.
+ */
+public class JavaXORRawErasureCoder extends AbstractRawErasureCoder {
 
-  static {
-    System.loadLibrary("isajni");
-  }
+	public JavaXORRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
+		super(dataSize, paritySize, chunkSize);
+		init();
+	}
 
-  public IsaReedSolomonDecoder(int dataSize, int paritySize) {
-    this.dataSize = dataSize;
-    this.paritySize = paritySize;
-    jni_init(dataSize, paritySize);
-  }
+	private void init() {
 
+	}
 
-  private native static int jni_init(int dataSize, int paritySize);
+	/**
+	 * This function (actually, the GF.remainder() function) will modify
+	 * the "inputs" parameter.
+	 */
+	@Override
+	public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
 
-  public native static int jni_decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
+	}
 
-  private native static int jni_destroy();
+	@Override
+	public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
 
-  public void decode(ByteBuffer[] allData, int[] erasured, int chunkSize) {
-    jni_decode(allData, erasured, chunkSize);
-  }
-
-  public void end() {
-    jni_destroy();
-  }
-
-  @Override
-  protected void finalize() {
-    jni_destroy();
-  }
-
+	}
 }

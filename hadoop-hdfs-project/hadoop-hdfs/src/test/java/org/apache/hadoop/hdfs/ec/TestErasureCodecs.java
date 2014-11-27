@@ -17,7 +17,19 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import static org.junit.Assert.*;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.*;
+import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.protocol.Block;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
+import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
+import org.apache.hadoop.io.IOUtils;
+import org.junit.Before;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,35 +39,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.ExtendedBlockId;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.ec.ECChunk;
-import org.apache.hadoop.hdfs.ec.ECSchema;
-import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
-import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.io.IOUtils;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
-public class TestErasureCodes {
+public class TestErasureCodecs {
 	final Random RAND = new Random();
 	
 	private static final String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/Users")).getAbsolutePath();
 	private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
 	private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
-	
+  private GaloisField GF = GaloisField.getInstance();
+  private int symbolSize = 0;
+
 	private Configuration conf;
 	private FileSystem fileSys;
 	private DataNode dataNode;
@@ -69,6 +64,7 @@ public class TestErasureCodes {
 	
 	@Before
 	public void init() throws IOException {
+    symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
 		int numDataNodes = 1;
 		conf = new HdfsConfiguration();
 		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
@@ -78,15 +74,21 @@ public class TestErasureCodes {
 		dataNode = cluster.getDataNodes().get(0);
 	}
 	
-//	@Test
-	public void verifyEncodeDecode() throws Exception {
-		ECSchema schema = TestSchemaLoader.loadRSJavaSchema(DATA_SIZE, PARITY_SIZE);
+  //@Test
+	public void testRSCodec() throws Exception {
+    ECSchema schema = TestUtils.makeRSSchema(DATA_SIZE, PARITY_SIZE, "RS-Java",
+        "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");
+    testRSCodec(schema);
+  }
+
+  //TODO: to be refactored as common codec testing, not just for RS codec
+  private void testRSCodec(ECSchema schema) throws Exception {
 		ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
 		ErasureCoder ec = codec.createErasureCoder();
 		int erasedLocation = RAND.nextInt(DATA_SIZE);
 		
 		//write wrong message and correct parity to blocks
-		List<LocatedBlock> dataBlocks = write(DATA_SIZE, ((JavaRSErasureCoder)ec).symbolSize(), erasedLocation);
+		List<LocatedBlock> dataBlocks = write(DATA_SIZE, symbolSize, erasedLocation);
 		assertTrue(dataBlocks.size() == DATA_SIZE);
 		List<LocatedBlock> parityBlocks = encode(ec);
 		assertTrue(parityBlocks.size() == PARITY_SIZE);
@@ -177,55 +179,6 @@ public class TestErasureCodes {
 			chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
 		}
 		return chunks;
-	}
-
-	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		ErasureCodec codec = null;
-		try {
-			ECSchema schema = TestSchemaLoader.loadRSJavaSchema(dataSize, paritySize);
-			codec = ErasureCodec.createErasureCodec(schema);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		if (codec == null) {
-			assertTrue(false);
-		}
-		
-		ErasureCoder ec = codec.createErasureCoder();
-
-		int symbolMax = (int) Math.pow(2,
-				((JavaRSErasureCoder) ec).symbolSize());
-		ECChunk[] message = new ECChunk[dataSize];
-		ECChunk[] cpMessage = new ECChunk[dataSize];
-		int bufsize = 1024 * 1024 * 10;
-		for (int i = 0; i < dataSize; i++) {
-			byte[] byteArray = new byte[bufsize];
-			for (int j = 0; j < bufsize; j++) {
-				byteArray[j] = (byte) RAND.nextInt(symbolMax);
-			}
-			ByteBuffer buffer = ByteBuffer.wrap(byteArray);
-			message[i] = new ECChunk(buffer);
-			cpMessage[i] = message[i].clone();
-		}
-		ECChunk[] parity = new ECChunk[paritySize];
-		for (int i = 0; i < paritySize; i++) {
-			parity[i] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		}
-
-		// encode.
-		ec.encode(cpMessage, parity);
-
-		int erasedLocation = RAND.nextInt(dataSize);
-		String annotation = generateAnnotation(erasedLocation);
-		ECChunk copy = message[erasedLocation].clone();
-		message[erasedLocation].setChunkBuffer(ByteBuffer
-				.wrap(new byte[bufsize]));
-
-		// test decode
-		ECChunk[] output = new ECChunk[1];
-		output[0] = new ECChunk(ByteBuffer.wrap(new byte[bufsize]));
-		ec.decode(message, parity, annotation, output);
-		assertTrue("Decode failed", copy.equals(output[0]));
 	}
 
 	private String generateAnnotation(int erasedLocation) {

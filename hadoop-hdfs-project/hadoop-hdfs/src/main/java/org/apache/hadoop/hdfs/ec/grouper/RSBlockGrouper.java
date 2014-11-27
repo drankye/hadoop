@@ -49,7 +49,7 @@ public class RSBlockGrouper extends BlockGrouper {
 
   @Override
   public boolean anyRecoverable(BlockGroup blockGroup) {
-    return false;
+    return true;
   }
 
   @Override

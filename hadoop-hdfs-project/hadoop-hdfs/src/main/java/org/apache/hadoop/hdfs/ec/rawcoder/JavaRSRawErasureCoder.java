@@ -1,12 +1,29 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
-import org.apache.hadoop.hdfs.ec.coder.old.impl.help.GaloisField;
+import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * Raw Erasure Coder that corresponds to an erasure code algorithm
+ * A raw RS Erasure Coder in pure Java, that can be used as fallback when native ones not available
  */
 public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 	private int[] generatingPolynomial;
@@ -23,23 +40,23 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 	}
 
 	private void init() {
-		assert (dataSize + paritySize < GF.getFieldSize());
-		this.errSignature = new int[paritySize];
-		this.paritySymbolLocations = new int[paritySize];
-		this.dataBuff = new int[paritySize + dataSize];
-		for (int i = 0; i < paritySize; i++) {
+		assert (dataSize() + paritySize() < GF.getFieldSize());
+		this.errSignature = new int[paritySize()];
+		this.paritySymbolLocations = new int[paritySize()];
+		this.dataBuff = new int[paritySize() + dataSize()];
+		for (int i = 0; i < paritySize(); i++) {
 			paritySymbolLocations[i] = i;
 		}
 
-		this.primitivePower = new int[dataSize + paritySize];
+		this.primitivePower = new int[dataSize() + paritySize()];
 		// compute powers of the primitive root
-		for (int i = 0; i < dataSize + paritySize; i++) {
+		for (int i = 0; i < dataSize() + paritySize(); i++) {
 			primitivePower[i] = GF.power(PRIMITIVE_ROOT, i);
 		}
 		// compute generating polynomial
 		int[] gen = { 1 };
 		int[] poly = new int[2];
-		for (int i = 0; i < paritySize; i++) {
+		for (int i = 0; i < paritySize(); i++) {
 			poly[0] = primitivePower[i];
 			poly[1] = 1;
 			gen = GF.multiply(gen, poly);
@@ -48,81 +65,48 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 		generatingPolynomial = gen;
 	}
 
-	@Override
-	public void encode(int[] message, int[] parity) {
-		assert (message.length == dataSize && parity.length == paritySize);
-		for (int i = 0; i < paritySize; i++) {
-			dataBuff[i] = 0;
-		}
-		for (int i = 0; i < dataSize; i++) {
-			dataBuff[i + paritySize] = message[i];
-		}
-		GF.remainder(dataBuff, generatingPolynomial);
-		for (int i = 0; i < paritySize; i++) {
-			parity[i] = dataBuff[i];
-		}
-	}
-
 	/**
 	 * This function (actually, the GF.remainder() function) will modify
 	 * the "inputs" parameter.
 	 */
 	@Override
 	public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-		assert (dataSize == inputs.length);
-		assert (paritySize == outputs.length);
+		assert (dataSize() == inputs.length);
+		assert (paritySize() == outputs.length);
 
 		for (int i = 0; i < outputs.length; i++) {
 			Arrays.fill(outputs[i].array(), (byte) 0);
 		}
 
-		byte[][] data = new byte[dataSize + paritySize][];
+		byte[][] data = new byte[dataSize() + paritySize()][];
 
-		for (int i = 0; i < paritySize; i++) {
+		for (int i = 0; i < paritySize(); i++) {
 			data[i] = outputs[i].array();
 		}
-		for (int i = 0; i < dataSize; i++) {
-			data[i + paritySize] = inputs[i].array();
+		for (int i = 0; i < dataSize(); i++) {
+			data[i + paritySize()] = inputs[i].array();
 		}
 		// Compute the remainder
 		GF.remainder(data, generatingPolynomial);
 	}
 
 	@Override
-	public void decode(int[] data, int[] erasedLocations, int[] erasedValues) {
-		if (erasedLocations.length == 0) {
-			return;
-		}
-		assert (erasedLocations.length == erasedValues.length);
-		for (int i = 0; i < erasedLocations.length; i++) {
-			data[erasedLocations[i]] = 0;
-		}
-		for (int i = 0; i < erasedLocations.length; i++) {
-			errSignature[i] = primitivePower[erasedLocations[i]];
-			erasedValues[i] = GF.substitute(data, primitivePower[i]);
-		}
-		GF.solveVandermondeSystem(errSignature, erasedValues,
-				erasedLocations.length);
-	}
-
-	@Override
-	public void decode(ByteBuffer[] readBufs, ByteBuffer[] writeBufs,
-			int[] erasedLocation) {
-		if (erasedLocation.length == 0) {
+	public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
+		if (erasedIndexes.length == 0) {
 			return;
 		}
 
 		// cleanup the write buffer
-		for (int i = 0; i < writeBufs.length; i++) {
-			Arrays.fill(writeBufs[i].array(), (byte) 0);
+		for (int i = 0; i < outputs.length; i++) {
+			Arrays.fill(outputs[i].array(), (byte) 0);
 		}
 
-		for (int i = 0; i < erasedLocation.length; i++) {
-			errSignature[i] = primitivePower[erasedLocation[i]];
-			GF.substitute(readBufs, writeBufs[i], primitivePower[i]);
+		for (int i = 0; i < erasedIndexes.length; i++) {
+			errSignature[i] = primitivePower[erasedIndexes[i]];
+			GF.substitute(inputs, outputs[i], primitivePower[i]);
 		}
 		
-		GF.solveVandermondeSystem(errSignature, writeBufs,
-				erasedLocation.length, readBufs[0].array().length);
+		GF.solveVandermondeSystem(errSignature, outputs,
+				erasedIndexes.length, inputs[0].array().length);
 	}
 }
