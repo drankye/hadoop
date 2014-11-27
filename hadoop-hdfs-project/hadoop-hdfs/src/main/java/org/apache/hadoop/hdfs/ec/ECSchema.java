@@ -29,8 +29,8 @@ public class ECSchema {
   private int parityBlocks;
   private int chunkSize;
 
-  public ECSchema(String codecName, Map<String, String> options, String codec) {
-    this.codecName = codecName;
+  public ECSchema(String schemaName, Map<String, String> options, String codec) {
+    this.schemaName = schemaName;
     this.options = options;
     this.codecName = codec;
   }
@@ -100,6 +100,6 @@ public class ECSchema {
   }
   
   public int getChunkSize() {
-	    return 16 * 1024;
-	  }
+	return 16 * 1024;
+  }
 }

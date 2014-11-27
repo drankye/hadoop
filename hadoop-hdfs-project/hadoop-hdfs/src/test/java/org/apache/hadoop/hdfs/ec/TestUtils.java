@@ -22,7 +22,7 @@ public class TestUtils {
 		PrintWriter out = new PrintWriter(new FileWriter(SCHEMA_FILE));
 		out.println("<?xml version=\"1.0\"?>");
 		out.println("<schemas>");
-		out.println("  <schema name=\"RSJava\">");
+		out.println("  <schema name=\"RSSchema\">");
 		out.println("    <k>" + dataSize + "</k>");
 		out.println("    <m>" + paritySize + "</m>");
 		out.println("    <codec>" + codecName + "</codec>");

@@ -25,9 +25,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
 
 /**
  * Ported from HDFS-RAID
@@ -163,20 +161,5 @@ public class TestRawErasureCodes {
 		writeBufs[0] = ByteBuffer.wrap(new byte[bufsize]);
 		rawEc.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
 		Assert.assertTrue("Decode failed", copy.equals(writeBufs[0]));
-	}
-
-	private int[] randomErasedLocation(int erasedLen, int dataLen) {
-		int[] erasedLocations = new int[erasedLen];
-		for (int i = 0; i < erasedLen; i++) {
-			Set<Integer> s = new HashSet<Integer>();
-			while (s.size() != erasedLen) {
-				s.add(RAND.nextInt(dataLen));
-			}
-			int t = 0;
-			for (int erased : s) {
-				erasedLocations[t++] = erased;
-			}
-		}
-		return erasedLocations;
 	}
 }

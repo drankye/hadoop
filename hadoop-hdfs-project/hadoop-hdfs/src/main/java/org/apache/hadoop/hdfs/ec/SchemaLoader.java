@@ -118,7 +118,7 @@ public class SchemaLoader {
    * Loads a schema from a schema element in the configuration file
    */
   private ECSchema loadSchema(Element element) {
-    String codecName = element.getAttribute("name");
+    String schemaName = element.getAttribute("name");
     Map<String, String> ecProperties = new HashMap<String, String>();
     String erasureCoder = null;
     NodeList fields = element.getChildNodes();
@@ -138,7 +138,7 @@ public class SchemaLoader {
       }
     }
 
-    ECSchema codec = new ECSchema(codecName, ecProperties, erasureCoder);
+    ECSchema codec = new ECSchema(schemaName, ecProperties, erasureCoder);
     return codec;
   }
 }

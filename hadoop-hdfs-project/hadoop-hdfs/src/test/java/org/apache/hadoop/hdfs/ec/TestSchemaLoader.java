@@ -18,7 +18,7 @@ public class TestSchemaLoader {
 	final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs")
 			.getAbsolutePath();
 
-	//@Test
+	@Test
 	public void testLoadSchema() throws Exception {
 		PrintWriter out = new PrintWriter(new FileWriter(SCHEMA_FILE));
 		out.println("<?xml version=\"1.0\"?>");
@@ -46,21 +46,16 @@ public class TestSchemaLoader {
 		conf.set("hadoop.hdfs.ec.erasurecodec.codec.LRC",
 				"hadoop.hdfs.ec.codec.codec.IsaLRC");
 
-    SchemaLoader schemaLoader = new SchemaLoader();
+		SchemaLoader schemaLoader = new SchemaLoader();
 		List<ECSchema> schemas = schemaLoader.loadSchema(conf);
 
-		System.out.println("Schemas:" + schemas.size());
-		for (int i = 0; i < schemas.size(); i++) {
-			System.out.println(schemas.get(i).getCodecName());
-		}
 		assertEquals(1, schemas.size());
-		assertEquals("RSk6m3", schemas.get(0).getCodecName());
+		assertEquals("RSk6m3", schemas.get(0).getSchemaName());
 		assertEquals(3, schemas.get(0).getOptions().size());
 		assertEquals("6", schemas.get(0).getOptions().get("k"));
 		assertEquals("3", schemas.get(0).getOptions().get("m"));
 		assertEquals("RS-Jerasure",
 				schemas.get(0).getOptions().get("codec"));
 		assertEquals("RS-Jerasure", schemas.get(0).getCodecName());
-
 	}
 }
