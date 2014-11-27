@@ -19,8 +19,6 @@ package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
 
-import java.util.List;
-
 public class ECBlock {
 
   private ExtendedBlockId blockId;
@@ -30,6 +28,14 @@ public class ECBlock {
   public ECBlock(ExtendedBlockId blockId, boolean isParity) {
     this.blockId = blockId;
     this.isParity = isParity;
+  }
+  
+  public long getBlockId() {
+	  return blockId.getBlockId();
+  }
+  
+  public String getBlockPoolId() {
+	  return blockId.getBlockPoolId();
   }
 
   public void setMissing(boolean isMissing) {

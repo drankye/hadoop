@@ -20,13 +20,13 @@ package org.apache.hadoop.hdfs.ec;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.math3.linear.Array2DRowFieldMatrix;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,17 +40,15 @@ import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
 import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
+import org.apache.hadoop.io.IOUtils;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.amazonaws.services.securitytoken.model.DecodeAuthorizationMessageRequest;
-
 public class TestErasureCodes {
-//	final int TEST_CODES = 100;
-//	final int TEST_TIMES = 1000;
 	final Random RAND = new Random();
 	
 	private static final String TEST_DIR = new File(System.getProperty(
@@ -101,9 +99,9 @@ public class TestErasureCodes {
 		//decode
 		BlockGroup groupUseToRepairData = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
 		groupUseToRepairData.setAnnotation(generateAnnotation(erasedLocation));
-		ECChunk[] repairedData = decode(ec, groupUseToRepairData);
+		ECChunk repairedData = decode(ec, groupUseToRepairData);
 		ByteBuffer copy = message[erasedLocation];
-		assertTrue(copy.equals(repairedData[0].getChunkBuffer()));
+		assertTrue(copy.equals(repairedData.getChunkBuffer()));
 	}
 
 	private List<LocatedBlock> write(int blockCount, int symbolMax, int erasedLocation) throws IOException {
@@ -157,22 +155,28 @@ public class TestErasureCodes {
 		return ids;
 	}
 	
-	private void decode(ErasureCoder ec, BlockGroup groupUseToRepairData) {
+	private ECChunk decode(ErasureCoder ec, BlockGroup groupUseToRepairData) throws IOException {
 		ECBlock[] dataEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
 		ECBlock[] parityEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
 		ECChunk[] dataChunks = getChunks(dataEcBlocks);
 		ECChunk[] parityChunks = getChunks(parityEcBlocks);
-		// TODO Auto-generated method stub
 		
+		ECChunk outputChunk = new ECChunk(ByteBuffer.wrap(new byte[BUFFER_SIZE])); 
+		ec.decode(dataChunks, parityChunks, groupUseToRepairData.getAnnotation(), outputChunk);
+		return outputChunk;
 	}
 
-	private ECChunk[] getChunks(ECBlock[] dataEcBlocks) {
+	private ECChunk[] getChunks(ECBlock[] dataEcBlocks) throws IOException {
 		ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
 		for (int i = 0; i < dataEcBlocks.length; i++) {
-			File blockFile = DataNodeTestUtils.getBlockFile(dataNode, bpid, dataEcBlocks[i].) 
-			
+			ECBlock ecBlock = dataEcBlocks[i];
+			Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(ecBlock.getBlockPoolId(), ecBlock.getBlockId());
+			File blockFile = DataNodeTestUtils.getBlockFile(dataNode, ecBlock.getBlockPoolId(), block);
+			byte[] buffer = new byte[BLOCK_SIZE];
+			IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, BUFFER_SIZE);
+			chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
 		}
-		return null;
+		return chunks;
 	}
 
 	public void verifyRSEncodeDecode(int dataSize, int paritySize) {
