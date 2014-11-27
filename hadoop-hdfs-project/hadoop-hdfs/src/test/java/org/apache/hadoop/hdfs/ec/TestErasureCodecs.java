@@ -45,7 +45,7 @@ public class TestErasureCodecs {
 	final Random RAND = new Random();
 	
 	private static final String TEST_DIR = new File(System.getProperty(
-			"test.build.data", "/Users")).getAbsolutePath();
+			"test.build.data", "/tmp")).getAbsolutePath();
 	private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
 	private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
   private GaloisField GF = GaloisField.getInstance();

@@ -12,7 +12,7 @@ import static org.junit.Assert.assertEquals;
 public class TestUtils {
 
 	public final static String TEST_DIR = new File(System.getProperty(
-			"test.build.data", "/Users")).getAbsolutePath();
+			"test.build.data", "/tmp")).getAbsolutePath();
 
 	public final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs")
 			.getAbsolutePath();
