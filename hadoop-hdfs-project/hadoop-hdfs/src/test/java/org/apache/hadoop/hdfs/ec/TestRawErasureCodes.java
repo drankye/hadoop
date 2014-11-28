@@ -108,7 +108,7 @@ public class TestRawErasureCodes {
     Assert.assertTrue("Decode failed", copy.equals(erasedValues[0]));
 	}
 
-  //@Test
+  @Test
 	public void testRSEncodeDecodeByteBuffer() {
 		// verify the production size.
 		verifyRSEncodeDecode(10, 4);

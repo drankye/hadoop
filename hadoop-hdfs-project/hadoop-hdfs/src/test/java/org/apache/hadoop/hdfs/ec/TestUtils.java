@@ -32,7 +32,7 @@ public class TestUtils {
 
 		Configuration conf = new Configuration();
 		conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
-		conf.set("hadoop.hdfs.ec.erasurecodec.codec" + codecName, codecClass);
+		conf.set("hadoop.hdfs.ec.erasurecodec.codec." + codecName, codecClass);
 
 		SchemaLoader schemaLoader = new SchemaLoader();
 		List<ECSchema> schemas = schemaLoader.loadSchema(conf);

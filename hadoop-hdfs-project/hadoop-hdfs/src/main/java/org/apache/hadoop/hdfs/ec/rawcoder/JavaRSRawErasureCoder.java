@@ -32,7 +32,6 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 	private GaloisField GF = GaloisField.getInstance();
 	private int[] paritySymbolLocations;
 	private int[] errSignature;
-	private int[] dataBuff;
 
 	public JavaRSRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
 		super(dataSize, paritySize, chunkSize);
@@ -43,7 +42,6 @@ public class JavaRSRawErasureCoder extends AbstractRawErasureCoder {
 		assert (dataSize() + paritySize() < GF.getFieldSize());
 		this.errSignature = new int[paritySize()];
 		this.paritySymbolLocations = new int[paritySize()];
-		this.dataBuff = new int[paritySize() + dataSize()];
 		for (int i = 0; i < paritySize(); i++) {
 			paritySymbolLocations[i] = i;
 		}

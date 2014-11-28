@@ -30,6 +30,7 @@ import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.io.IOUtils;
 import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -74,7 +75,7 @@ public class TestErasureCodecs {
 		dataNode = cluster.getDataNodes().get(0);
 	}
 	
-  //@Test
+  @Test
 	public void testRSCodec() throws Exception {
     ECSchema schema = TestUtils.makeRSSchema(DATA_SIZE, PARITY_SIZE, "RS-Java",
         "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");

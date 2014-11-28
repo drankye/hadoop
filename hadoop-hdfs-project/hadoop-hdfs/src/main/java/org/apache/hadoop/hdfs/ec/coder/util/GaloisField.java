@@ -294,7 +294,6 @@ public class GaloisField {
 	   */
 	  public void solveVandermondeSystem(int[] x, ByteBuffer[] y, 
 	                                     int len, int dataLen) {
-	    assert(x.length <= len && y.length <= len);
 	    for (int i = 0; i < len - 1; i++) {
 	      for (int j = len - 1; j > i; j--) {
 	        for (int k = 0; k < dataLen; k++) {
