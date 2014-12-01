@@ -22,17 +22,11 @@ public class JavaRSEncoder implements  Encoder{
         encode(dataChunks, new ECChunk[]{outputChunk});
     }
 
+    @Override
     public void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
         ByteBuffer[] dataByteBuffers = TransformUtil.changeToByteBufferArray(dataChunks);
         ByteBuffer[] outputByteBuffers = TransformUtil.changeToByteBufferArray(outputChunks);
 
         rawEncoder.encode(dataByteBuffers, outputByteBuffers);
     }
-
-
-
-
-
-
-
 }

@@ -18,7 +18,8 @@
 package org.apache.hadoop.hdfs.ec.codec;
 
 import org.apache.hadoop.hdfs.ec.ECSchema;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.Encoder;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 
 /**
@@ -46,10 +47,17 @@ public abstract class ErasureCodec {
   public abstract BlockGrouper createBlockGrouper();
 
   /**
-   * Create Erasure Coder, to be called by ECWorker
+   * Create Erasure Encoder, to be called by ECWorker
    * @return
    */
-  public abstract ErasureCoder createErasureCoder();
+  public abstract Encoder createEncoder();
+
+  /**
+   * Create Erasure Decoder, to be called by ECWorker
+   * @return
+   */
+  public abstract Decoder createDecoder();
+
 
 
   public static ErasureCodec createErasureCodec(ECSchema schema) throws Exception {

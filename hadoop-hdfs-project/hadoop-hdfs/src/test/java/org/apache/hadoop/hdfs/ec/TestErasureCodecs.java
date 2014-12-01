@@ -22,7 +22,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.Encoder;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
@@ -37,7 +38,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -86,13 +86,12 @@ public class TestErasureCodecs {
   //TODO: to be refactored as common codec testing, not just for RS codec
   private void testRSCodec(ECSchema schema) throws Exception {
 		ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
-		ErasureCoder ec = codec.createErasureCoder();
 		int erasedLocation = RAND.nextInt(DATA_SIZE);
 		
 		//write wrong message and correct parity to blocks
 		List<LocatedBlock> dataBlocks = write(DATA_SIZE, symbolSize, erasedLocation);
 		assertTrue(dataBlocks.size() == DATA_SIZE);
-		List<LocatedBlock> parityBlocks = encode(ec);
+		List<LocatedBlock> parityBlocks = encode(codec.createEncoder());
 		assertTrue(parityBlocks.size() == PARITY_SIZE);
 		
 		//make block group
@@ -103,7 +102,7 @@ public class TestErasureCodecs {
 		//decode
 		BlockGroup groupUseToRepairData = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
 		groupUseToRepairData.setAnnotation(generateAnnotation(erasedLocation));
-		ECChunk repairedData = decode(ec, groupUseToRepairData);
+		ECChunk repairedData = decode(codec.createDecoder(), groupUseToRepairData);
 		ByteBuffer copy = message[erasedLocation];
 		assertTrue(copy.equals(repairedData.getChunkBuffer()));
 	}
@@ -130,7 +129,7 @@ public class TestErasureCodecs {
 		return blocks;
 	}
 	
-	private List<LocatedBlock> encode(ErasureCoder ec) throws IllegalArgumentException, IOException {
+	private List<LocatedBlock> encode(Encoder ec) throws IllegalArgumentException, IOException {
 		//encode
 
 
@@ -162,7 +161,7 @@ public class TestErasureCodecs {
 		return ids;
 	}
 	
-	private ECChunk decode(ErasureCoder ec, BlockGroup groupUseToRepairData) throws IOException {
+	private ECChunk decode(Decoder ec, BlockGroup groupUseToRepairData) throws IOException {
 		ECBlock[] dataEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
 		ECBlock[] parityEcBlocks = groupUseToRepairData.getSubGroups().get(0).getDataBlocks();
 		ECChunk[] dataChunks = getChunks(dataEcBlocks);

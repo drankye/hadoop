@@ -20,10 +20,8 @@ package org.apache.hadoop.hdfs.ec;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawDecoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawErasureCoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawDecoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawEncoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureCoder;
 import org.junit.Assert;
 import org.junit.Test;
 

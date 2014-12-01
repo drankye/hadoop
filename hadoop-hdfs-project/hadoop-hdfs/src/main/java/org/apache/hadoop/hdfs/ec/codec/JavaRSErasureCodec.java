@@ -1,8 +1,7 @@
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
+import org.apache.hadoop.hdfs.ec.ECSchema;
+import org.apache.hadoop.hdfs.ec.coder.*;
 
 /**
  * Reed-Solomon codec with Java code
@@ -10,10 +9,12 @@ import org.apache.hadoop.hdfs.ec.coder.JavaRSErasureCoder;
 public class JavaRSErasureCodec extends RSErasureCodec{
 
 	@Override
-	public ErasureCoder createErasureCoder() {
-		AbstractErasureCoder erasureCoder = new JavaRSErasureCoder();
-		erasureCoder.initWith(getSchema());
-		return erasureCoder;
+	public Encoder createEncoder() {
+		return new JavaRSEncoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
 	}
 
-} 
+	@Override
+	public Decoder createDecoder() {
+		return new JavaRSDecoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
+	}
+}

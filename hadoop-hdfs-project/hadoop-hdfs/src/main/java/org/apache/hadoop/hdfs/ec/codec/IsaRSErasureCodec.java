@@ -17,8 +17,10 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoder;
-import org.apache.hadoop.hdfs.ec.coder.IsaRSErasureCoder;
+import org.apache.hadoop.hdfs.ec.coder.Decoder;
+import org.apache.hadoop.hdfs.ec.coder.Encoder;
+import org.apache.hadoop.hdfs.ec.coder.IsaRSDecoder;
+import org.apache.hadoop.hdfs.ec.coder.IsaRSEncoder;
 
 /**
  * Reed-Solomon codec with ISA library implemented coder
@@ -27,9 +29,12 @@ public class IsaRSErasureCodec extends RSErasureCodec {
 
 
   @Override
-  public ErasureCoder createErasureCoder() {
-    return new IsaRSErasureCoder();
+  public Encoder createEncoder() {
+    return new IsaRSEncoder();
   }
 
-  
+  @Override
+  public Decoder createDecoder() {
+    return new IsaRSDecoder();
+  }
 }

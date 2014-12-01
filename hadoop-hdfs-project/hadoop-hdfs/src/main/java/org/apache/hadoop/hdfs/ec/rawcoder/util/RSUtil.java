@@ -2,7 +2,7 @@ package org.apache.hadoop.hdfs.ec.rawcoder.util;
 
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 
-public class JavaRSRawUtil {
+public class RSUtil {
 
     private static final  int PRIMITIVE_ROOT = 2;
     private static GaloisField GF = GaloisField.getInstance();
