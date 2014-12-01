@@ -28,6 +28,7 @@ public abstract class RSErasureCodec extends ErasureCodec {
 
   @Override
   public void initWith(ECSchema schema) {
+	super.initWith(schema);
     //XXX get data size and parity size from schema options
     String dataSize = schema.getOptions().get("k");
     schema.setDataBlocks(Integer.parseInt(dataSize));
