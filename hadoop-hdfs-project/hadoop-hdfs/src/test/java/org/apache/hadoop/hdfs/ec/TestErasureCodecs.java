@@ -58,7 +58,7 @@ public class TestErasureCodecs {
 	private DataNode dataNode;
 	
 	private static final int BLOCK_SIZE = 1024;
-	private static final int CHUNK_SIZE = BLOCK_SIZE / 4;
+	private static final int CHUNK_SIZE = BLOCK_SIZE;
 	private static final int DATA_SIZE = 10;
 	private static final int PARITY_SIZE = 4;
 	
