@@ -18,7 +18,11 @@
 package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawDecoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawErasureCoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.RawDecoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.RawEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureCoder;
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,7 +48,8 @@ public class TestRawErasureCodes {
 		int dataSize = 10;
 		int paritySize = 4;
 
-		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize, 16*1024);
+	  RawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
+	  RawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
@@ -71,7 +76,7 @@ public class TestRawErasureCodes {
 			byte[] cpByte = Arrays.copyOfRange(message[i].array(), 0, message[i].array().length);
 			tmpIn[i] = ByteBuffer.wrap(cpByte);
 		}
-		rawEc.encode(tmpIn, tmpOut);
+		rawEncoder.encode(tmpIn, tmpOut);
 		// Copy parity.
 		for (int i = 0; i < paritySize; i++) {
 			byte[] cpByte = Arrays.copyOfRange(tmpOut[i].array(), 0, tmpOut[i].array().length);
@@ -100,7 +105,7 @@ public class TestRawErasureCodes {
 		}
 
 		long decodeStart = System.currentTimeMillis();
-		rawEc.decode(data, erasedValues, erasedLocations);
+		rawDecoder.decode(data, erasedValues, erasedLocations);
 		long decodeEnd = System.currentTimeMillis();
 		float decodeMSecs = (decodeEnd - decodeStart);
 		System.out.println("Time to decode = " + decodeMSecs + "msec ("
@@ -118,7 +123,8 @@ public class TestRawErasureCodes {
 	}
 
 	private void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		RawErasureCoder rawEc = new JavaRSRawErasureCoder(dataSize, paritySize, 16*1024);
+		RawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
+		RawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
@@ -140,7 +146,7 @@ public class TestRawErasureCodes {
 		}
 
 		// encode.
-		rawEc.encode(cpMessage, parity);
+		rawEncoder.encode(cpMessage, parity);
 
 		int erasedLocation = RAND.nextInt(dataSize);
 		
@@ -159,7 +165,7 @@ public class TestRawErasureCodes {
 		}
 		ByteBuffer[] writeBufs = new ByteBuffer[1];
 		writeBufs[0] = ByteBuffer.wrap(new byte[bufsize]);
-		rawEc.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
+		rawDecoder.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
 		Assert.assertTrue("Decode failed", copy.equals(writeBufs[0]));
 	}
 }

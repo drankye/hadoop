@@ -15,34 +15,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.rawcoder.impl;
+package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public class IsaReedSolomonDecoder {
-  private int dataSize;
-  private int paritySize;
+public class IsaReedSolomonRawEncoder extends  AbstractRawEncoder{
+
+  public IsaReedSolomonRawEncoder(int dataSize, int paritySize, int chunkSize) {
+    super(dataSize, paritySize, chunkSize);
+    jni_init(dataSize, paritySize);
+  }
+
+  @Override
+  public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
+    assert (dataSize() == inputs.length);
+    assert (paritySize() == outputs.length);
+
+    jni_encode(inputs, outputs, chunkSize());
+  }
+
+  private static native int jni_init(int dataSize, int paritySize);
+
+  private static native int jni_encode(ByteBuffer[] data, ByteBuffer[] code, int chunkSize);
+
+  private static native int jni_destroy();
 
   static {
     System.loadLibrary("isajni");
   }
 
-  public IsaReedSolomonDecoder(int dataSize, int paritySize) {
-    this.dataSize = dataSize;
-    this.paritySize = paritySize;
-    jni_init(dataSize, paritySize);
-  }
-
-
-  private native static int jni_init(int dataSize, int paritySize);
-
-  public native static int jni_decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
-
-  private native static int jni_destroy();
-
-  public void decode(ByteBuffer[] allData, int[] erasured, int chunkSize) {
-    jni_decode(allData, erasured, chunkSize);
-  }
 
   public void end() {
     jni_destroy();

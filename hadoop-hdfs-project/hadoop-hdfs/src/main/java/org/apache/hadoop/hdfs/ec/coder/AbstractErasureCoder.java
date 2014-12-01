@@ -23,6 +23,8 @@ import org.apache.hadoop.hdfs.ec.ECSchema;
 public class AbstractErasureCoder implements ErasureCoder {
 
   protected ECSchema schema;
+  protected Encoder encoder;
+  protected  Decoder decoder;
 
   public void initWith(ECSchema schema) {
     this.schema = schema;
@@ -30,21 +32,21 @@ public class AbstractErasureCoder implements ErasureCoder {
 
   @Override
   public void encode(ECChunk[] dataChunks, ECChunk outputChunk) {
-
+    encoder.encode(dataChunks, outputChunk);
   }
 
   @Override
   public void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
-
+    encoder.encode(dataChunks, outputChunks);
   }
 
   @Override
   public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, String annotation, ECChunk outputChunk) {
-
+    decoder.decode(dataChunks, parityChunks, annotation, outputChunk);
   }
 
   @Override
   public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, String annotation, ECChunk[] outputChunks) {
-
+    decoder.decode(dataChunks, parityChunks, annotation, outputChunks);
   }
 }

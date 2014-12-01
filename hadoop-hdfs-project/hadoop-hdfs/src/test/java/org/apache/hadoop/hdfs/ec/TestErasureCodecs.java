@@ -37,6 +37,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -49,20 +50,20 @@ public class TestErasureCodecs {
 			"test.build.data", "/tmp")).getAbsolutePath();
 	private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
 	private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
-  private GaloisField GF = GaloisField.getInstance();
-  private int symbolSize = 0;
+  	private GaloisField GF = GaloisField.getInstance();
+	private int symbolSize = 0;
 
 	private Configuration conf;
 	private FileSystem fileSys;
 	private DataNode dataNode;
 	
 	private static final int BLOCK_SIZE = 1024;
-	private static final int BUFFER_SIZE = BLOCK_SIZE;
+	private static final int CHUNK_SIZE = BLOCK_SIZE / 4;
 	private static final int DATA_SIZE = 10;
 	private static final int PARITY_SIZE = 4;
 	
 	private ByteBuffer[] message = new ByteBuffer[DATA_SIZE];
-	
+
 	@Before
 	public void init() throws IOException {
     symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
@@ -76,7 +77,7 @@ public class TestErasureCodecs {
 	}
 	
   @Test
-	public void testRSCodec() throws Exception {
+  public void testRSCodec() throws Exception {
     ECSchema schema = TestUtils.makeRSSchema(DATA_SIZE, PARITY_SIZE, "RS-Java",
         "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");
     testRSCodec(schema);
@@ -131,13 +132,16 @@ public class TestErasureCodecs {
 	
 	private List<LocatedBlock> encode(ErasureCoder ec) throws IllegalArgumentException, IOException {
 		//encode
+
+
 		ECChunk[] messageChunks = new ECChunk[DATA_SIZE];
 		for (int i = 0; i < DATA_SIZE; i++) {
+			//ByteBuffer[] chunkByteArray = Arrays.copyOfRange(message, i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
 			messageChunks[i] = new ECChunk(message[i]);
 		}
 		ECChunk[] parityChunks = new ECChunk[PARITY_SIZE];
 		for (int i = 0; i < PARITY_SIZE; i++) {
-			parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[BUFFER_SIZE]));
+			parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
 		}
 		ec.encode(messageChunks, parityChunks);
 		//write
@@ -164,7 +168,7 @@ public class TestErasureCodecs {
 		ECChunk[] dataChunks = getChunks(dataEcBlocks);
 		ECChunk[] parityChunks = getChunks(parityEcBlocks);
 		
-		ECChunk outputChunk = new ECChunk(ByteBuffer.wrap(new byte[BUFFER_SIZE])); 
+		ECChunk outputChunk = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
 		ec.decode(dataChunks, parityChunks, groupUseToRepairData.getAnnotation(), outputChunk);
 		return outputChunk;
 	}
@@ -176,7 +180,7 @@ public class TestErasureCodecs {
 			Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(ecBlock.getBlockPoolId(), ecBlock.getBlockId());
 			File blockFile = DataNodeTestUtils.getBlockFile(dataNode, ecBlock.getBlockPoolId(), block);
 			byte[] buffer = new byte[BLOCK_SIZE];
-			IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, BUFFER_SIZE);
+			IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
 			chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
 		}
 		return chunks;
