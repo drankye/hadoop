@@ -64,4 +64,8 @@ public abstract class BlockGrouper {
    * @return a recoverable blockGroup just for recovery usage
    */
   public abstract BlockGroup makeRecoverableGroup(BlockGroup blockGroup);
+
+  protected ECSchema getSchema() {
+    return schema;
+  }
 }

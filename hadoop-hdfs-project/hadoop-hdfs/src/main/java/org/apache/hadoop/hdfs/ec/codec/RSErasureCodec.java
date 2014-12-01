@@ -33,6 +33,7 @@ public abstract class RSErasureCodec extends ErasureCodec {
     schema.setDataBlocks(Integer.parseInt(dataSize));
     String paritySize = schema.getOptions().get("m");
     schema.setParityBlocks(Integer.parseInt(paritySize));
+
   }
 
   @Override

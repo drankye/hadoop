@@ -32,7 +32,7 @@ import java.util.List;
 public class BlockGroup {
 
   private List<SubBlockGroup> subGroups = new ArrayList<SubBlockGroup>();
-  private String annotation;
+  private String codecName;
 
   public List<SubBlockGroup> getSubGroups() {
     return subGroups;
@@ -41,14 +41,12 @@ public class BlockGroup {
   public void addSubGroup(SubBlockGroup subGroup) {
     subGroups.add(subGroup);
   }
-  
-  public void setAnnotation(String annotation) {
-	  this.annotation = annotation;
+
+  public String getCodecName() {
+    return codecName;
   }
 
-  public String getAnnotation() {
-	  return annotation;
+  public void setCodecName(String codecName) {
+    this.codecName = codecName;
   }
-  
-  
 }

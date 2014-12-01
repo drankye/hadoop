@@ -44,17 +44,19 @@ public class RSBlockGrouper extends BlockGrouper {
 	  SubBlockGroup subBlockGroup = new SubBlockGroup(dataEcBlocks, parityEcBlocks);
 	  BlockGroup group = new BlockGroup();
 	  group.addSubGroup(subBlockGroup);
+
+	  group.setCodecName(getSchema().getCodecName());
 	  return group;
   }
 
   @Override
   public boolean anyRecoverable(BlockGroup blockGroup) {
-    return true;
+	  //FIXME need to get erased index
+	  return true;
   }
 
   @Override
   public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
-	  //FIXME write for test
 	  return blockGroup;
   }
 }

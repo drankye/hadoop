@@ -13,36 +13,24 @@ public class JavaRSDecoder implements  Decoder{
 
     private RawDecoder rawDecoder;
 
-    //XXX
-    private int dataSize;
-    private int paritySize;
-    private int chunkSize;
-
     public JavaRSDecoder(int dataSize, int paritySize, int chunkSize) {
-        this.dataSize = dataSize;
-        this.paritySize = paritySize;
-        this.chunkSize = chunkSize;
         rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, chunkSize);
     }
 
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks,
-                       String annotation, ECChunk outputChunk) {
-        decode(dataChunks, parityChunks, annotation, new ECChunk[]{outputChunk});
+    @Override
+    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk outputChunk) {
+        decode(dataChunks, parityChunks, new ECChunk[]{outputChunk});
     }
 
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks,
-                       String annotation, ECChunk[] outputChunks) {
+    @Override
+    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk[] outputChunks) {
         ECChunk[] readChunks = combineArrays(parityChunks, dataChunks);
-        ByteBuffer[] readBufs = TransformUtil.changeToByteBufferArray(readChunks);
-        ByteBuffer[] outputBufs = TransformUtil.changeToByteBufferArray(outputChunks);
+        ByteBuffer[] readBuffs = TransformUtil.changeToByteBufferArray(readChunks);
+        ByteBuffer[] outputBuffs = TransformUtil.changeToByteBufferArray(outputChunks);
 
-        List<Integer> erasedLocationList = getErasedLocation(annotation);
-        int[] erasedLocationArray = new int[erasedLocationList.size()];
-        for (int i = 0; i < erasedLocationList.size(); i++) {
-            erasedLocationArray[i] = erasedLocationList.get(i);
-        }
+        int[] erasedLocations = getErasedLocation(readChunks);
 
-        rawDecoder.decode(readBufs, outputBufs, erasedLocationArray);
+        rawDecoder.decode(readBuffs, outputBuffs, erasedLocations);
     }
 
     private ECChunk[] combineArrays(ECChunk[] array1, ECChunk[] array2) {
@@ -56,21 +44,18 @@ public class JavaRSDecoder implements  Decoder{
         return result;
     }
 
-    private List<Integer> getErasedLocation(final String annotation) {
-        List<Integer> erasedLocationArrayList = new ArrayList<Integer>();
-
-        for (int i = 0; i < annotation.length(); i += 2) {
-            char c = annotation.charAt(i);
-            if (c == '_') {
-                int erasedIndexInString = i / 2;
-                if (erasedIndexInString >= dataSize ) {
-                    erasedLocationArrayList.add(erasedIndexInString - dataSize);
-                } else {
-                    erasedLocationArrayList.add(erasedIndexInString + paritySize);
-                }
+    private int[] getErasedLocation(ECChunk[] chunks) {
+        List<Integer> erasedLocationList = new ArrayList<Integer>();
+        for (int i = 0; i < chunks.length; i += 2) {
+            if (chunks[i].isMissing()) {
+                erasedLocationList.add(i);
             }
         }
 
-        return erasedLocationArrayList;
+        int[] erasedLocationArray = new int[erasedLocationList.size()];
+        for (int i = 0; i < erasedLocationList.size(); i++) {
+            erasedLocationArray[i] = erasedLocationList.get(i);
+        }
+        return erasedLocationArray;
     }
 }

@@ -101,7 +101,6 @@ public class TestErasureCodecs {
 		
 		//decode
 		BlockGroup groupUseToRepairData = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
-		groupUseToRepairData.setAnnotation(generateAnnotation(erasedLocation));
 		ECChunk repairedData = decode(codec.createDecoder(), groupUseToRepairData);
 		ByteBuffer copy = message[erasedLocation];
 		assertTrue(copy.equals(repairedData.getChunkBuffer()));
@@ -168,7 +167,7 @@ public class TestErasureCodecs {
 		ECChunk[] parityChunks = getChunks(parityEcBlocks);
 		
 		ECChunk outputChunk = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
-		ec.decode(dataChunks, parityChunks, groupUseToRepairData.getAnnotation(), outputChunk);
+		ec.decode(dataChunks, parityChunks, outputChunk);
 		return outputChunk;
 	}
 
@@ -185,12 +184,4 @@ public class TestErasureCodecs {
 		return chunks;
 	}
 
-	private String generateAnnotation(int erasedLocation) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < erasedLocation; i++) {
-			sb.append("XX");
-		}
-		sb.append("__");
-		return sb.toString();
-	}
 }
