@@ -27,17 +27,6 @@ import org.apache.hadoop.hdfs.ec.grouper.RSBlockGrouper;
 public abstract class RSErasureCodec extends ErasureCodec {
 
   @Override
-  public void initWith(ECSchema schema) {
-	super.initWith(schema);
-    //XXX get data size and parity size from schema options
-    String dataSize = schema.getOptions().get("k");
-    schema.setDataBlocks(Integer.parseInt(dataSize));
-    String paritySize = schema.getOptions().get("m");
-    schema.setParityBlocks(Integer.parseInt(paritySize));
-
-  }
-
-  @Override
   public BlockGrouper createBlockGrouper() {
     BlockGrouper blockGrouper = new RSBlockGrouper();
     blockGrouper.initWith(getSchema());

@@ -42,6 +42,12 @@ public class ECChunk {
 		return isMissing;
 	}
 
+	public void fillZero() {
+		byte[] array = chunkBuffer.array();
+		Arrays.fill(array, (byte)0);
+		chunkBuffer = ByteBuffer.wrap(array);
+	}
+
 	@Override
 	public ECChunk clone() {
 		byte[] oldBytes = chunkBuffer.array();

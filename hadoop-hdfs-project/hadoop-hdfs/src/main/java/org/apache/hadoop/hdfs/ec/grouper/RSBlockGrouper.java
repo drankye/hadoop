@@ -45,13 +45,13 @@ public class RSBlockGrouper extends BlockGrouper {
 	  BlockGroup group = new BlockGroup();
 	  group.addSubGroup(subBlockGroup);
 
-	  group.setCodecName(getSchema().getCodecName());
+	  group.setSchemaName(getSchema().getSchemaName());
 	  return group;
   }
 
   @Override
   public boolean anyRecoverable(BlockGroup blockGroup) {
-	  //FIXME need to get erased index
+	  //TODO
 	  return true;
   }
 

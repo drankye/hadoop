@@ -25,10 +25,11 @@ public class JavaRSDecoder implements ErasureDecoder {
     @Override
     public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk[] outputChunks) {
         ECChunk[] readChunks = combineArrays(parityChunks, dataChunks);
+
+        int[] erasedLocations = getErasedLocationAndCleanUpDirtyData(readChunks);
+
         ByteBuffer[] readBuffs = TransformUtil.changeToByteBufferArray(readChunks);
         ByteBuffer[] outputBuffs = TransformUtil.changeToByteBufferArray(outputChunks);
-
-        int[] erasedLocations = getErasedLocation(readChunks);
 
         rawDecoder.decode(readBuffs, outputBuffs, erasedLocations);
     }
@@ -44,11 +45,12 @@ public class JavaRSDecoder implements ErasureDecoder {
         return result;
     }
 
-    private int[] getErasedLocation(ECChunk[] chunks) {
+    private int[] getErasedLocationAndCleanUpDirtyData(ECChunk[] chunks) {
         List<Integer> erasedLocationList = new ArrayList<Integer>();
         for (int i = 0; i < chunks.length; i += 2) {
             if (chunks[i].isMissing()) {
                 erasedLocationList.add(i);
+                chunks[i].fillZero();
             }
         }
 

@@ -32,7 +32,7 @@ import java.util.List;
 public class BlockGroup {
 
   private List<SubBlockGroup> subGroups = new ArrayList<SubBlockGroup>();
-  private String codecName;
+  private String schemaName;
 
   public List<SubBlockGroup> getSubGroups() {
     return subGroups;
@@ -42,11 +42,11 @@ public class BlockGroup {
     subGroups.add(subGroup);
   }
 
-  public String getCodecName() {
-    return codecName;
+  public String getSchemaName() {
+    return schemaName;
   }
 
-  public void setCodecName(String codecName) {
-    this.codecName = codecName;
+  public void setSchemaName(String schemaName) {
+    this.schemaName = schemaName;
   }
 }

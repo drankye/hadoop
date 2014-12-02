@@ -33,6 +33,12 @@ public class ECSchema {
     this.schemaName = schemaName;
     this.options = options;
     this.codecName = codec;
+
+    //XXX get data size and parity size
+    String dataSize = options.get("k");
+    this.dataBlocks = Integer.parseInt(dataSize);
+    String paritySize = options.get("m");
+    this.parityBlocks = Integer.parseInt(paritySize);
   }
 
   public String getSchemaName() {
