@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.ec.grouper.RSBlockGrouper;
 
