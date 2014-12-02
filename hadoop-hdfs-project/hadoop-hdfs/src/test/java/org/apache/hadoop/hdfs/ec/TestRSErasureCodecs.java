@@ -23,7 +23,6 @@ import static org.junit.Assert.assertTrue;
 
 public class TestRSErasureCodecs extends TestErasureCodecs {
 
-
     @Test
     public void testCodec() throws Exception {
         final int DATA_SIZE = 10;
