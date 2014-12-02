@@ -17,9 +17,10 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.ec.ECSchema;
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.Encoder;
+import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
+import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 
 /**
@@ -50,16 +51,20 @@ public abstract class ErasureCodec {
    * Create Erasure Encoder, to be called by ECWorker
    * @return
    */
-  public abstract Encoder createEncoder();
+  public abstract ErasureEncoder createEncoder();
 
   /**
    * Create Erasure Decoder, to be called by ECWorker
    * @return
    */
-  public abstract Decoder createDecoder();
+  public abstract ErasureDecoder createDecoder();
 
-
-
+  /**
+   * For ECManager
+   * @param schema
+   * @return
+   * @throws Exception
+   */
   public static ErasureCodec createErasureCodec(ECSchema schema) throws Exception {
     String codecClassName = schema.getSchemaClassName();
     Class codecClass = Class.forName(codecClassName);
@@ -68,4 +73,5 @@ public abstract class ErasureCodec {
 
     return codec;
   }
+
 }

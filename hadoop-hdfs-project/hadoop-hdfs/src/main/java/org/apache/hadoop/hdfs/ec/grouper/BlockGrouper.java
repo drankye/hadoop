@@ -36,6 +36,24 @@ public abstract class BlockGrouper {
   }
 
   /**
+   * Get required data blocks count in a BlockGroup,
+   * to be called by ECManager when calculating BlockGroup.
+   * @return
+   */
+  public int getDataBlocks() {
+    return schema.getDataBlocks();
+  }
+
+  /**
+   * Get required parity blocks count in a BlockGroup,
+   * to be called by ECManager when calculating BlockGroup.
+   * @return
+   */
+  public int getParityBlocks() {
+    return schema.getParityBlocks();
+  }
+
+  /**
    * Calculating and organizing BlockGroup, to be called by ECManager
    * @param dataBlocks Data blocks to compute parity blocks against
    * @param parityBlocks To be computed parity blocks

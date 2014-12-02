@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JavaRSDecoder implements  Decoder{
+public class JavaRSDecoder implements ErasureDecoder {
 
     private RawDecoder rawDecoder;
 

@@ -17,10 +17,9 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.Encoder;
+import org.apache.hadoop.hdfs.ec.coder.*;
+import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.IsaLRCDecoder;
-import org.apache.hadoop.hdfs.ec.coder.IsaLRCEncoder;
 
 /**
  * LRC codec implemented using ISA library
@@ -29,12 +28,12 @@ public class IsaLRCErasureCodec extends LRCErasureCodec {
 
 
   @Override
-  public Encoder createEncoder() {
+  public ErasureEncoder createEncoder() {
     return new IsaLRCEncoder();
   }
 
   @Override
-  public Decoder createDecoder() {
+  public ErasureDecoder createDecoder() {
     return new IsaLRCDecoder();
   }
 }

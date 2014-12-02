@@ -6,10 +6,8 @@ import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawEncoder;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-public class JavaRSEncoder implements  Encoder{
+public class JavaRSEncoder implements ErasureEncoder {
 
     private RawEncoder rawEncoder;
 

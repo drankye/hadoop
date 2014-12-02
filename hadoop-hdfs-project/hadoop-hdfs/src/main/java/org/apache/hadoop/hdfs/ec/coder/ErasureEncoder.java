@@ -4,7 +4,7 @@ import org.apache.hadoop.hdfs.ec.ECChunk;
 
 /**
  */
-public interface Encoder {
+public interface ErasureEncoder {
 
     public void encode(ECChunk[] dataChunks, ECChunk outputChunk);
 

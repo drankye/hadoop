@@ -17,10 +17,9 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.coder.Decoder;
-import org.apache.hadoop.hdfs.ec.coder.Encoder;
+import org.apache.hadoop.hdfs.ec.coder.*;
+import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.JerasureRSDecoder;
-import org.apache.hadoop.hdfs.ec.coder.JerasureRSEncoder;
 
 /**
  * Reed-Solomon codec with Jerasure library implemented coder
@@ -29,12 +28,12 @@ public class JerasureRSErasureCodec extends RSErasureCodec {
 
 
   @Override
-  public Encoder createEncoder() {
+  public ErasureEncoder createEncoder() {
     return new JerasureRSEncoder();
   }
 
   @Override
-  public Decoder createDecoder() {
+  public ErasureDecoder createDecoder() {
     return new JerasureRSDecoder();
   }
 }

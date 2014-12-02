@@ -2,7 +2,7 @@ package org.apache.hadoop.hdfs.ec.coder;
 
 import org.apache.hadoop.hdfs.ec.ECChunk;
 
-public class IsaRSDecoder implements  Decoder{
+public class IsaRSDecoder implements ErasureDecoder {
     @Override
     public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk outputChunk) {
         //TODO

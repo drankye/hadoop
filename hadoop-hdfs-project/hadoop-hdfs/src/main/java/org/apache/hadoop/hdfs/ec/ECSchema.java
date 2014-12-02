@@ -62,8 +62,7 @@ public class ECSchema {
   }
 
   /**
-   * Get required data blocks count in a BlockGroup,
-   * to be called by ECManager when calculating BlockGroup.
+   * Get required data blocks count in a BlockGroup
    * @return
    */
   public int getDataBlocks() {
@@ -71,8 +70,7 @@ public class ECSchema {
   }
 
   /**
-   * Get required parity blocks count in a BlockGroup,
-   * to be called by ECManager when calculating BlockGroup.
+   * Get required parity blocks count in a BlockGroup
    * @return
    */
   public int getParityBlocks() {

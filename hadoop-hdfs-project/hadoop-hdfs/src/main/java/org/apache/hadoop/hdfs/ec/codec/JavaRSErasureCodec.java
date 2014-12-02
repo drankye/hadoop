@@ -1,6 +1,5 @@
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.*;
 
 /**
@@ -9,12 +8,12 @@ import org.apache.hadoop.hdfs.ec.coder.*;
 public class JavaRSErasureCodec extends RSErasureCodec{
 
 	@Override
-	public Encoder createEncoder() {
+	public ErasureEncoder createEncoder() {
 		return new JavaRSEncoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
 	}
 
 	@Override
-	public Decoder createDecoder() {
+	public ErasureDecoder createDecoder() {
 		return new JavaRSDecoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
 	}
 }
