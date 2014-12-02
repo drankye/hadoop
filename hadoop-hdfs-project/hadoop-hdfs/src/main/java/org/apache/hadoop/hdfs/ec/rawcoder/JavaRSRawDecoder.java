@@ -1,7 +1,7 @@
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
-import org.apache.hadoop.hdfs.ec.rawcoder.util.JavaRSRawUtil;
+import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -21,7 +21,7 @@ public class JavaRSRawDecoder extends  AbstractRawDecoder{
     private void init() {
         assert (dataSize() + paritySize() < GF.getFieldSize());
         this.errSignature = new int[paritySize()];
-        this.primitivePower = JavaRSRawUtil.getPrimitivePower(dataSize(), paritySize());
+        this.primitivePower = RSUtil.getPrimitivePower(dataSize(), paritySize());
     }
 
     @Override

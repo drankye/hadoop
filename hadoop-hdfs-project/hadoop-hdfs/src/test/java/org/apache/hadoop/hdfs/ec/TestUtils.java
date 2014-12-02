@@ -11,15 +11,8 @@ import static org.junit.Assert.assertEquals;
 
 public class TestUtils {
 
-	public final static String TEST_DIR = new File(System.getProperty(
-			"test.build.data", "/tmp")).getAbsolutePath();
-
-	public final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs")
-			.getAbsolutePath();
-
-	public static ECSchema makeRSSchema(int dataSize, int paritySize,
-                                      String codecName, String codecClass) throws Exception{
-		PrintWriter out = new PrintWriter(new FileWriter(SCHEMA_FILE));
+	public static ECSchema makeRSSchema(String codecName, int dataSize, int paritySize, Configuration conf, String schemaFile) throws Exception{
+		PrintWriter out = new PrintWriter(new FileWriter(schemaFile));
 		out.println("<?xml version=\"1.0\"?>");
 		out.println("<schemas>");
 		out.println("  <schema name=\"RSSchema\">");
@@ -29,10 +22,6 @@ public class TestUtils {
 		out.println("  </schema>");
 		out.println("</schemas>");
 		out.close();
-
-		Configuration conf = new Configuration();
-		conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
-		conf.set("hadoop.hdfs.ec.erasurecodec.codec." + codecName, codecClass);
 
 		SchemaLoader schemaLoader = new SchemaLoader();
 		List<ECSchema> schemas = schemaLoader.loadSchema(conf);

@@ -25,6 +25,7 @@ import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.Decoder;
 import org.apache.hadoop.hdfs.ec.coder.Encoder;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
@@ -44,19 +45,21 @@ import java.util.Random;
 import static org.junit.Assert.assertTrue;
 
 public class TestErasureCodecs {
-	final Random RAND = new Random();
-	
 	private static final String TEST_DIR = new File(System.getProperty(
 			"test.build.data", "/tmp")).getAbsolutePath();
 	private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
 	private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
-  	private GaloisField GF = GaloisField.getInstance();
-	private int symbolSize = 0;
+	public final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs").getAbsolutePath();
+
+	private final Random RAND = new Random();
+	private GaloisField GF = GaloisField.getInstance();
+	private int symbolMax = 0;
+	private static  final  String EC_CONF_PREFIX = "hadoop.hdfs.ec.erasurecodec.codec.";
 
 	private Configuration conf;
 	private FileSystem fileSys;
 	private DataNode dataNode;
-	
+
 	private static final int BLOCK_SIZE = 1024;
 	private static final int CHUNK_SIZE = BLOCK_SIZE;
 	private static final int DATA_SIZE = 10;
@@ -66,10 +69,14 @@ public class TestErasureCodecs {
 
 	@Before
 	public void init() throws IOException {
-    symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
+    	int symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
+		symbolMax = (int) Math.pow(2, symbolSize);
+
+
 		int numDataNodes = 1;
 		conf = new HdfsConfiguration();
 		conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
+		conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
 		MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
 		cluster.waitActive();
 		fileSys = cluster.getFileSystem();
@@ -77,36 +84,47 @@ public class TestErasureCodecs {
 	}
 	
   @Test
-  public void testRSCodec() throws Exception {
-    ECSchema schema = TestUtils.makeRSSchema(DATA_SIZE, PARITY_SIZE, "RS-Java",
-        "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");
-    testRSCodec(schema);
+  public void testCodec() throws Exception {
+	  conf.set(EC_CONF_PREFIX + "RS-Java", "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec");
+	  ECSchema schema = TestUtils.makeRSSchema("RS-Java", DATA_SIZE, PARITY_SIZE, conf, SCHEMA_FILE);
+	  testCodec(schema);
   }
 
-  //TODO: to be refactored as common codec testing, not just for RS codec
-  private void testRSCodec(ECSchema schema) throws Exception {
-		ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
-		int erasedLocation = RAND.nextInt(DATA_SIZE);
-		
-		//write wrong message and correct parity to blocks
-		List<LocatedBlock> dataBlocks = write(DATA_SIZE, symbolSize, erasedLocation);
-		assertTrue(dataBlocks.size() == DATA_SIZE);
-		List<LocatedBlock> parityBlocks = encode(codec.createEncoder());
-		assertTrue(parityBlocks.size() == PARITY_SIZE);
-		
-		//make block group
-		List<ExtendedBlockId> dataBlockIds = getBlockIds(dataBlocks);
-		List<ExtendedBlockId> parityBlockIds = getBlockIds(parityBlocks);
-		BlockGroup blockGroup = codec.createBlockGrouper().makeBlockGroup(dataBlockIds, parityBlockIds);
-		
-		//decode
-		BlockGroup groupUseToRepairData = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
-		ECChunk repairedData = decode(codec.createDecoder(), groupUseToRepairData);
-		ByteBuffer copy = message[erasedLocation];
-		assertTrue(copy.equals(repairedData.getChunkBuffer()));
+  private void testCodec(ECSchema schema) throws Exception {
+	  ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
+	  int erasedLocation = RAND.nextInt(DATA_SIZE);
+
+	  List<LocatedBlock> dataBlocks = generateMessageAndWriteToDisk(DATA_SIZE, erasedLocation);
+	  assertTrue(dataBlocks.size() == DATA_SIZE);
+
+	  List<LocatedBlock> parityBlocks = encodeAndWriteParityToDisk(codec.createEncoder());
+	  assertTrue(parityBlocks.size() == PARITY_SIZE);
+
+	  //make block group
+	  List<ExtendedBlockId> dataBlockIds = getBlockIds(dataBlocks);
+	  List<ExtendedBlockId> parityBlockIds = getBlockIds(parityBlocks);
+	  BlockGroup blockGroup = codec.createBlockGrouper().makeBlockGroup(dataBlockIds, parityBlockIds);
+
+	  //decode
+	  BlockGrouper grouper = codec.createBlockGrouper();
+	  boolean canRecovery = grouper.anyRecoverable(blockGroup);
+	  if (!canRecovery) {
+		  assertTrue(false);
+	  }
+	  BlockGroup groupUseToRecovery = codec.createBlockGrouper().makeRecoverableGroup(blockGroup);
+	  String codecClass = conf.get(EC_CONF_PREFIX + groupUseToRecovery.getCodecName());
+	  assertTrue(codecClass.equals(codec.getClass().getName()));
+	  //TODO here can not get chunk size so.....we need schema!!
+
+	  ECChunk repairedData = decode(codec.createDecoder(), groupUseToRecovery);
+	  ByteBuffer copy = message[erasedLocation];
+	  assertTrue(copy.equals(repairedData.getChunkBuffer()));
 	}
 
-	private List<LocatedBlock> write(int blockCount, int symbolMax, int erasedLocation) throws IOException {
+	/*for test:write wrong message to disk.
+	  It means that the data of @erasedLocation have been erased.
+	 */
+	private List<LocatedBlock> generateMessageAndWriteToDisk(int blockCount, int erasedLocation) throws IOException {
 		//create
 		DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short)1, 0);
 		//write
@@ -128,13 +146,9 @@ public class TestErasureCodecs {
 		return blocks;
 	}
 	
-	private List<LocatedBlock> encode(Encoder ec) throws IllegalArgumentException, IOException {
-		//encode
-
-
+	private List<LocatedBlock> encodeAndWriteParityToDisk(Encoder ec) throws IllegalArgumentException, IOException {
 		ECChunk[] messageChunks = new ECChunk[DATA_SIZE];
 		for (int i = 0; i < DATA_SIZE; i++) {
-			//ByteBuffer[] chunkByteArray = Arrays.copyOfRange(message, i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
 			messageChunks[i] = new ECChunk(message[i]);
 		}
 		ECChunk[] parityChunks = new ECChunk[PARITY_SIZE];
