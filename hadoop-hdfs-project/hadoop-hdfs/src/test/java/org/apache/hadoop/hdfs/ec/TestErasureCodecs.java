@@ -22,20 +22,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
-import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
-import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
-import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.io.IOUtils;
 import org.junit.Before;
-import org.junit.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -60,7 +53,7 @@ public abstract class TestErasureCodecs {
   private DataNode dataNode;
 
   public static final String EC_CONF_PREFIX = "hadoop.hdfs.ec.erasurecodec.codec.";
-  public static final int BLOCK_SIZE = 1024;
+  public static final int BLOCK_SIZE = 512;
   public static final int CHUNK_SIZE = BLOCK_SIZE;
 
   private ByteBuffer[] message;
@@ -87,8 +80,6 @@ public abstract class TestErasureCodecs {
   protected DataNode getDataNode() {
     return dataNode;
   }
-
-
 
   public void testCodec(ECSchema schema) throws Exception {
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
@@ -124,7 +115,7 @@ public abstract class TestErasureCodecs {
     /**
      * Below steps are to be done by DataNode/ECWorker
      */
-    ECChunk outputChunk = decode(schema, blockGroup);
+    ECChunk outputChunk = decode(schema, groupUseToRecovery);
 
     /**
      * Post check and see if it's right back
@@ -136,6 +127,7 @@ public abstract class TestErasureCodecs {
     //create
     DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short)1, 0);
     //write
+    message = new ByteBuffer[numDataBlocks];
     for (int i = 0; i < numDataBlocks; i++) {
       byte[] byteArray = new byte[BLOCK_SIZE];
       for (int j = 0; j < BLOCK_SIZE; j++) {

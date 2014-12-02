@@ -1,12 +1,10 @@
 package org.apache.hadoop.hdfs.ec;
 
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
+import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.io.IOUtils;
 import org.junit.Test;
@@ -17,7 +15,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
@@ -35,23 +32,23 @@ public class TestRSErasureCodecs extends TestErasureCodecs {
 
     @Override
     protected void encode(ECSchema schema, BlockGroup blockGroup) throws Exception {
-        String schemaName = blockGroup.getSchemaName();
         assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
-
-        ECBlock[] dataEcBlocks = blockGroup.getSubGroups().get(0).getDataBlocks();
-        ECChunk[] dataChunks = getChunks(dataEcBlocks);
-        //FIXME
-        ECChunk[] parityChunks = new ECChunk[schema.getParityBlocks()];
-        for (int i = 0; i < parityChunks.length; i++) {
-            parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
-        }
 
         ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
         ErasureEncoder encoder = codec.createEncoder();
+        BlockGrouper grouper = codec.createBlockGrouper();
+        
+        ECBlock[] dataEcBlocks = blockGroup.getSubGroups().get(0).getDataBlocks();
+        ECChunk[] dataChunks = getChunks(dataEcBlocks);
+        ECChunk[] parityChunks = new ECChunk[grouper.getParityBlocks()];
+        for (int i = 0; i < parityChunks.length; i++) {
+            parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
+        }
+        
         encoder.encode(dataChunks, parityChunks);
 
         //write
-        ECBlock[] parityBlocks = blockGroup.getSubGroups().get(0).getDataBlocks();
+        ECBlock[] parityBlocks = blockGroup.getSubGroups().get(0).getParityBlocks();
         for (int i = 0; i < parityChunks.length; i++) {
             ECBlock ecBlock = parityBlocks[i];
             File blockFile = getBlockFile(ecBlock);
@@ -84,7 +81,7 @@ public class TestRSErasureCodecs extends TestErasureCodecs {
             File blockFile = getBlockFile(ecBlock);
             byte[] buffer = new byte[BLOCK_SIZE];
             IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
-            chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
+            chunks[i] = new ECChunk(ByteBuffer.wrap(buffer), ecBlock.isMissing());
         }
         return chunks;
     }

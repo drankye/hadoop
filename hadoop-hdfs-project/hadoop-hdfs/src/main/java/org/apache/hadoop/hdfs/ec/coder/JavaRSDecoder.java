@@ -47,7 +47,7 @@ public class JavaRSDecoder implements ErasureDecoder {
 
     private int[] getErasedLocationAndCleanUpDirtyData(ECChunk[] chunks) {
         List<Integer> erasedLocationList = new ArrayList<Integer>();
-        for (int i = 0; i < chunks.length; i += 2) {
+        for (int i = 0; i < chunks.length; i++) {
             if (chunks[i].isMissing()) {
                 erasedLocationList.add(i);
                 chunks[i].fillZero();
