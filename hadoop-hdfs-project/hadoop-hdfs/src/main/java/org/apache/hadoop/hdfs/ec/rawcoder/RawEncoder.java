@@ -8,10 +8,6 @@ import java.nio.ByteBuffer;
  */
 public interface RawEncoder {
 
-    /**
-     * This method would be overridden in the subclass,
-     * so that the subclass will have its own encodeBulk behavior.
-     */
     public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 
     /**

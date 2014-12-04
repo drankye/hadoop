@@ -1,15 +1,15 @@
 package org.apache.hadoop.hdfs.ec.coder;
 
-import org.apache.hadoop.hdfs.ec.ECChunk;
+import org.apache.hadoop.hdfs.ec.BlockGroup;
 
-public class IsaLRCDecoder implements ErasureDecoder {
-    @Override
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk outputChunk) {
-        //TODO
-    }
+public class IsaLRCDecoder extends AbstractErasureDecoder {
 
-    @Override
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk[] outputChunks) {
-        //TODO
-    }
+  public IsaLRCDecoder(int dataSize, int paritySize, int chunkSize) {
+    super(null);
+  }
+
+  @Override
+  public void decode(BlockGroup blockGroup) {
+
+  }
 }

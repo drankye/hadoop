@@ -1,10 +1,9 @@
 package org.apache.hadoop.hdfs.ec.coder;
 
-import org.apache.hadoop.hdfs.ec.ECChunk;
+import org.apache.hadoop.hdfs.ec.BlockGroup;
 
 public interface ErasureDecoder {
 
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk outputChunk);
+  public void decode(BlockGroup blockGroup);
 
-    public void decode(ECChunk[] dataChunks, ECChunk[] parityChunks, ECChunk[] outputChunks);
 }
