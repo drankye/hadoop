@@ -19,7 +19,7 @@ package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public class IsaRSRawEncoder extends  AbstractRawEncoder{
+public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
 
   public IsaRSRawEncoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);

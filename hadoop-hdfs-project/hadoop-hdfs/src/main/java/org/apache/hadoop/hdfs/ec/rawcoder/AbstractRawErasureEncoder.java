@@ -19,9 +19,9 @@ package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public abstract class AbstractRawEncoder extends AbstractRawCoder implements ErasureRawEncoder {
+public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder implements RawErasureEncoder {
 
-  public AbstractRawEncoder(int dataSize, int paritySize, int chunkSize) {
+  public AbstractRawErasureEncoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
   }
 

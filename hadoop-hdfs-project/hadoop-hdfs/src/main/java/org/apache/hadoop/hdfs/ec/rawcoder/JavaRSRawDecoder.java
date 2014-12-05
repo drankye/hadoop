@@ -23,7 +23,7 @@ import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-public class JavaRSRawDecoder extends AbstractRawDecoder {
+public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
   private GaloisField GF = GaloisField.getInstance();
 
   private int PRIMITIVE_ROOT = 2;

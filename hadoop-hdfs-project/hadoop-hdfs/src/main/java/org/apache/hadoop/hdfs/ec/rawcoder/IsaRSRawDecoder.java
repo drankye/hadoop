@@ -19,7 +19,7 @@ package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public class IsaRSRawDecoder extends  AbstractRawDecoder{
+public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
   static {
     System.loadLibrary("isajni");
   }

@@ -17,38 +17,22 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
-public abstract class AbstractRawCoder {
+import java.nio.ByteBuffer;
 
-  private int dataSize;
-  private int paritySize;
-  private int chunkSize;
+/**
+ * Raw Erasure Decoder that corresponds to an erasure code algorithm
+ */
+public interface RawErasureDecoder {
 
-  public AbstractRawCoder(int dataSize, int paritySize, int chunkSize) {
-    this.dataSize = dataSize;
-    this.paritySize = paritySize;
-    this.chunkSize = chunkSize;
-  }
+  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
   /**
-   * The number of elements in the message.
+   * The number of data elements in the code.
    */
-  public int dataSize() {
-    return dataSize;
-  }
+  public int dataSize();
 
   /**
-   * The number of elements in the code.
+   * The number of parity elements in the code.
    */
-  public int paritySize() {
-    return paritySize;
-  }
-
-  /**
-   * Chunk buffer size for an encode()/decode() call
-   *
-   * @return
-   */
-  public int chunkSize() {
-    return chunkSize;
-  }
+  public int paritySize();
 }

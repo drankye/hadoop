@@ -17,14 +17,13 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
-import org.apache.hadoop.hdfs.ec.coder.JavaRSEncoder;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-public class JavaRSRawEncoder extends AbstractRawEncoder {
+public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
   private GaloisField GF = GaloisField.getInstance();
   private int[] generatingPolynomial;
 

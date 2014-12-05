@@ -19,22 +19,13 @@ package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-/**
- * Raw Erasure Encoder that corresponds to an erasure code algorithm
- */
-public interface ErasureRawEncoder {
+public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder implements RawErasureDecoder {
 
-  public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
+  public AbstractRawErasureDecoder(int dataSize, int paritySize, int chunkSize) {
+    super(dataSize, paritySize, chunkSize);
+  }
 
-  /**
-   * The number of data elements in the code.
-   */
-  public int dataSize();
-
-  /**
-   * The number of parity elements in the code.
-   */
-  public int paritySize();
-
+  @Override
+  public abstract void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
 }

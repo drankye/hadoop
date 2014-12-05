@@ -17,17 +17,17 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
-import org.apache.hadoop.hdfs.ec.rawcoder.ErasureRawDecoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureDecoder;
 
 public abstract class AbstractErasureDecoder extends AbstractErasureCoder implements ErasureDecoder {
 
-  private ErasureRawDecoder rawDecoder;
+  private RawErasureDecoder rawDecoder;
 
-  public AbstractErasureDecoder(ErasureRawDecoder rawDecoder) {
+  public AbstractErasureDecoder(RawErasureDecoder rawDecoder) {
     this.rawDecoder = rawDecoder;
   }
 
-  protected ErasureRawDecoder getRawDecoder() {
+  protected RawErasureDecoder getRawDecoder() {
     return rawDecoder;
   }
 }
