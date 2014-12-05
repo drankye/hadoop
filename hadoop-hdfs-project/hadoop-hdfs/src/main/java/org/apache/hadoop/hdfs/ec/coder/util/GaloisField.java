@@ -22,8 +22,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * Ported from HDFS-RAID
+ *
  * Implementation of Galois field arithmetics with 2^p elements. The input must
  * be unsigned integers.
+ *
  */
 public class GaloisField {
 
@@ -98,38 +101,6 @@ public class GaloisField {
 
 			System.out.println("dividend[" + i + "]==" + dividend[i]);
 		}
-		/*
-		 * int[] primitivePower = new int[10]; for (int i = 0; i < 10; i++) {
-		 * primitivePower[i] = gf.power(2, i);
-		 * System.out.println("primitivePower["+i+"]=="+primitivePower[i]); }
-		 */
-		/*
-		 * int[] gen = {1}; int[] poly = new int[2]; for (int i = 0; i < 3; i++)
-		 * { poly[0] = i; poly[1] = 1; gen = gf.multiply(gen, poly); for(int
-		 * j=0;j<gen.length;j++){ System.out.println("gen["+j+"]=="+gen[j]); } }
-		 * for(int i=0;i<gen.length;i++){
-		 * System.out.println("gen["+i+"]="+gen[i]); }
-		 */
-		/*
-		 * int[] pow = gf.powTable; for(int i=0;i<pow.length;i++){
-		 * System.out.println("powTable["+i+"]="+pow[i]); }
-		 */
-		/*
-		 * System.out.println((int) Math.round(Math.log(256) / Math.log(2)));
-		 * int[] log = gf.logTable;
-		 */
-		/*
-		 * for(int j=0;j<log.length;j++){
-		 * System.out.println("logTable["+j+"]="+log[j]); }
-		 */
-		/*
-		 * for(int m=0;m<gf.mulTable.length;m++){ for(int
-		 * n=0;n<gf.mulTable[m].length;n++){
-		 * System.out.println("mulTable["+m+"]["+n+"]="+gf.mulTable[m][n]); } }
-		 * for(int m=0;m<gf.divTable.length;m++){ for(int
-		 * n=0;n<gf.divTable[m].length;n++){
-		 * System.out.println("divTable["+m+"]["+n+"]="+gf.divTable[m][n]); } }
-		 */
 	}
 
 	/**

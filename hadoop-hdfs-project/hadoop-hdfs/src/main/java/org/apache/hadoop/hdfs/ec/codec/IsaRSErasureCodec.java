@@ -29,11 +29,11 @@ public class IsaRSErasureCodec extends RSErasureCodec {
 
   @Override
   public ErasureEncoder createEncoder() {
-    return new IsaRSEncoder();
+    return new IsaRSEncoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
   }
 
   @Override
   public ErasureDecoder createDecoder() {
-    return new IsaRSDecoder();
+    return new IsaRSDecoder(getSchema().getDataBlocks(), getSchema().getParityBlocks(), getSchema().getChunkSize());
   }
 }

@@ -21,7 +21,6 @@ import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.SubBlockGroup;
-import org.apache.hadoop.hdfs.ec.coder.util.TransformUtil;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
 
 import java.nio.ByteBuffer;
@@ -50,8 +49,8 @@ public class JavaRSEncoder extends AbstractErasureEncoder {
     }
 
     private void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
-        ByteBuffer[] dataByteBuffers = TransformUtil.changeToByteBufferArray(dataChunks);
-        ByteBuffer[] outputByteBuffers = TransformUtil.changeToByteBufferArray(outputChunks);
+        ByteBuffer[] dataByteBuffers = convert(dataChunks);
+        ByteBuffer[] outputByteBuffers = convert(outputChunks);
 
         getRawEncoder().encode(dataByteBuffers, outputByteBuffers);
     }

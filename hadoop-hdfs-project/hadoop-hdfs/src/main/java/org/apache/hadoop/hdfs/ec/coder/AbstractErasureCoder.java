@@ -15,24 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.rawcoder;
+package org.apache.hadoop.hdfs.ec.coder;
+
+import org.apache.hadoop.hdfs.ec.ECChunk;
 
 import java.nio.ByteBuffer;
 
-/**
- * Raw Erasure Decoder that corresponds to an erasure code algorithm
- */
-public interface RawDecoder {
+public abstract class AbstractErasureCoder {
 
-  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
+  private ErasureCoderCallback callback;
 
-  /**
-   * The number of data elements in the code.
-   */
-  public int dataSize();
+  protected ErasureCoderCallback getCallback() {
+    return callback;
+  }
 
-  /**
-   * The number of parity elements in the code.
-   */
-  public int paritySize();
+  public void setCallback(ErasureCoderCallback callback) {
+    this.callback = callback;
+  }
+
+  protected ByteBuffer[] convert(ECChunk[] chunks) {
+    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
+
+    for (int i = 0; i < chunks.length; i++) {
+      buffers[i] = chunks[i].getChunkBuffer();
+    }
+
+    return buffers;
+  }
 }

@@ -17,26 +17,17 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
-import org.apache.hadoop.hdfs.ec.rawcoder.RawDecoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.ErasureRawDecoder;
 
-public abstract class AbstractErasureDecoder implements ErasureDecoder {
+public abstract class AbstractErasureDecoder extends AbstractErasureCoder implements ErasureDecoder {
 
-  private RawDecoder rawDecoder;
-  private ErasureCoderCallback callback;
+  private ErasureRawDecoder rawDecoder;
 
-  public AbstractErasureDecoder(RawDecoder rawDecoder) {
+  public AbstractErasureDecoder(ErasureRawDecoder rawDecoder) {
     this.rawDecoder = rawDecoder;
   }
 
-  protected RawDecoder getRawDecoder() {
+  protected ErasureRawDecoder getRawDecoder() {
     return rawDecoder;
-  }
-
-  protected ErasureCoderCallback getCallback() {
-    return callback;
-  }
-
-  public void setCallback(ErasureCoderCallback callback) {
-    this.callback = callback;
   }
 }

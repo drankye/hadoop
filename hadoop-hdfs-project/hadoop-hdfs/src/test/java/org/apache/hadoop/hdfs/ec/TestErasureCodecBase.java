@@ -228,6 +228,10 @@ public abstract class TestErasureCodecBase {
     @Override
     public void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
       try {
+        /**
+         * For simple, we prepare for and load all the chunks at this phase.
+         * Actually chunks should be read one by one only when needed while encoding/decoding.
+         */
         inputChunks = new ECChunk[1][];
         inputChunks[0] = getChunks(inputBlocks);
         outputChunks = new ECChunk[1][];
@@ -239,7 +243,7 @@ public abstract class TestErasureCodecBase {
 
     @Override
     public boolean hasNextInputs() {
-      return readInputIndex >= inputChunks.length;
+      return readInputIndex < inputChunks.length;
     }
 
     @Override
@@ -258,7 +262,10 @@ public abstract class TestErasureCodecBase {
 
     @Override
     public void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
-      //FIXME write every chunks(here a chunks is a block)
+      /**
+       * For simple, a block has only one chunk. Actually a block can contain
+       * multiple chunks.
+       */
       try {
         for (int i = 0; i < outputChunks[0].length; i++) {
           ECBlock ecBlock = outputBlocks[i];

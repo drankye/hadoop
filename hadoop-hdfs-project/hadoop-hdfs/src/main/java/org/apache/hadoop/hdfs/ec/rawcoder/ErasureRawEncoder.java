@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 /**
  * Raw Erasure Encoder that corresponds to an erasure code algorithm
  */
-public interface RawEncoder {
+public interface ErasureRawEncoder {
 
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 

@@ -18,10 +18,10 @@
 package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.ErasureRawDecoder;
+import org.apache.hadoop.hdfs.ec.rawcoder.ErasureRawEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawDecoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.RawDecoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.RawEncoder;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,8 +46,8 @@ public class TestRawErasureCodes {
 		int dataSize = 10;
 		int paritySize = 4;
 
-	  RawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
-	  RawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
+	  ErasureRawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
+	  ErasureRawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
@@ -121,8 +121,8 @@ public class TestRawErasureCodes {
 	}
 
 	private void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		RawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
-		RawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
+		ErasureRawEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
+		ErasureRawDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];

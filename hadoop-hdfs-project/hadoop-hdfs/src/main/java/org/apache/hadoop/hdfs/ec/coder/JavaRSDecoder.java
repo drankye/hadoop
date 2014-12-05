@@ -21,7 +21,6 @@ import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECChunk;
 import org.apache.hadoop.hdfs.ec.SubBlockGroup;
-import org.apache.hadoop.hdfs.ec.coder.util.TransformUtil;
 import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawDecoder;
 
 import java.nio.ByteBuffer;
@@ -44,9 +43,9 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
 
     while (getCallback().hasNextInputs()) {
       ECChunk[] dataChunks = getCallback().getNextInputChunks(readBlocks);
-      ByteBuffer[] readBuffs = TransformUtil.changeToByteBufferArray(dataChunks);
+      ByteBuffer[] readBuffs = convert(dataChunks);
       ECChunk[] outputChunks = getCallback().getNextOutputChunks(outputBlocks);
-      ByteBuffer[] outputBuffs = TransformUtil.changeToByteBufferArray(outputChunks);
+      ByteBuffer[] outputBuffs = convert(outputChunks);
 
       getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
     }

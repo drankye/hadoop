@@ -15,24 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.ec.codec;
+package org.apache.hadoop.hdfs.ec.rawcoder;
 
-import org.apache.hadoop.hdfs.ec.coder.*;
-import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
+import java.nio.ByteBuffer;
 
 /**
- * Reed-Solomon codec with Jerasure library implemented coder
+ * Raw Erasure Decoder that corresponds to an erasure code algorithm
  */
-public class JerasureRSErasureCodec extends RSErasureCodec {
+public interface ErasureRawDecoder {
 
+  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
-  @Override
-  public ErasureEncoder createEncoder() {
-    return new JerasureRSEncoder();
-  }
+  /**
+   * The number of data elements in the code.
+   */
+  public int dataSize();
 
-  @Override
-  public ErasureDecoder createDecoder() {
-    return new JerasureRSDecoder();
-  }
+  /**
+   * The number of parity elements in the code.
+   */
+  public int paritySize();
 }

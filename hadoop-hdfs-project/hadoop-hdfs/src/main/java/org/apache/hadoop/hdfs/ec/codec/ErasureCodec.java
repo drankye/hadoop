@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.ec.ECSchema;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
