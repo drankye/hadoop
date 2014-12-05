@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
 import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
@@ -40,6 +41,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -126,16 +128,16 @@ public abstract class TestErasureCodecBase {
     /**
      * Below steps are to be done by DataNode/ECWorker
      */
-    ECChunk outputChunk = decode(schema, groupUsedToRecovery);
+    decode(schema, groupUsedToRecovery);
 
     /**
      * Post check and see if it's right back
      */
-    verifyData(erasedLocation, outputChunk);
+    verifyData(erasedLocation, groupUsedToRecovery);
   }
 
   private List<ExtendedBlockId> prepareDataBlocks(int numDataBlocks) throws IOException {
-    DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short)1, 0);
+    DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short) 1, 0);
     message = new ByteBuffer[numDataBlocks];
     for (int i = 0; i < numDataBlocks; i++) {
       byte[] byteArray = new byte[BLOCK_SIZE];
@@ -152,7 +154,7 @@ public abstract class TestErasureCodecBase {
   }
 
   private List<ExtendedBlockId> prepareParityBlocks(int numParityBlocks) throws IOException {
-    DFSTestUtil.createFile(fileSys, new Path(PARITY_FILE), numParityBlocks * BLOCK_SIZE, (short)1, 0);
+    DFSTestUtil.createFile(fileSys, new Path(PARITY_FILE), numParityBlocks * BLOCK_SIZE, (short) 1, 0);
     List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(PARITY_FILE));
     assertTrue(numParityBlocks == blocks.size());
     return getBlockIds(blocks);
@@ -166,14 +168,22 @@ public abstract class TestErasureCodecBase {
     return ids;
   }
 
-  private void verifyData(int erasedLocation, ECChunk outputChunk) {
-    ByteBuffer copy = message[erasedLocation];
-    assertTrue(copy.equals(outputChunk.getChunkBuffer()));
+  private void verifyData(int erasedLocation, BlockGroup blockGroup) throws IOException {
+    byte[] copy = message[erasedLocation].array();
+
+    SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
+    ECBlock recoveryBlock = subBlockGroup.getDataBlocks()[erasedLocation];
+    File file = getBlockFile(recoveryBlock);
+    byte[] buffer = new byte[BLOCK_SIZE];
+    IOUtils.readFully(new FileInputStream(file), buffer, 0, CHUNK_SIZE);
+
+    assertTrue(Arrays.equals(copy, buffer));
   }
 
   /**
    * I'm ECWorker, now do encoding
    * ECWorker can get schema from namenode by schema name
+   *
    * @param schema
    */
   protected void encode(ECSchema schema, BlockGroup blockGroup) throws Exception {
@@ -183,53 +193,101 @@ public abstract class TestErasureCodecBase {
     ErasureEncoder encoder = codec.createEncoder();
     BlockGrouper grouper = codec.createBlockGrouper();
 
-    ECBlock[] dataEcBlocks = blockGroup.getSubGroups().get(0).getDataBlocks();
-    ECChunk[] dataChunks = getChunks(dataEcBlocks);
-    ECChunk[] parityChunks = new ECChunk[grouper.getParityBlocks()];
-    for (int i = 0; i < parityChunks.length; i++) {
-      parityChunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
-    }
-
-    encoder.encode(dataChunks, parityChunks);
-
-    //write
-    ECBlock[] parityBlocks = blockGroup.getSubGroups().get(0).getParityBlocks();
-    for (int i = 0; i < parityChunks.length; i++) {
-      ECBlock ecBlock = parityBlocks[i];
-      File blockFile = getBlockFile(ecBlock);
-      ByteBuffer byteBuffer = parityChunks[i].getChunkBuffer();
-
-      RandomAccessFile raf = new RandomAccessFile(blockFile, "rw");
-      FileChannel fc = raf.getChannel();
-      IOUtils.writeFully(fc, byteBuffer);
-    }
+    ErasureCoderCallback encodeCallback = new CallbackForTest();
+    encoder.setCallback(encodeCallback);
+    encoder.encode(blockGroup);
   }
 
   /**
    * I'm ECWorker, now do decoding
+   *
    * @param schema
    */
-  protected ECChunk decode(ECSchema schema, BlockGroup blockGroup) throws Exception {
-    ECBlock[] dataEcBlocks = blockGroup.getSubGroups().get(0).getDataBlocks();
-    ECBlock[] parityEcBlocks = blockGroup.getSubGroups().get(0).getParityBlocks();
-    ECChunk[] dataChunks = getChunks(dataEcBlocks);
-    ECChunk[] parityChunks = getChunks(parityEcBlocks);
-    ECChunk outputChunk = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
+  protected void decode(ECSchema schema, BlockGroup blockGroup) throws Exception {
+    assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     ErasureDecoder decoder = codec.createDecoder();
-    decoder.decode(dataChunks, parityChunks, outputChunk);
-    return outputChunk;
+    decoder.setCallback(new CallbackForTest());
+    decoder.decode(blockGroup);
+  }
+
+  protected ECSchema loadSchema(String schemaName) throws Exception {
+    SchemaLoader schemaLoader = new SchemaLoader();
+    List<ECSchema> schemas = schemaLoader.loadSchema(conf);
+    assertEquals(1, schemas.size());
+
+    return schemas.get(0);
+  }
+
+  private class CallbackForTest implements ErasureCoderCallback {
+    private ECChunk[][] inputChunks;
+    private ECChunk[][] outputChunks;
+    private int readInputIndex;
+    private int readOutputIndex;
+
+    @Override
+    public void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+      try {
+        inputChunks = new ECChunk[1][];
+        inputChunks[0] = getChunks(inputBlocks);
+        outputChunks = new ECChunk[1][];
+        outputChunks[0] = getChunks(outputBlocks);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    @Override
+    public boolean hasNextInputs() {
+      return readInputIndex >= inputChunks.length;
+    }
+
+    @Override
+    public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
+      ECChunk[] readInputChunks = inputChunks[readInputIndex];
+      readInputIndex++;
+      return readInputChunks;
+    }
+
+    @Override
+    public ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
+      ECChunk[] readOutputChunks = outputChunks[readOutputIndex];
+      readOutputIndex++;
+      return readOutputChunks;
+    }
+
+    @Override
+    public void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+      //FIXME write every chunks(here a chunks is a block)
+      try {
+        for (int i = 0; i < outputChunks[0].length; i++) {
+          ECBlock ecBlock = outputBlocks[i];
+          File blockFile = getBlockFile(ecBlock);
+          ByteBuffer byteBuffer = outputChunks[0][i].getChunkBuffer();
+
+          RandomAccessFile raf = new RandomAccessFile(blockFile, "rw");
+          FileChannel fc = raf.getChannel();
+          IOUtils.writeFully(fc, byteBuffer);
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   private ECChunk[] getChunks(ECBlock[] dataEcBlocks) throws IOException {
     ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
     for (int i = 0; i < dataEcBlocks.length; i++) {
       ECBlock ecBlock = dataEcBlocks[i];
-      File blockFile = getBlockFile(ecBlock);
-      byte[] buffer = new byte[BLOCK_SIZE];
-      IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
-      chunks[i] = new ECChunk(ByteBuffer.wrap(buffer), ecBlock.isMissing());
+      if (ecBlock.isMissing()) {
+        chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]), true);
+      } else {
+        File blockFile = getBlockFile(ecBlock);
+        byte[] buffer = new byte[BLOCK_SIZE];
+        IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
+        chunks[i] = new ECChunk(ByteBuffer.wrap(buffer), ecBlock.isMissing());
+      }
     }
     return chunks;
   }
@@ -238,13 +296,5 @@ public abstract class TestErasureCodecBase {
     Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(ecBlock.getBlockPoolId(), ecBlock.getBlockId());
     File blockFile = DataNodeTestUtils.getBlockFile(dataNode, ecBlock.getBlockPoolId(), block);
     return blockFile;
-  }
-
-  protected ECSchema loadSchema(String schemaName) throws Exception{
-    SchemaLoader schemaLoader = new SchemaLoader();
-    List<ECSchema> schemas = schemaLoader.loadSchema(conf);
-    assertEquals(1, schemas.size());
-
-    return schemas.get(0);
   }
 }

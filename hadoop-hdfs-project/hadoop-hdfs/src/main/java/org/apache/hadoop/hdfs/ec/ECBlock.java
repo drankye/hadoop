@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
+import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 
 public class ECBlock {
 
@@ -33,9 +34,13 @@ public class ECBlock {
   public long getBlockId() {
 	  return blockId.getBlockId();
   }
-  
+
   public String getBlockPoolId() {
 	  return blockId.getBlockPoolId();
+  }
+
+  public ExtendedBlockId getExtendedBlockId() {
+    return blockId;
   }
 
   public void setMissing(boolean isMissing) {
@@ -49,4 +54,5 @@ public class ECBlock {
   public boolean isMissing() {
     return isMissing;
   }
+
 }
