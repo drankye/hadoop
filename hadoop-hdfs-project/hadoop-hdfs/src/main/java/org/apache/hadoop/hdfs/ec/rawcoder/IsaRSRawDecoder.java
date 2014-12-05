@@ -19,12 +19,12 @@ package org.apache.hadoop.hdfs.ec.rawcoder;
 
 import java.nio.ByteBuffer;
 
-public class IsaReedSolomonRawDecoder extends  AbstractRawDecoder{
+public class IsaRSRawDecoder extends  AbstractRawDecoder{
   static {
     System.loadLibrary("isajni");
   }
 
-  public IsaReedSolomonRawDecoder(int dataSize, int paritySize, int chunkSize) {
+  public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
     jni_init(dataSize, paritySize);
   }

@@ -7,10 +7,6 @@ import java.nio.ByteBuffer;
  */
 public interface RawDecoder {
 
-    /**
-     * This method would be overridden in the subclass,
-     * so that the subclass will have its own decodeBulk behavior.
-     */
     public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
     /**

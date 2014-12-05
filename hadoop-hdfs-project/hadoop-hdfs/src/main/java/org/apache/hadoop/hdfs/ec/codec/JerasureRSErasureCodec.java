@@ -19,7 +19,6 @@ package org.apache.hadoop.hdfs.ec.codec;
 
 import org.apache.hadoop.hdfs.ec.coder.*;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
-import org.apache.hadoop.hdfs.ec.coder.JerasureRSDecoder;
 
 /**
  * Reed-Solomon codec with Jerasure library implemented coder
