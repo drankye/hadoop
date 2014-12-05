@@ -191,7 +191,6 @@ public abstract class TestErasureCodecBase {
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     ErasureEncoder encoder = codec.createEncoder();
-    BlockGrouper grouper = codec.createBlockGrouper();
 
     ErasureCoderCallback encodeCallback = new CallbackForTest();
     encoder.setCallback(encodeCallback);
@@ -281,12 +280,12 @@ public abstract class TestErasureCodecBase {
     for (int i = 0; i < dataEcBlocks.length; i++) {
       ECBlock ecBlock = dataEcBlocks[i];
       if (ecBlock.isMissing()) {
-        chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]), true);
+        chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
       } else {
         File blockFile = getBlockFile(ecBlock);
         byte[] buffer = new byte[BLOCK_SIZE];
         IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
-        chunks[i] = new ECChunk(ByteBuffer.wrap(buffer), ecBlock.isMissing());
+        chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
       }
     }
     return chunks;

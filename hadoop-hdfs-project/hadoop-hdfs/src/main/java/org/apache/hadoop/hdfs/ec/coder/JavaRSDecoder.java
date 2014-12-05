@@ -38,9 +38,8 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
   public void decode(BlockGroup blockGroup) {
     SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
     ECBlock[] readBlocks = combineBlocks(subBlockGroup.getDataBlocks(), subBlockGroup.getParityBlocks());
-    int[] erasedLocations = null;
-    ECBlock[] outputBlocks = null;
-    getErasedLocationsAndOutputBlocks(readBlocks, erasedLocations, outputBlocks);
+    int[] erasedLocations = getErasedLocations(readBlocks);
+    ECBlock[] outputBlocks = getDecodeOutputBlocks(readBlocks, erasedLocations);
     getCallback().beforeCoding(readBlocks, outputBlocks);
 
     while (getCallback().hasNextInputs()) {
@@ -66,24 +65,30 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
     return result;
   }
 
-  private void getErasedLocationsAndOutputBlocks(ECBlock[] readBlocks, int[] erasedLocations, ECBlock[] outputBlocks) {
-    List<Integer> erasedLocationList = new ArrayList<Integer>();
-    List<ECBlock> outputBlockList = new ArrayList<ECBlock>();
-    for (int i = 0; i < readBlocks.length; i++) {
-      ECBlock readBlock = readBlocks[i];
-      if (readBlock.isMissing()) {
-        erasedLocationList.add(i);
-        outputBlockList.add(new ECBlock(readBlock.getExtendedBlockId(), readBlock.isParity()));
-      }
-    }
+  private int[] getErasedLocations(ECBlock[] readBlocks) {
+	List<Integer> erasedLocationList = new ArrayList<Integer>();
+	for (int i = 0; i < readBlocks.length; i++) {
+	  ECBlock readBlock = readBlocks[i];
+	  if (readBlock.isMissing()) {
+	    erasedLocationList.add(i);
+	  }
+	}
 
-    //change to arrays
-    erasedLocations = new int[erasedLocationList.size()];
-    for (int i = 0; i < erasedLocationList.size(); i++) {
-      erasedLocations[i] = erasedLocationList.get(i);
-    }
-    outputBlocks = new ECBlock[outputBlockList.size()];
-    outputBlocks = outputBlockList.toArray(outputBlocks);
+	//change to arrays
+	int[] erasedLocations = new int[erasedLocationList.size()];
+	for (int i = 0; i < erasedLocationList.size(); i++) {
+	  erasedLocations[i] = erasedLocationList.get(i);
+	}
+	return erasedLocations;
+  }
+  
+  private ECBlock[] getDecodeOutputBlocks(ECBlock[] readBlocks, int[] erasedLocations) {
+	ECBlock[] outputBlocks = new ECBlock[erasedLocations.length];
+	for (int i = 0; i < erasedLocations.length; i++) {
+		ECBlock readBlock = readBlocks[erasedLocations[i]];
+		outputBlocks[i] = new ECBlock(readBlock.getExtendedBlockId(), readBlock.isParity());
+	}
+	return outputBlocks;
   }
 
 }

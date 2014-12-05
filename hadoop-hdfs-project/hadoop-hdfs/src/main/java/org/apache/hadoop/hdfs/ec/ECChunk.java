@@ -23,23 +23,13 @@ import java.util.Arrays;
 public class ECChunk {
 
 	private ByteBuffer chunkBuffer;
-	private boolean isMissing;
 
 	public ECChunk(ByteBuffer buffer) {
 		this.chunkBuffer = buffer;
 	}
 
-	public  ECChunk(ByteBuffer buffer, boolean isMissing) {
-		this(buffer);
-		this.isMissing = isMissing;
-	}
-
 	public ByteBuffer getChunkBuffer() {
 		return chunkBuffer;
-	}
-
-	public boolean isMissing() {
-		return isMissing;
 	}
 
 	public void fillZero() {
