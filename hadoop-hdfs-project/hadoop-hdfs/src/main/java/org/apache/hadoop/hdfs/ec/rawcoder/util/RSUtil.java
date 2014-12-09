@@ -33,5 +33,4 @@ public class RSUtil {
     return primitivePower;
   }
 
-
 }

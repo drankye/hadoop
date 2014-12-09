@@ -32,9 +32,4 @@ public class ECChunk {
 		return chunkBuffer;
 	}
 
-	public void fillZero() {
-		byte[] array = chunkBuffer.array();
-		Arrays.fill(array, (byte)0);
-		chunkBuffer = ByteBuffer.wrap(array);
-	}
 }
