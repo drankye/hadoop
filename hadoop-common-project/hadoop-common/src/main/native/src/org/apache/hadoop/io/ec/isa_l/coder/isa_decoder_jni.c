@@ -34,10 +34,10 @@ or Intel's suppliers or licensors in any way.
 #include <stdlib.h>
 #include <string.h>  // for memset, memcmp
 
-#include "include/erasure_code.h"
-#include "include/types.h"
-#include "include/gf_vect_mul.h"
-#include "org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonDecoder.h"
+#include "../include/erasure_code.h"
+#include "../include/types.h"
+#include "../include/gf_vect_mul.h"
+#include "org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -74,7 +74,7 @@ static void make_key(){
 }
 
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonDecoder_jni_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix){
 
   
@@ -125,7 +125,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
         return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonDecoder_jni_decode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1decode
   (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize){
       Codec_Parameter * pCodecParameter = NULL;
       pthread_once(&key_once, make_key);
@@ -260,7 +260,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
       return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonDecoder_jni_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1destroy
   (JNIEnv *env, jclass myclass){
       Codec_Parameter * pCodecParameter = NULL;
       if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){

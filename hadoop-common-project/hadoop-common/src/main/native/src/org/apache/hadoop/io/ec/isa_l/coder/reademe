@@ -1,5 +1,0 @@
-the steps of command are:
-cd isa-l_src_2.8/erasure_code
-make slib
-cd ../..
-./compilejni.sh

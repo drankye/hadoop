@@ -1,1 +1,0 @@
-g++ -o libisajni.so -g -O3 -I/usr/java/default/include -I/usr/java/default/include/linux -I./include -lpthread ../erasure_code/bin/*.o -shared -fPIC -Wl,-soname,isajni.so  isa_encoder_jni.c isa_decoder_jni.c

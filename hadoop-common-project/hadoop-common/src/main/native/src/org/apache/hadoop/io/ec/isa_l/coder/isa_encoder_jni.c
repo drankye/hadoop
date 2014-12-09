@@ -34,10 +34,10 @@ or Intel's suppliers or licensors in any way.
 #include <stdlib.h>
 #include <string.h>  // for memset, memcmp
 
-#include "include/erasure_code.h"
-#include "include/types.h"
-#include "include/gf_vect_mul.h"
-#include "org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder.h"
+#include "../include/erasure_code.h"
+#include "../include/types.h"
+#include "../include/gf_vect_mul.h"
+#include "org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -68,7 +68,7 @@ static void make_key(){
     (void) pthread_key_create(&de_key, NULL);
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix){
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
@@ -116,7 +116,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_encode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1encode
   (JNIEnv * env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
 
         int dataLen, codeLen;
@@ -156,7 +156,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolom
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_impl_IsaReedSolomonEncoder_jni_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1destroy
   (JNIEnv * env, jclass myclass){
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
