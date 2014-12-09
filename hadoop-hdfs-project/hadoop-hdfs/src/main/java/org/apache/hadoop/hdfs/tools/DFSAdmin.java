@@ -38,6 +38,7 @@ import java.util.TreeSet;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -400,6 +401,7 @@ public class DFSAdmin extends FsShell {
     "\t[-metasave filename]\n" +
     "\t[-setStoragePolicy path policyName]\n" +
     "\t[-getStoragePolicy path]\n" +
+    "\t[-setClickCount path count]\n" +
     "\t[-triggerBlockReport [-incremental] <datanode_host:ipc_port>]\n" +
     "\t[-help [cmd]]\n";
 
@@ -608,6 +610,22 @@ public class DFSAdmin extends FsShell {
     return inSafeMode;
   }
 
+  public int setClickCount(String[] argv) throws IOException {
+	  DistributedFileSystem dfs = getDFS();
+	  int count = 0;
+	  
+	  try {
+		  count = Integer.parseInt(argv[2].trim());
+	  } catch (NumberFormatException parseException) {
+		  System.out.println("Error count: " + argv[2] + ". Please input a integer.");
+		  return -1;
+	  }
+	  
+	  dfs.setClickCount(new Path(argv[1]), count);
+	  System.out.println("Set the count " + count + " in " + argv[1]);
+	  return 0;
+  }
+  
   public int setStoragePolicy(String[] argv) throws IOException {
     DistributedFileSystem dfs = getDFS();
     dfs.setStoragePolicy(new Path(argv[1]), argv[2]);
@@ -1561,6 +1579,9 @@ public class DFSAdmin extends FsShell {
     } else if ("-getStoragePolicy".equals(cmd)) {
       System.err.println("Usage: java DFSAdmin"
           + " [-getStoragePolicy path]");
+    } else if ("-setClickCount".equals(cmd)) {
+        System.err.println("Usage: java DFSAdmin"
+                + " [-setClickCount path count]");
     } else if ("-allowSnapshot".equalsIgnoreCase(cmd)) {
       System.err.println("Usage: hdfs dfsadmin"
           + " [-allowSnapshot <snapshotDir>]");
@@ -1795,8 +1816,12 @@ public class DFSAdmin extends FsShell {
         printUsage(cmd);
         return exitCode;
       }
+    } else if ("-setClickCount".equals(cmd)) {
+        if (argv.length != 3) {
+            printUsage(cmd);
+            return exitCode;
+        }
     }
-    
     // initialize DFSAdmin
     try {
       init();
@@ -1872,6 +1897,8 @@ public class DFSAdmin extends FsShell {
         exitCode = setStoragePolicy(argv);
       } else if ("-getStoragePolicy".equals(cmd)) {
         exitCode = getStoragePolicy(argv);
+      } else if ("-setClickCount".equals(cmd)) {
+          exitCode = setClickCount(argv);
       } else if ("-triggerBlockReport".equals(cmd)) {
         exitCode = triggerBlockReport(argv);
       } else if ("-help".equals(cmd)) {

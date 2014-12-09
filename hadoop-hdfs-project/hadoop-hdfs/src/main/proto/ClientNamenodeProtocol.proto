@@ -102,6 +102,14 @@ message SetReplicationResponseProto {
   required bool result = 1;
 }
 
+message SetClickCountRequestProto {
+  required string src = 1;
+  required uint32 count = 2;
+}
+
+message SetClickCountResponseProto {
+}
+
 message SetStoragePolicyRequestProto {
   required string src = 1;
   required string policyName = 2;
@@ -711,6 +719,8 @@ service ClientNamenodeProtocol {
       returns(SetStoragePolicyResponseProto);
   rpc getStoragePolicies(GetStoragePoliciesRequestProto)
       returns(GetStoragePoliciesResponseProto);
+  rpc setClickCount(SetClickCountRequestProto)
+      returns(SetClickCountResponseProto);
   rpc setPermission(SetPermissionRequestProto)
       returns(SetPermissionResponseProto);
   rpc setOwner(SetOwnerRequestProto) returns(SetOwnerResponseProto);

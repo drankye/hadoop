@@ -3264,4 +3264,9 @@ public abstract class FileSystem extends Configured implements Closeable {
                          ": " + pair.getValue());
     }
   }
+
+  public void setClickCount(Path p, int count) throws IOException{
+	throw new UnsupportedOperationException(getClass().getSimpleName()
+	        + " doesn't support setClickCount");
+  }
 }

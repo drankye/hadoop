@@ -89,6 +89,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_REPLICATION_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_STORAGE_POLICY_ENABLED_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_STORAGE_POLICY_ENABLED_DEFAULT;
 import static org.apache.hadoop.hdfs.server.common.HdfsServerConstants.SECURITY_XATTR_UNREADABLE_BY_SUPERUSER;
+import static org.apache.hadoop.hdfs.server.common.HdfsServerConstants.STORAGE_POLICYENGINE_XATTR_VISITCOUNT;
 import static org.apache.hadoop.util.Time.now;
 
 import java.io.BufferedWriter;
@@ -154,6 +155,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.XAttr;
+import org.apache.hadoop.fs.XAttrCodec;
 import org.apache.hadoop.fs.XAttrSetFlag;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclStatus;
@@ -396,6 +398,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   public static final Log auditLog = LogFactory.getLog(
       FSNamesystem.class.getName() + ".audit");
 
+  private StoragePolicyEngine storagePolicyEngine;
+  
   static final int DEFAULT_MAX_CORRUPT_FILEBLOCKS_RETURNED = 100;
   static int BLOCK_DELETION_INCREMENT = 1000;
   private final boolean isPermissionEnabled;
@@ -862,6 +866,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           DFSConfigKeys.DFS_NAMENODE_MAX_XATTR_SIZE_KEY);
       final String unlimited = xattrMaxSize == 0 ? " (unlimited)" : "";
       LOG.info("Maximum size of an xattr: " + xattrMaxSize + unlimited);
+
+      this.storagePolicyEngine = new StoragePolicyEngine(this, conf);
+
     } catch(IOException e) {
       LOG.error(getClass().getSimpleName() + " initialization failed.", e);
       close();
@@ -1087,6 +1094,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         getCompleteBlocksTotal());
       setBlockTotal();
       blockManager.activate(conf);
+
+      storagePolicyEngine.activate();
     } finally {
       writeUnlock();
     }
@@ -7998,6 +8007,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     String src = srcArg;
     checkXAttrsConfigFlag();
     checkXAttrSize(xAttr);
+    
+    final String xaName = xAttr.getName();
+    if (STORAGE_POLICYENGINE_XATTR_VISITCOUNT.endsWith(xaName)) {
+  	  String clickCountWithQua = XAttrCodec.encodeValue(xAttr.getValue(), XAttrCodec.TEXT);
+  	  String clickCountString = clickCountWithQua.substring(1, clickCountWithQua.length() - 1);
+  	  int clickCount = Integer.parseInt(clickCountString);
+  	  storagePolicyEngine.visitCountSetNotify(src, clickCount);
+    }
+    
     HdfsFileStatus resultingStat = null;
     FSPermissionChecker pc = getPermissionChecker();
     XAttrPermissionFilter.checkPermissionForApi(pc, xAttr,
@@ -8319,5 +8337,40 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           DFSConfigKeys.DFS_NAMENODE_XATTRS_ENABLED_KEY));
     }
   }
+
+  	public void setClickCount(String src, int count) throws IOException, UnresolvedLinkException, AccessControlException{
+  	    HdfsFileStatus resultingStat = null;
+  	    checkOperation(OperationCategory.WRITE);
+  	    final byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(src);
+  	    writeLock();
+  	    try {
+  	      checkSuperuserPrivilege();
+  	      checkOperation(OperationCategory.WRITE);
+  	      checkNameNodeSafeMode("Cannot set visit count on " + src);
+  	      src = resolvePath(src, pathComponents);
+
+  	      final XAttr xAttr = XAttrHelper
+  	          .buildXAttr(STORAGE_POLICYENGINE_XATTR_VISITCOUNT, XAttrCodec.decodeValue(String.valueOf(count)));
+
+  	      setXAttr(src, xAttr, EnumSet.of(XAttrSetFlag.CREATE,
+  	            XAttrSetFlag.REPLACE));
+  	    } finally {
+  	      writeUnlock();
+  	    }
+	}
+  	
+  	public int getClickCount(INode iNode) throws IOException{
+  		List<XAttr> xAttrs = dir.getXAttrs(iNode, Snapshot.CURRENT_STATE_ID);
+  		for (XAttr xAttr : xAttrs) {
+			if (STORAGE_POLICYENGINE_XATTR_VISITCOUNT.endsWith(xAttr.getName())) {
+				readLock();
+				String valueWithQuate = XAttrCodec.encodeValue(xAttr.getValue(), XAttrCodec.TEXT);
+				String value = valueWithQuate.substring(1, valueWithQuate.length() - 1);
+				readUnlock();
+				return Integer.parseInt(value);
+			}
+		}
+  		return 0;
+  	}
 }
 

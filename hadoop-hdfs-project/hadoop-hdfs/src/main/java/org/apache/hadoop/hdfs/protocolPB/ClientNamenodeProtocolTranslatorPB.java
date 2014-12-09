@@ -159,6 +159,7 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.Update
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CheckAccessRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetStoragePolicyRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetClickCountRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.GetEZForPathRequestProto;
@@ -1493,5 +1494,17 @@ public class ClientNamenodeProtocolTranslatorPB implements
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
+  }
+  
+  public void setClickCount(String src, int count) throws IOException{
+	  final SetClickCountRequestProto.Builder builder = SetClickCountRequestProto.newBuilder();
+	  builder.setSrc(src);
+	  builder.setCount(count);
+	  SetClickCountRequestProto req = builder.build();
+	  try {
+		  rpcProxy.setClickCount(null, req);
+	  } catch (ServiceException e) {
+		  throw ProtobufHelper.getRemoteException(e);
+	  }
   }
 }

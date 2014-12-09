@@ -318,4 +318,6 @@ public final class HdfsServerConstants {
       "raw.hdfs.crypto.file.encryption.info";
   public static final String SECURITY_XATTR_UNREADABLE_BY_SUPERUSER =
       "security.hdfs.unreadable.by.superuser";
+  public static final String STORAGE_POLICYENGINE_XATTR_VISITCOUNT =
+		  "raw.hdfs.storage.policyengine.clickcount";
 }

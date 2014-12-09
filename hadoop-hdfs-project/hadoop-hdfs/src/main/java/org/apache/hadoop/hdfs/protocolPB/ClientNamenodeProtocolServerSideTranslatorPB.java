@@ -179,6 +179,8 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetSaf
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetSafeModeResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetStoragePolicyRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetStoragePolicyResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetClickCountRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetClickCountResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetTimesRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetTimesResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineRequestProto;
@@ -244,6 +246,8 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
       GetSnapshottableDirListingResponseProto.newBuilder().build();
   static final SetStoragePolicyResponseProto VOID_SET_STORAGE_POLICY_RESPONSE =
       SetStoragePolicyResponseProto.newBuilder().build();
+  static final SetClickCountResponseProto VOID_SET_CLICK_COUNT_RESPONSE =
+		  SetClickCountResponseProto.newBuilder().build();
 
   private static final CreateResponseProto VOID_CREATE_RESPONSE = 
   CreateResponseProto.newBuilder().build();
@@ -1435,6 +1439,18 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
       throw new ServiceException(e);
     }
     return VOID_SET_STORAGE_POLICY_RESPONSE;
+  }
+  
+  @Override
+  public SetClickCountResponseProto setClickCount(
+      RpcController controller, SetClickCountRequestProto request)
+      throws ServiceException {
+    try {
+      server.setClickCount(request.getSrc(), request.getCount());
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+    return VOID_SET_CLICK_COUNT_RESPONSE;
   }
 
   @Override

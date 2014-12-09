@@ -118,7 +118,7 @@ public class XAttrPermissionFilter {
       } else if (XAttrHelper.getPrefixName(xAttr).
           equals(SECURITY_XATTR_UNREADABLE_BY_SUPERUSER)) {
         filteredXAttrs.add(xAttr);
-      }
+    }
     }
     
     return filteredXAttrs;

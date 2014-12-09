@@ -51,7 +51,7 @@ public class XAttrHelper {
     final int prefixIndex = name.indexOf(".");
     if (prefixIndex < 3) {// Prefix length is at least 3.
       throw new HadoopIllegalArgumentException("An XAttr name must be " +
-          "prefixed with user/trusted/security/system/raw, followed by a '.'");
+          "prefixed with user/trusted/security/system/raw/storage, followed by a '.'");
     } else if (prefixIndex == name.length() - 1) {
       throw new HadoopIllegalArgumentException("XAttr name cannot be empty.");
     }
@@ -68,9 +68,11 @@ public class XAttrHelper {
       ns = NameSpace.SECURITY;
     } else if (prefix.equals(NameSpace.RAW.toString().toLowerCase())) {
       ns = NameSpace.RAW;
+    } else if (prefix.equals(NameSpace.STORAGE.toString().toLowerCase())) {
+        ns = NameSpace.STORAGE;
     } else {
       throw new HadoopIllegalArgumentException("An XAttr name must be " +
-          "prefixed with user/trusted/security/system/raw, followed by a '.'");
+          "prefixed with user/trusted/security/system/raw/storage, followed by a '.'");
     }
     XAttr xAttr = (new XAttr.Builder()).setNameSpace(ns).setName(name.
         substring(prefixIndex + 1)).setValue(value).build();
