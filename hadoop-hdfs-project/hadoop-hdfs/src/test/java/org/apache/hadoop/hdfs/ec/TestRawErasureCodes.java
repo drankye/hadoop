@@ -127,7 +127,7 @@ public class TestRawErasureCodes {
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
 		ByteBuffer[] cpMessage = new ByteBuffer[dataSize];
-		int bufsize = 3;
+		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
@@ -140,7 +140,7 @@ public class TestRawErasureCodes {
 		
 		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
-			parity[i] = ByteBuffer.wrap(new byte[bufsize]);
+			parity[i] = ByteBuffer.allocate(bufsize);
 		}
 
 		// encode.

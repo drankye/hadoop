@@ -65,7 +65,9 @@ public abstract class AbstractRawErasureCoder {
 
   protected void writeBuffer(ByteBuffer[] byteBuffers, byte[][] data) {
     for (int i = 0;i < byteBuffers.length; i++) {
+      byteBuffers[i].clear();
       byteBuffers[i].put(data[i]);
+      byteBuffers[i].flip();
     }
   }
 
