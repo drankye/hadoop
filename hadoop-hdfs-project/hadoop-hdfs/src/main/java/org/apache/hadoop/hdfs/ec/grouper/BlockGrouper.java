@@ -19,7 +19,9 @@ package org.apache.hadoop.hdfs.ec.grouper;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
 import org.apache.hadoop.hdfs.ec.BlockGroup;
+import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECSchema;
+import org.apache.hadoop.hdfs.ec.SubBlockGroup;
 
 import java.util.List;
 
@@ -69,7 +71,20 @@ public abstract class BlockGrouper {
    *                   recoverable or not
    * @return
    */
-  public abstract boolean anyRecoverable(BlockGroup blockGroup);
+  public boolean anyRecoverable(BlockGroup blockGroup) {
+    int missingCount = 0;
+    for (SubBlockGroup subBlockGroup : blockGroup.getSubGroups()) {
+      for (ECBlock dataECBlock : subBlockGroup.getDataBlocks()) {
+        if (dataECBlock.isMissing()) missingCount++;
+      }
+
+      for (ECBlock parityECBlock : subBlockGroup.getParityBlocks()) {
+        if (parityECBlock.isMissing()) missingCount++;
+      }
+    }
+
+    return missingCount <= getParityBlocks();
+  }
 
   /**
    * Given a BlockGroup with missing block(s), construct a recoverable group.
