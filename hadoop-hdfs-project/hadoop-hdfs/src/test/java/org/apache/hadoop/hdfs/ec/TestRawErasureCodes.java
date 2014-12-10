@@ -51,6 +51,7 @@ public class TestRawErasureCodes {
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
+		byte[][] messageArray = new buyte[dataSize][];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
@@ -58,6 +59,7 @@ public class TestRawErasureCodes {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
 			message[i] = ByteBuffer.wrap(byteArray);
+			messageArray[i] = byteArray;
 		}
 		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
@@ -71,26 +73,27 @@ public class TestRawErasureCodes {
 			tmpOut[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
 		for (int i = 0; i < dataSize; i++) {
-			byte[] cpByte = Arrays.copyOfRange(message[i].array(), 0, message[i].array().length);
+			byte[] cpByte = Arrays.copyOfRange(messageArray[i], 0, messageArray[i].length);
 			tmpIn[i] = ByteBuffer.wrap(cpByte);
 		}
 		rawEncoder.encode(tmpIn, tmpOut);
 		// Copy parity.
 		for (int i = 0; i < paritySize; i++) {
-			byte[] cpByte = Arrays.copyOfRange(tmpOut[i].array(), 0, tmpOut[i].array().length);
+			byte[] cpByte = new byte[bufsize];
+			tmpOut[i].get(cpByte);
 			parity[i] = ByteBuffer.wrap(cpByte);
 		}
 		long encodeEnd = System.currentTimeMillis();
 		float encodeMSecs = (encodeEnd - encodeStart);
 		System.out.println("Time to encode rs = " + encodeMSecs + "msec ("
-				+ message[0].array().length / (1000 * encodeMSecs) + " MB/s)");
+				+ messageArray[0].length / (1000 * encodeMSecs) + " MB/s)");
 
 		int[] erasedLocations = new int[] { 4, 1, 5, 7 };
 		ByteBuffer[] erasedValues = new ByteBuffer[4];
 		for (int i = 0; i < erasedValues.length; i++) {
 			erasedValues[i] = ByteBuffer.wrap(new byte[bufsize]);
 		}
-		byte[] cpByte = Arrays.copyOfRange(message[0].array(), 0, message[0].array().length);
+		byte[] cpByte = Arrays.copyOfRange(messageArray[0], 0, messageArray[0].length);
 		ByteBuffer copy = ByteBuffer.wrap(cpByte);
 
 		ByteBuffer[] data = new ByteBuffer[paritySize + dataSize];
@@ -107,7 +110,7 @@ public class TestRawErasureCodes {
 		long decodeEnd = System.currentTimeMillis();
 		float decodeMSecs = (decodeEnd - decodeStart);
 		System.out.println("Time to decode = " + decodeMSecs + "msec ("
-				+ message[0].array().length / (1000 * decodeMSecs) + " MB/s)");
+				+ messageArray[0].length / (1000 * decodeMSecs) + " MB/s)");
     Assert.assertTrue("Decode failed", copy.equals(erasedValues[0]));
 	}
 
@@ -126,6 +129,7 @@ public class TestRawErasureCodes {
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
+		byte[][] messageArray = new byte[dataSize][];
 		ByteBuffer[] cpMessage = new ByteBuffer[dataSize];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
@@ -133,8 +137,9 @@ public class TestRawErasureCodes {
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
+			messageArray[i] = byteArray;
 			message[i] = ByteBuffer.wrap(byteArray);
-			byte[] cpByte = Arrays.copyOfRange(message[i].array(), 0, message[i].array().length);
+			byte[] cpByte = Arrays.copyOfRange(messageArray[i], 0, messageArray[i].length);
 			cpMessage[i] = ByteBuffer.wrap(cpByte);
 		}
 		
@@ -148,7 +153,7 @@ public class TestRawErasureCodes {
 
 		int erasedLocation = RAND.nextInt(dataSize);
 		
-		byte[] copyByte = Arrays.copyOfRange(message[erasedLocation].array(), 0, message[erasedLocation].array().length);
+		byte[] copyByte = Arrays.copyOfRange(messageArray[erasedLocation], 0, messageArray[erasedLocation].length);
 		ByteBuffer copy = ByteBuffer.wrap(copyByte);
 		message[erasedLocation] = ByteBuffer.wrap(new byte[bufsize]);
 		
