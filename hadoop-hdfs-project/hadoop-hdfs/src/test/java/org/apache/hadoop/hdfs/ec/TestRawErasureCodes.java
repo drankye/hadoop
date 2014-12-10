@@ -51,7 +51,7 @@ public class TestRawErasureCodes {
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
-		byte[][] messageArray = new buyte[dataSize][];
+		byte[][] messageArray = new byte[dataSize][];
 		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
