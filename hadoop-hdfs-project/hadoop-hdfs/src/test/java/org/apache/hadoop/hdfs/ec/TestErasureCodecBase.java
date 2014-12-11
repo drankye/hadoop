@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
+import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
@@ -219,7 +220,7 @@ public abstract class TestErasureCodecBase {
     return schemas.get(0);
   }
 
-  private class CallbackForTest implements ErasureCoderCallback {
+  private class CallbackForTest extends AbstractErasureCoderCallback {
     private ECChunk[][] inputChunks;
     private ECChunk[][] outputChunks;
     private int readInputIndex;

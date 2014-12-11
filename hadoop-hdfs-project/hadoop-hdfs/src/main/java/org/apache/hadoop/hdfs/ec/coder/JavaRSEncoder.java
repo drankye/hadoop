@@ -37,15 +37,16 @@ public class JavaRSEncoder extends AbstractErasureEncoder {
 
       ECBlock[] inputBlocks = subGroup.getDataBlocks();
       ECBlock[] outputBlocks = subGroup.getParityBlocks();
-      getCallback().beforeCoding(inputBlocks, outputBlocks);
+      beforeCoding(inputBlocks, outputBlocks);
 
-      while (getCallback().hasNextInputs()) {
-        ECChunk[] dataChunks = getCallback().getNextInputChunks(inputBlocks);
-        ECChunk[] parityChunks = getCallback().getNextOutputChunks(outputBlocks);
+      while (hasNextInputs()) {
+        ECChunk[] dataChunks = getNextInputChunks(inputBlocks);
+        ECChunk[] parityChunks = getNextOutputChunks(outputBlocks);
         encode(dataChunks, parityChunks);
+        withCoded(dataChunks, parityChunks);
       }
 
-      getCallback().postCoding(inputBlocks, outputBlocks);
+      postCoding(inputBlocks, outputBlocks);
     }
 
     private void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {

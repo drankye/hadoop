@@ -28,7 +28,8 @@ import java.io.IOException;
 public interface ErasureCoderCallback {
 
   /**
-   * Prepare for reading input blocks and writing output blocks
+   * Prepare for reading input blocks and writing output blocks.
+   * Will be called before any coding work with the input and output blocks
    * @param inputBlocks
    * @param outputBlocks
    */
@@ -36,23 +37,32 @@ public interface ErasureCoderCallback {
 
   /**
    * Any next input chunk for coding?
+   * Will be called to see if any left input chunks to code
    * @return
    */
   public boolean hasNextInputs();
 
   /**
-   * Get next input chunks for the blocks while coding
+   * Get next input chunks for the blocks for coding
    * @param inputBlocks
    * @return
    */
   public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks);
 
   /**
-   * Get next chunks to output for the blocks while coding
+   * Get next chunks to output for the blocks for coding
    * @param outputBlocks
    * @return
    */
   public ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks);
+
+  /**
+   * Notify the coding finished event for the group of chunks
+   * @param inputChunks
+   * @param outputChunks
+   */
+  public void withCoded(ECChunk[] inputChunks, ECChunk[] outputChunks);
+
 
   /**
    * Done with coding of group, chances to close input blocks and flush output blocks

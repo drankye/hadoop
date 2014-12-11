@@ -18,7 +18,10 @@
 package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
+import org.apache.hadoop.hdfs.StorageType;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 
 public class ECBlock {
 
@@ -55,4 +58,21 @@ public class ECBlock {
     return isMissing;
   }
 
+  /**
+   * Below info are to be provided
+   */
+  public StorageType getStorageType() {
+    //TODO
+    return null;
+  }
+
+  public DatanodeInfo getDatanodeInfo() {
+    //TODO
+    return null;
+  }
+
+  public ExtendedBlock getExtendedBlock() {
+    //TODO
+    return null;
+  }
 }

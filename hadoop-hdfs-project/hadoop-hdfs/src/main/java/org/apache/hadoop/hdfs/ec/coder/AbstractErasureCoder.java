@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
+import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECChunk;
 
 import java.nio.ByteBuffer;
@@ -25,12 +26,32 @@ public abstract class AbstractErasureCoder {
 
   private ErasureCoderCallback callback;
 
-  protected ErasureCoderCallback getCallback() {
-    return callback;
-  }
-
   public void setCallback(ErasureCoderCallback callback) {
     this.callback = callback;
+  }
+
+  protected void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+    callback.beforeCoding(inputBlocks, outputBlocks);
+  }
+
+  protected boolean hasNextInputs() {
+    return callback.hasNextInputs();
+  }
+
+  protected ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
+    return callback.getNextInputChunks(inputBlocks);
+  }
+
+  protected ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
+    return callback.getNextOutputChunks(outputBlocks);
+  }
+
+  protected void withCoded(ECChunk[] inputChunks, ECChunk[] outputChunks) {
+    callback.withCoded(inputChunks, outputChunks);
+  }
+
+  protected void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+    callback.postCoding(inputBlocks, outputBlocks);
   }
 
   protected ByteBuffer[] convert(ECChunk[] chunks) {
