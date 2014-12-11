@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECChunk;
@@ -28,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JavaRSDecoder extends AbstractErasureDecoder {
+  private static final Log LOG =
+		    LogFactory.getLog(JavaRSDecoder.class.getName());
 
   public JavaRSDecoder(int dataSize, int paritySize, int chunkSize) {
     super(new JavaRSRawDecoder(dataSize, paritySize, chunkSize));
@@ -40,19 +44,23 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
     int[] erasedLocations = getErasedLocations(readBlocks);
     ECBlock[] outputBlocks = getDecodeOutputBlocks(readBlocks, erasedLocations);
     beforeCoding(readBlocks, outputBlocks);
+      
+    try {
+      while (hasNextInputs()) {
+        ECChunk[] dataChunks = getNextInputChunks(readBlocks);
+        ByteBuffer[] readBuffs = convert(dataChunks);
+        ECChunk[] outputChunks = getNextOutputChunks(outputBlocks);
+        ByteBuffer[] outputBuffs = convert(outputChunks);
 
-    while (hasNextInputs()) {
-      ECChunk[] dataChunks = getNextInputChunks(readBlocks);
-      ByteBuffer[] readBuffs = convert(dataChunks);
-      ECChunk[] outputChunks = getNextOutputChunks(outputBlocks);
-      ByteBuffer[] outputBuffs = convert(outputChunks);
+        getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
 
-      getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
-
-      withCoded(dataChunks, outputChunks);
+        withCoded(dataChunks, outputChunks);
+      }
+    } catch(Exception e) {
+    	LOG.info("Error in decode " + e);
+    } finally {
+      postCoding(readBlocks, outputBlocks);
     }
-
-    postCoding(readBlocks, outputBlocks);
   }
 
   private ECBlock[] combineBlocks(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {

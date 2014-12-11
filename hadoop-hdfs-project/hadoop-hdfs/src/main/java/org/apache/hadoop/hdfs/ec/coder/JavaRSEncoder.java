@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.ec.coder;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.ECBlock;
 import org.apache.hadoop.hdfs.ec.ECChunk;
@@ -26,7 +28,9 @@ import org.apache.hadoop.hdfs.ec.rawcoder.JavaRSRawEncoder;
 import java.nio.ByteBuffer;
 
 public class JavaRSEncoder extends AbstractErasureEncoder {
-
+	private static final Log LOG =
+		    LogFactory.getLog(JavaRSDecoder.class.getName());
+	
     public JavaRSEncoder(int dataSize, int paritySize, int chunkSize) {
         super(new JavaRSRawEncoder(dataSize, paritySize, chunkSize));
     }
@@ -34,19 +38,23 @@ public class JavaRSEncoder extends AbstractErasureEncoder {
     @Override
     public void encode(BlockGroup blockGroup) {
       SubBlockGroup subGroup = blockGroup.getSubGroups().iterator().next();
-
       ECBlock[] inputBlocks = subGroup.getDataBlocks();
       ECBlock[] outputBlocks = subGroup.getParityBlocks();
-      beforeCoding(inputBlocks, outputBlocks);
+      
+      try{
+        beforeCoding(inputBlocks, outputBlocks);
 
-      while (hasNextInputs()) {
-        ECChunk[] dataChunks = getNextInputChunks(inputBlocks);
-        ECChunk[] parityChunks = getNextOutputChunks(outputBlocks);
-        encode(dataChunks, parityChunks);
-        withCoded(dataChunks, parityChunks);
+        while (hasNextInputs()) {
+          ECChunk[] dataChunks = getNextInputChunks(inputBlocks);
+          ECChunk[] parityChunks = getNextOutputChunks(outputBlocks);
+          encode(dataChunks, parityChunks);
+          withCoded(dataChunks, parityChunks);
+        }
+      } catch(Exception e) {
+    	  LOG.info("Error in encode " + e);
+      } finally {
+    	  postCoding(inputBlocks, outputBlocks);
       }
-
-      postCoding(inputBlocks, outputBlocks);
     }
 
     private void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
