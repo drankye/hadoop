@@ -50,15 +50,6 @@ public class RSBlockGrouper extends BlockGrouper {
   }
 
   @Override
-  public boolean anyRecoverable(BlockGroup blockGroup) {
-	  /**
-     * TODO: Figure out if any missing blocks can be recovered or not,
-     * understanding the block group according to the code scheme.
-	   */
-	  return true;
-  }
-
-  @Override
   public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
 	  return blockGroup;
   }

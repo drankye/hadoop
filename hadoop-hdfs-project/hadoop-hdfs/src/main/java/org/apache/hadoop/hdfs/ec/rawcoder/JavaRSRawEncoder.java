@@ -52,20 +52,25 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-    for (int i = 0; i < outputs.length; i++) {
-      Arrays.fill(outputs[i].array(), (byte) 0);
+    byte[][] outputsData = new byte[outputs.length][outputs[0].limit()];
+    // cleanup the write buffer
+    for (int i = 0; i < outputsData.length; i++) {
+      Arrays.fill(outputsData[i], (byte) 0);
     }
+
+    byte[][] inputsData = getData(inputs);
 
     byte[][] data = new byte[dataSize() + paritySize()][];
-
     for (int i = 0; i < paritySize(); i++) {
-      data[i] = outputs[i].array();
+      data[i] = outputsData[i];
     }
     for (int i = 0; i < dataSize(); i++) {
-      data[i + paritySize()] = inputs[i].array();
+      data[i + paritySize()] = inputsData[i];
     }
+
     // Compute the remainder
     GF.remainder(data, generatingPolynomial);
 
+    writeBuffer(outputs, outputsData);
   }
 }

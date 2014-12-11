@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hdfs.ec.codec;
 
-import org.apache.hadoop.hdfs.ExtendedBlockId;
-import org.apache.hadoop.hdfs.ec.BlockGroup;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.ec.grouper.LRCBlockGrouper;
 

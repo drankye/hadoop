@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
+import java.nio.ByteBuffer;
+
 public abstract class AbstractRawErasureCoder {
 
   private int dataSize;
@@ -51,4 +53,22 @@ public abstract class AbstractRawErasureCoder {
   public int chunkSize() {
     return chunkSize;
   }
+
+  protected byte[][] getData(ByteBuffer[] byteBuffers) {
+    byte[][] data = new byte[byteBuffers.length][];
+    for (int i = 0; i < byteBuffers.length; i++) {
+      data[i] = new byte[byteBuffers[i].limit()];
+      byteBuffers[i].get(data[i]);
+    }
+    return data;
+  }
+
+  protected void writeBuffer(ByteBuffer[] byteBuffers, byte[][] data) {
+    for (int i = 0;i < byteBuffers.length; i++) {
+      byteBuffers[i].clear();
+      byteBuffers[i].put(data[i]);
+      byteBuffers[i].flip();
+    }
+  }
+
 }

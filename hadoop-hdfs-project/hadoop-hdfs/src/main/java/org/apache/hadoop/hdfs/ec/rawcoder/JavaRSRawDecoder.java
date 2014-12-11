@@ -47,17 +47,21 @@ public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
       return;
     }
 
+    byte[][] outputsData = new byte[outputs.length][outputs[0].limit()];
     // cleanup the write buffer
-    for (int i = 0; i < outputs.length; i++) {
-      Arrays.fill(outputs[i].array(), (byte) 0);
+    for (int i = 0; i < outputsData.length; i++) {
+      Arrays.fill(outputsData[i], (byte) 0);
     }
 
+    byte[][] inputsData = getData(inputs);
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      GF.substitute(inputs, outputs[i], primitivePower[i]);
+      GF.substitute(inputsData, outputsData[i], primitivePower[i]);
     }
 
-    GF.solveVandermondeSystem(errSignature, outputs,
-        erasedIndexes.length, inputs[0].array().length);
+    GF.solveVandermondeSystem(errSignature, outputsData,
+        erasedIndexes.length, inputsData[0].length);
+
+    writeBuffer(outputs, outputsData);
   }
 }

@@ -170,13 +170,15 @@ public abstract class TestErasureCodecBase {
   }
 
   private void verifyData(int erasedLocation, BlockGroup blockGroup) throws IOException {
-    byte[] copy = message[erasedLocation].array();
+    ByteBuffer copyBuffer = message[erasedLocation];
+    byte[] copy = new byte[BLOCK_SIZE];
+    copyBuffer.get(copy);
 
     SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
     ECBlock recoveryBlock = subBlockGroup.getDataBlocks()[erasedLocation];
     File file = getBlockFile(recoveryBlock);
     byte[] buffer = new byte[BLOCK_SIZE];
-    IOUtils.readFully(new FileInputStream(file), buffer, 0, CHUNK_SIZE);
+    IOUtils.readFully(new FileInputStream(file), buffer, 0, BLOCK_SIZE);
 
     assertTrue(Arrays.equals(copy, buffer));
   }
