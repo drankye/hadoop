@@ -39,18 +39,20 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
     ECBlock[] readBlocks = combineBlocks(subBlockGroup.getDataBlocks(), subBlockGroup.getParityBlocks());
     int[] erasedLocations = getErasedLocations(readBlocks);
     ECBlock[] outputBlocks = getDecodeOutputBlocks(readBlocks, erasedLocations);
-    getCallback().beforeCoding(readBlocks, outputBlocks);
+    beforeCoding(readBlocks, outputBlocks);
 
-    while (getCallback().hasNextInputs()) {
-      ECChunk[] dataChunks = getCallback().getNextInputChunks(readBlocks);
+    while (hasNextInputs()) {
+      ECChunk[] dataChunks = getNextInputChunks(readBlocks);
       ByteBuffer[] readBuffs = convert(dataChunks);
-      ECChunk[] outputChunks = getCallback().getNextOutputChunks(outputBlocks);
+      ECChunk[] outputChunks = getNextOutputChunks(outputBlocks);
       ByteBuffer[] outputBuffs = convert(outputChunks);
 
       getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
+
+      withCoded(dataChunks, outputChunks);
     }
 
-    getCallback().postCoding(readBlocks, outputBlocks);
+    postCoding(readBlocks, outputBlocks);
   }
 
   private ECBlock[] combineBlocks(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
