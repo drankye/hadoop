@@ -97,7 +97,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
            // gf_mk_field();
             //gf_gen_rs_matrix(pCodecParameter->a, totalSize, stripeSize);
             int i, j;
-            //jmatrix = env->GetIntArrayElements(matrix, false);
+            jmatrix = env->GetIntArrayElements(matrix, false);
             memset(pCodecParameter->a, 0, stripeSize*totalSize);
             for(i=0; i<stripeSize; i++){
                  pCodecParameter->a[stripeSize*i + i] = 1;
