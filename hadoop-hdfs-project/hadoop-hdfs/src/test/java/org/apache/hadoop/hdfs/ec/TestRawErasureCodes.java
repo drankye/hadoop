@@ -39,18 +39,33 @@ public class TestRawErasureCodes {
 	final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
   private static int symbolSize = 0;
+	private static int CHUNK_SIZE = 16 * 1024;
 
   static {
     symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
   }
 
-  @Test
-	public void testRSPerformance() {
+	@Test
+	public void testJavaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
+		RawErasureEncoder encoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder decoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		testRSPerformance(encoder, decoder);
+	}
 
-	  RawErasureEncoder rawEncoder = new IsaRSRawEncoder(dataSize, paritySize, 16 * 1024);
-	  RawErasureDecoder rawDecoder = new IsaRSRawDecoder(dataSize, paritySize, 16 * 1024);
+	@Test
+	public void testIsaRSPerformance() {
+		int dataSize = 10;
+		int paritySize = 4;
+		RawErasureEncoder encoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder decoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		testRSPerformance(encoder, decoder);
+	}
+
+	private void testRSPerformance(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder) {
+		int dataSize = 10;
+		int paritySize = 4;
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
@@ -88,7 +103,7 @@ public class TestRawErasureCodes {
 		}
 		long encodeEnd = System.currentTimeMillis();
 		float encodeMSecs = (encodeEnd - encodeStart);
-		System.out.println("Time to encode rs = " + encodeMSecs + "msec ("
+		System.out.println("Time to " + rawEncoder.getClass().getName() + " = " + encodeMSecs + "msec ("
 				+ messageArray[0].length / (1000 * encodeMSecs) + " MB/s)");
 
 		int[] erasedLocations = new int[] { 4, 1, 5, 7 };
@@ -117,19 +132,30 @@ public class TestRawErasureCodes {
     Assert.assertTrue("Decode failed", copy.equals(erasedValues[0]));
 	}
 
-  @Test
-	public void testRSEncodeDecodeByteBuffer() {
+	@Test
+	public void testEncodeDecode() {
 		// verify the production size.
-		verifyRSEncodeDecode(10, 4);
+		verifyJavaRSRawEncodeDecode(10, 4);
+		verifyIsaRSRawEncodeDecode(10, 4);
 
 		// verify a test size
-		verifyRSEncodeDecode(3, 3);
+		verifyJavaRSRawEncodeDecode(3, 3);
+		verifyIsaRSRawEncodeDecode(3, 3);
 	}
 
-	private void verifyRSEncodeDecode(int dataSize, int paritySize) {
-		RawErasureEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, 16 * 1024);
-		RawErasureDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, 16 * 1024);
+	private void verifyJavaRSRawEncodeDecode(int dataSize, int paritySize) {
+		RawErasureEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
+	}
 
+	private void verifyIsaRSRawEncodeDecode(int dataSize, int paritySize) {
+		RawErasureEncoder rawEncoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder rawDecoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
+	}
+
+	private void verifyRSEncodeDecode(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder, int dataSize, int paritySize) {
 		int symbolMax = (int) Math.pow(2, symbolSize);
 		ByteBuffer[] message = new ByteBuffer[dataSize];
 		byte[][] messageArray = new byte[dataSize][];
