@@ -307,7 +307,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                             <arg value="-cp"/>
                             <arg value="${runtime_classpath}"/>
                             <arg value="-d"/>
-                            <arg value="${project.build.directory}/jni"/>
+                            <arg value="${project.build.directory}/native/javah"/>
                             <arg value="org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawEncoder"/>
                             <arg value="org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawDecoder"/>
                         </exec>

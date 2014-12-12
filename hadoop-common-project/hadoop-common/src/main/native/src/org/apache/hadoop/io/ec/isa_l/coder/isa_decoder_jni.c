@@ -74,9 +74,8 @@ static void make_key(){
 }
 
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1init
-  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix){
-
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_init
+  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize){
   
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
@@ -107,7 +106,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_j
             //gf_mk_field();
             //gf_gen_rs_matrix(pCodecParameter->a, totalSize, stripeSize);
             int i, j;
-            jmatrix = env->GetIntArrayElements(matrix, false);
+            //jmatrix = env->GetIntArrayElements(matrix, false);
             memset(pCodecParameter->a, 0, stripeSize*totalSize);
             for(i=0; i<stripeSize; i++){
                  pCodecParameter->a[stripeSize*i + i] = 1;
@@ -125,8 +124,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_j
         return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1decode
-  (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize){
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_decode
+  (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize) {
       Codec_Parameter * pCodecParameter = NULL;
       pthread_once(&key_once, make_key);
       jboolean isCopy;
@@ -260,7 +259,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_j
       return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_destroy
   (JNIEnv *env, jclass myclass){
       Codec_Parameter * pCodecParameter = NULL;
       if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){

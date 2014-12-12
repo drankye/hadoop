@@ -68,8 +68,8 @@ static void make_key(){
     (void) pthread_key_create(&de_key, NULL);
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1init
-  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix){
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_init
+  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize){
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
         pthread_once(&key_once, make_key);
@@ -97,7 +97,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_j
            // gf_mk_field();
             //gf_gen_rs_matrix(pCodecParameter->a, totalSize, stripeSize);
             int i, j;
-            jmatrix = env->GetIntArrayElements(matrix, false);
+            //jmatrix = env->GetIntArrayElements(matrix, false);
             memset(pCodecParameter->a, 0, stripeSize*totalSize);
             for(i=0; i<stripeSize; i++){
                  pCodecParameter->a[stripeSize*i + i] = 1;
@@ -116,8 +116,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_j
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1encode
-  (JNIEnv * env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_encode
+  (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
 
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
@@ -156,8 +156,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_j
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1destroy
-  (JNIEnv * env, jclass myclass){
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_destroy
+  (JNIEnv *env, jclass myclass){
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
 

@@ -9,26 +9,26 @@ extern "C" {
 #endif
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder
- * Method:    jni_init
+ * Method:    init
  * Signature: (II)I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_init
   (JNIEnv *, jclass, jint, jint);
 
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder
- * Method:    jni_encode
+ * Method:    encode
  * Signature: ([Ljava/nio/ByteBuffer;[Ljava/nio/ByteBuffer;I)I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1encode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_encode
   (JNIEnv *, jclass, jobjectArray, jobjectArray, jint);
 
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder
- * Method:    jni_destroy
+ * Method:    destroy
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_jni_1destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_destroy
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus

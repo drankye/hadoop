@@ -26,7 +26,7 @@ public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
 
   public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
-    jni_init(dataSize, paritySize);
+    init(dataSize, paritySize);
   }
 
   @Override
@@ -36,23 +36,23 @@ public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     ByteBuffer[] allData = null; // TODO: inputs + outputs;
-    jni_decode(allData, erasedIndexes, chunkSize());
+    decode(allData, erasedIndexes, chunkSize());
   }
 
 
-  private native static int jni_init(int dataSize, int paritySize);
+  private native static int init(int dataSize, int paritySize);
 
-  public native static int jni_decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
+  public native static int decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
 
-  private native static int jni_destroy();
+  private native static int destroy();
 
   public void end() {
-    jni_destroy();
+    destroy();
   }
 
   @Override
   protected void finalize() {
-    jni_destroy();
+    destroy();
   }
 
 

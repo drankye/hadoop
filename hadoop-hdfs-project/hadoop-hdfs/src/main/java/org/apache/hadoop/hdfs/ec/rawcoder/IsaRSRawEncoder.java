@@ -23,7 +23,7 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
 
   public IsaRSRawEncoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
-    jni_init(dataSize, paritySize);
+    init(dataSize, paritySize);
   }
 
   @Override
@@ -31,14 +31,14 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-    jni_encode(inputs, outputs, chunkSize());
+    encode(inputs, outputs, chunkSize());
   }
 
-  private static native int jni_init(int dataSize, int paritySize);
+  private static native int init(int dataSize, int paritySize);
 
-  private static native int jni_encode(ByteBuffer[] data, ByteBuffer[] code, int chunkSize);
+  private static native int encode(ByteBuffer[] data, ByteBuffer[] code, int chunkSize);
 
-  private static native int jni_destroy();
+  private static native int destroy();
 
   static {
     System.loadLibrary("isajni");
@@ -46,12 +46,12 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
 
 
   public void end() {
-    jni_destroy();
+    destroy();
   }
 
   @Override
   protected void finalize() {
-    jni_destroy();
+    destroy();
   }
 
 }

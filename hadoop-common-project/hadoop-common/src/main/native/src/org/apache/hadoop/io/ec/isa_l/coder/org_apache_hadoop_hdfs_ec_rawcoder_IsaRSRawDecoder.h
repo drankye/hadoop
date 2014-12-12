@@ -9,26 +9,26 @@ extern "C" {
 #endif
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder
- * Method:    jni_init
+ * Method:    init
  * Signature: (II)I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_init
   (JNIEnv *, jclass, jint, jint);
 
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder
- * Method:    jni_decode
+ * Method:    decode
  * Signature: ([Ljava/nio/ByteBuffer;[II)I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1decode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_decode
   (JNIEnv *, jclass, jobjectArray, jintArray, jint);
 
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder
- * Method:    jni_destroy
+ * Method:    destroy
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_jni_1destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_destroy
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus
