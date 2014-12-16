@@ -28,6 +28,7 @@ public class XorRawDecoder extends AbstractRawErasureDecoder{
     super(dataSize, 1, chunkSize);
   }
 
+  //inputs = data + parity
   @Override
   public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
     assert(erasedIndexes.length == outputs.length);

@@ -34,7 +34,7 @@ public class XorRawEncoder extends AbstractRawErasureEncoder{
     assert(inputData.length > 0);
     int bufSize = inputData[0].length;
 
-    byte[][] outputData = new byte[0][];
+    byte[][] outputData = new byte[outputs.length][];
     outputData[0] = new byte[bufSize];
     // Get the first buffer's data.
     for (int j = 0; j < bufSize; j++) {

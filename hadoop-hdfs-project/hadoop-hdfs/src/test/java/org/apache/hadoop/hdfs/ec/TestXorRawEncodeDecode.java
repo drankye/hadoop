@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureDecoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.XorRawDecoder;
@@ -40,14 +39,14 @@ public class TestXorRawEncodeDecode {
     final int CHUNK_SIZE = 16 * 1024;
 
     byte[][] message = new byte[dataSize][];
-    ByteBuffer[] messageBuff = new ByteBuffer[dataSize];
+    ByteBuffer[] messageBuffForEncode = new ByteBuffer[dataSize];
     int bufsize = 1024 * 1024 * 10;
     for (int i = 0; i < dataSize; i++) {
       message[i] = new byte[bufsize];
       for (int j = 0; j < bufsize; j++) {
         message[i][j] = (byte)RAND.nextInt(256);
       }
-      messageBuff[i] = ByteBuffer.wrap(message[i]);
+      messageBuffForEncode[i] = ByteBuffer.wrap(message[i]);
     }
 
     ByteBuffer[] parityBuff = {ByteBuffer.allocate(bufsize)};
@@ -56,7 +55,7 @@ public class TestXorRawEncodeDecode {
     RawErasureDecoder xorDecoder = new XorRawDecoder(dataSize, CHUNK_SIZE);
 
     long encodeStart = System.currentTimeMillis();
-    xorEncoder.encode(messageBuff, parityBuff);
+    xorEncoder.encode(messageBuffForEncode, parityBuff);
     long encodeEnd = System.currentTimeMillis();
     float encodeMSecs = encodeEnd - encodeStart;
     System.out.println("Time to encode xor = " + encodeMSecs +
@@ -67,10 +66,17 @@ public class TestXorRawEncodeDecode {
       copy[j] = message[0][j];
       message[0][j] = 0;
     }
+    
+    //decode
+    ByteBuffer[] messageBuffForDecode = new ByteBuffer[dataSize + 1];
+    for (int i = 0; i < dataSize; i++) {
+		messageBuffForDecode[i] = ByteBuffer.wrap(message[i]);
+	}
+    messageBuffForDecode[dataSize] = parityBuff[0];
 
     ByteBuffer[] recoveryBuff = {ByteBuffer.allocate(bufsize)};
     long decodeStart = System.currentTimeMillis();
-    xorDecoder.decode(messageBuff, recoveryBuff, new int[]{0});
+    xorDecoder.decode(messageBuffForDecode, recoveryBuff, new int[]{0});
     long decodeEnd = System.currentTimeMillis();
     float decodeMSecs = decodeEnd - decodeStart;
     System.out.println("Time to decode xor = " + decodeMSecs +
