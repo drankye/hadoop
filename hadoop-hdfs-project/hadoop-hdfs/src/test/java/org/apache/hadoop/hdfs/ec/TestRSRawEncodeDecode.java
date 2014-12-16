@@ -35,7 +35,7 @@ import java.util.Random;
 /**
  * Ported from HDFS-RAID
  */
-public class TestRawErasureCodes {
+public class TestRSRawEncodeDecode {
 	final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
   private static int symbolSize = 0;
