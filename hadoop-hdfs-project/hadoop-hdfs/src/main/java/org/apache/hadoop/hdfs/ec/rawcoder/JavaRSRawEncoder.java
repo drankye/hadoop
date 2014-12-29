@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
-import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;

@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder.util;
 
-import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.code.ReedSolomonCode;
 
 public class RSUtil {
 
@@ -33,4 +33,20 @@ public class RSUtil {
     return primitivePower;
   }
 
+  public static int[] initMatrix(int dataSize, int paritySize) {
+    int[] matrix = new int[dataSize  * paritySize];
+
+    ReedSolomonCode rs = new ReedSolomonCode(dataSize,paritySize);
+    int[] code = new int[paritySize];
+    for(int i = 0; i < dataSize; i++) {
+      int[] data = new int[dataSize];
+      data[i] = 1;
+      rs.encode(data, code);
+      for(int j = 0; j < code.length; j++) {
+        matrix[i + j*dataSize] = code[j];
+      }
+    }
+
+    return matrix;
+  }
 }

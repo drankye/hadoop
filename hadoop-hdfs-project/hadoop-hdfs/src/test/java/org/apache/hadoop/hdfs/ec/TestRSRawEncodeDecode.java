@@ -17,8 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import org.apache.hadoop.hdfs.ec.coder.IsaRSDecoder;
-import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawDecoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawEncoder;
 import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureDecoder;

@@ -26,7 +26,7 @@ import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
 import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
-import org.apache.hadoop.hdfs.ec.coder.util.GaloisField;
+import org.apache.hadoop.hdfs.ec.rawcoder.util.GaloisField;
 import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;

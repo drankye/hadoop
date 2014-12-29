@@ -17,16 +17,18 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
+import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
+
 import java.nio.ByteBuffer;
 
 public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
-  static {
-    System.loadLibrary("isajni");
-  }
+  private int[] matrix;
 
   public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
-    init(dataSize, paritySize);
+
+    matrix = RSUtil.initMatrix(dataSize, paritySize);
+    init(dataSize, paritySize, matrix);
   }
 
   @Override
@@ -40,7 +42,7 @@ public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
   }
 
 
-  private native static int init(int dataSize, int paritySize);
+  private native static int init(int dataSize, int paritySize, int[] matrix);
 
   public native static int decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
 
