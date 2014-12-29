@@ -39,6 +39,10 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     encode(inputs, outputs, chunkSize());
   }
 
+  static {
+    System.loadLibrary("isajni");
+  }
+
   private static native int init(int dataSize, int paritySize, int[] matrix);
 
   private static native int encode(ByteBuffer[] data, ByteBuffer[] code, int chunkSize);

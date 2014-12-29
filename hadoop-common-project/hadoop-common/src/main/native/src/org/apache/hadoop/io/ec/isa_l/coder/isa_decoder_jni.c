@@ -37,7 +37,7 @@ or Intel's suppliers or licensors in any way.
 #include "../include/erasure_code.h"
 #include "../include/types.h"
 #include "../include/gf_vect_mul.h"
-#include "org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder.h"
+#include "org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -73,10 +73,8 @@ static void make_key(){
     (void) pthread_key_create(&en_key, NULL);
 }
 
-
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_init
-  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize){
-  
+(JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
 

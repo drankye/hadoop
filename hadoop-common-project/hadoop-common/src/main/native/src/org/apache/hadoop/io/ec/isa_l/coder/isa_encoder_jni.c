@@ -67,9 +67,8 @@ static void make_key(){
     (void) pthread_key_create(&en_key, NULL);
     (void) pthread_key_create(&de_key, NULL);
 }
-
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_init
-  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize){
+  (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
         pthread_once(&key_once, make_key);

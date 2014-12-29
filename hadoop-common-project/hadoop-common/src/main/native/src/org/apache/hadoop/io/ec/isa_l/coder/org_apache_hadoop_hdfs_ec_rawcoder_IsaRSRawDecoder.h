@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder
  * Method:    init
- * Signature: (II)I
+ * Signature: (II[I)I
  */
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_init
-  (JNIEnv *, jclass, jint, jint);
+  (JNIEnv *, jclass, jint, jint, jintArray);
 
 /*
  * Class:     org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder

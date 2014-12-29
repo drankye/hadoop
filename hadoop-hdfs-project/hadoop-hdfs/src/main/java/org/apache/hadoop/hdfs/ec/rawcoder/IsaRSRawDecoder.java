@@ -41,6 +41,9 @@ public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
     decode(allData, erasedIndexes, chunkSize());
   }
 
+  static {
+    System.loadLibrary("isajni");
+  }
 
   private native static int init(int dataSize, int paritySize, int[] matrix);
 
