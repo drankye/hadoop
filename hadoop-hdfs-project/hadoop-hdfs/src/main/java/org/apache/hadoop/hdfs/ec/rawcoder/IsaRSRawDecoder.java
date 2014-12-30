@@ -23,56 +23,56 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
-    private int[] matrix;
+  private int[] matrix;
 
-    public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
-        super(dataSize, paritySize, chunkSize);
+  public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
+    super(dataSize, paritySize, chunkSize);
 
-        matrix = RSUtil.initMatrix(dataSize, paritySize);
-        init(dataSize, paritySize, matrix);
+    matrix = RSUtil.initMatrix(dataSize, paritySize);
+    init(dataSize, paritySize, matrix);
+  }
+
+  @Override
+  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
+    if (erasedIndexes.length == 0) {
+      return;
     }
 
-    @Override
-    public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
-        if (erasedIndexes.length == 0) {
-            return;
-        }
+    decode(inputs, erasedIndexes, chunkSize());
 
-        decode(inputs, erasedIndexes, chunkSize());
+    byte[][] correctData = getData(inputs);
 
-        byte[][] correctData = getData(inputs);
-
-        byte[][] outputsData = new byte[outputs.length][outputs[0].limit()];
-        // cleanup the write buffer
-        for (int i = 0; i < outputsData.length; i++) {
-            Arrays.fill(outputsData[i], (byte) 0);
-        }
-
-        for (int i = 0; i < erasedIndexes.length; i++) {
-            int errorLocation = erasedIndexes[i];
-            outputsData[i] = correctData[errorLocation];
-        }
-        writeBuffer(outputs, outputsData);
+    byte[][] outputsData = new byte[outputs.length][outputs[0].limit()];
+    // cleanup the write buffer
+    for (int i = 0; i < outputsData.length; i++) {
+      Arrays.fill(outputsData[i], (byte) 0);
     }
 
-    static {
-        System.loadLibrary("isajni");
+    for (int i = 0; i < erasedIndexes.length; i++) {
+      int errorLocation = erasedIndexes[i];
+      outputsData[i] = correctData[errorLocation];
     }
+    writeBuffer(outputs, outputsData);
+  }
 
-    private native static int init(int dataSize, int paritySize, int[] matrix);
+  static {
+    System.loadLibrary("isajni");
+  }
 
-    public native static int decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
+  private native static int init(int dataSize, int paritySize, int[] matrix);
 
-    private native static int destroy();
+  public native static int decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
 
-    public void end() {
-        destroy();
-    }
+  private native static int destroy();
 
-    @Override
-    protected void finalize() {
-        destroy();
-    }
+  public void end() {
+    destroy();
+  }
+
+  @Override
+  protected void finalize() {
+    destroy();
+  }
 
 
 }
