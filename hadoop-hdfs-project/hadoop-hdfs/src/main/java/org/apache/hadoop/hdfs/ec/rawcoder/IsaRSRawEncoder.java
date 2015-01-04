@@ -17,18 +17,21 @@
  */
 package org.apache.hadoop.hdfs.ec.rawcoder;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
 public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
+  public static final Log LOG = LogFactory.getLog(IsaRSRawEncoder.class.getName());
   private int[] matrix;
 
   public IsaRSRawEncoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
 
     matrix = RSUtil.initMatrix(dataSize, paritySize);
-    init(dataSize, paritySize, matrix);
+//    init(dataSize, paritySize, matrix);
   }
 
   @Override
@@ -36,7 +39,12 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-    encode(inputs, outputs, chunkSize());
+    init(dataSize(), paritySize(), matrix);
+    int result = encode(inputs, outputs, chunkSize());
+
+    if(result != 0) {
+      LOG.error("Isa_RS encode fail. The error code is " + result);
+    }
   }
 
   static {

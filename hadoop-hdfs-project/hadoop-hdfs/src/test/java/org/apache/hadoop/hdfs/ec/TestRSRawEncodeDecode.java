@@ -150,7 +150,7 @@ public class TestRSRawEncodeDecode {
 
 	private void verifyIsaRSRawEncodeDecode(int dataSize, int paritySize) {
 		RawErasureEncoder rawEncoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
-		RawErasureDecoder rawDecoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder rawDecoder = null;//new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
 		verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
 	}
 
@@ -159,16 +159,20 @@ public class TestRSRawEncodeDecode {
 		ByteBuffer[] message = new ByteBuffer[dataSize];
 		byte[][] messageArray = new byte[dataSize][];
 		ByteBuffer[] cpMessage = new ByteBuffer[dataSize];
-		int bufsize = 1024 * 1024 * 10;
+		int bufsize = /*1024 * 1024 */ 16;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
 			messageArray[i] = byteArray;
-			message[i] = ByteBuffer.wrap(byteArray);
-			byte[] cpByte = Arrays.copyOfRange(messageArray[i], 0, messageArray[i].length);
-			cpMessage[i] = ByteBuffer.wrap(cpByte);
+			message[i] = ByteBuffer.allocate(bufsize);
+			message[i].put(byteArray);
+			message[i].flip();
+
+			cpMessage[i] = ByteBuffer.allocate(bufsize);
+			cpMessage[i].put(byteArray);
+			cpMessage[i].flip();
 		}
 		
 		ByteBuffer[] parity = new ByteBuffer[paritySize];
@@ -196,7 +200,7 @@ public class TestRSRawEncodeDecode {
 		}
 		ByteBuffer[] writeBufs = new ByteBuffer[1];
 		writeBufs[0] = ByteBuffer.wrap(new byte[bufsize]);
-		rawDecoder.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
+		//rawDecoder.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
 		Assert.assertTrue("Decode failed", copy.equals(writeBufs[0]));
 	}
 }

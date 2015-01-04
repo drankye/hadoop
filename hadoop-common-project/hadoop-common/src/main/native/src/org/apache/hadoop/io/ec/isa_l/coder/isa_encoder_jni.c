@@ -69,6 +69,7 @@ static void make_key(){
 }
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
+        fprintf(stdout, "[Encoder Init]Isa encoder init.\n");
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
         pthread_once(&key_once, make_key);
@@ -76,20 +77,27 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
         if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(en_key))){
             pCodecParameter = (Codec_Parameter *)malloc(sizeof(Codec_Parameter));
             if(!pCodecParameter){
-                printf("Out of memory in ISA encoder init\n");
+                fprintf(stderr, "[Encoder Init]Out of memory in ISA encoder init\n");
                 return -1;
             }
 
             if (stripeSize > KMAX || paritySize > (MMAX - KMAX)){
-                printf("max stripe size is %d and max parity size is %d\n", KMAX, MMAX - KMAX);
+                fprintf(stderr, "[Encoder Init]max stripe size is %d and max parity size is %d\n", KMAX, MMAX - KMAX);
                 return -2;
             }
 
             int totalSize = paritySize + stripeSize;
             pCodecParameter->paritySize = paritySize;
             pCodecParameter->stripeSize = stripeSize;
-            pCodecParameter->data = (u8 **)malloc(sizeof(u8 *) * stripeSize);
+            pCodecParameter->data = (u8 **)malloc(sizeof(u8*) * stripeSize);
             pCodecParameter->code = (u8 **)malloc(sizeof(u8*) * paritySize);
+//            for (int i = 0;i < stripeSize; i++) {
+            // pCodecParameter->data[i] = (u8*)malloc(sizeof(u8) * 16);
+//             fprintf(stdout, "[Debug Encoder Init]test malloc,the length malloc is %d\n", sizeof(pCodecParameter->data[i])/sizeof(u8));
+//             fprintf(stdout, "[Debug Encoder Init]test malloc,data[i][1] is %d\n", pCodecParameter->data[i][1]);
+//            }
+
+
             pCodecParameter->codebuf = (jobject *)malloc(sizeof(jobject) * paritySize);
 
 
@@ -112,56 +120,76 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
             
             (void) pthread_setspecific(en_key, pCodecParameter);
         }
+        fprintf(stdout, "[Encoder Init]Isa encoder init successful.\n");
         return 0;
   }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
+        jobject buffer = env->GetObjectArrayElement(data, 0);
+        int length = env->GetDirectBufferCapacity(buffer);
+        fprintf(stdout, "[Debug Encoding]===================%d\n", length);
 
+
+
+        fprintf(stdout, "[Encoding]Before encoding...\n");
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
 
         if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(en_key))){
-            printf("ISA encoder not initilized!\n");
+           fprintf(stderr, "[Encoding]ISA encoder not initilized!\n");
             return -3;
         }
         dataLen = env->GetArrayLength(data);
         codeLen = env->GetArrayLength(code);
 
         if(dataLen != pCodecParameter->stripeSize){
-            printf("wrong stripe size, expect %d but got %d\n", pCodecParameter->stripeSize, dataLen);
+            fprintf(stderr, "[Encoding]wrong stripe size, expect %d but got %d\n", pCodecParameter->stripeSize, dataLen);
             return -4;
         }
         if(codeLen != pCodecParameter->paritySize){
-            printf("wrong paritySize, expect %d but got %d\n", pCodecParameter->paritySize, codeLen);
+            fprintf(stderr, "[Encoding]wrong paritySize, expect %d but got %d\n", pCodecParameter->paritySize, codeLen);
             return -5;
         }
         int stripeSize = pCodecParameter->stripeSize;
         int paritySize = pCodecParameter->paritySize;
 
         for(int k = 0; k < dataLen; k++){
+            jobject buffer = env->GetObjectArrayElement(data, k);
+            if (NULL == buffer)  fprintf(stdout, "[Debug Encoding]buffer is null!!\n");
+            int length = env->GetDirectBufferCapacity(buffer);
             pCodecParameter->data[k] = (u8 *)env->GetDirectBufferAddress(env->GetObjectArrayElement(data, k));
+            fprintf(stdout, "[Debug Encoding]sys the data%d, the length is %d\n", k, length);
+            fprintf(stdout, "[Debug Encoding]data[i][1] is %d\n", pCodecParameter->data[k]);
+//            for (int i = 0;i < 8; i++) {
+//            fprintf(stdout, "%d ", pCodecParameter->data[k][i]);
+//            }
+            fprintf(stdout, "\n");
         }
         for(int m = 0; m < codeLen; m++){
             pCodecParameter->codebuf[m] = env->GetObjectArrayElement(code, m);
             pCodecParameter->code[m] = (u8 *)env->GetDirectBufferAddress(pCodecParameter->codebuf[m]);
         }
-        
+
+        fprintf(stdout, "[Debug Encoding]before call ec_encode\n");
         ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
+        fprintf(stdout, "[Debug Encoding]after call ec_encode\n");
         for(int m = 0; m < codeLen; m++){
             env->SetObjectArrayElement(code, m, pCodecParameter->codebuf[m]);
         }
+        fprintf(stdout, "[Encoding]encode success.\n");
         return 0;
   }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_destroy
   (JNIEnv *env, jclass myclass){
+        fprintf(stdout, "[Encoder destory]before destory\n");
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
 
         if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(en_key))){
-            printf("ISA encoder not initilized!\n");
+            fprintf(stderr, "[Encoder destory]ISA encoder not initilized!\n");
             return -6;
         }
         
@@ -170,6 +198,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_d
         free(pCodecParameter->codebuf);
         free(pCodecParameter);
         (void)pthread_setspecific(en_key, NULL);
+        fprintf(stdout, "[Encoder destory]destory success.\n");
         return 0;
   }
 

@@ -75,6 +75,7 @@ static void make_key(){
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_init
 (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
+        fprintf(stdout, "[Decoder init]before init.\n");
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
 
@@ -83,12 +84,12 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_i
         if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){
             pCodecParameter = (Codec_Parameter *)malloc(sizeof(Codec_Parameter));
             if(!pCodecParameter){
-                printf("Out of memory in ISA decoder init\n");
+                fprintf(stderr, "[Decoder init]Out of memory in ISA decoder init\n");
                 return -1;
             }
 
             if (stripeSize > KMAX || paritySize > (MMAX - KMAX)){
-                printf("max stripe size is %d and max parity size is %d\n", KMAX, MMAX - KMAX);
+                fprintf(stderr, "[Decoder init]max stripe size is %d and max parity size is %d\n", KMAX, MMAX - KMAX);
                 return -2;
             }
 
@@ -119,11 +120,13 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_i
             ec_init_tables(stripeSize, paritySize, &(pCodecParameter->a)[stripeSize * stripeSize], pCodecParameter->g_tbls);
             (void) pthread_setspecific(de_key, pCodecParameter);
         }
+        fprintf(stdout, "[Decoder init]init success.\n");
         return 0;
  }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_decode
   (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize) {
+      fprintf(stdout, "[Decoding]before decode.\n");
       Codec_Parameter * pCodecParameter = NULL;
       pthread_once(&key_once, make_key);
       jboolean isCopy;
@@ -138,17 +141,17 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_d
       // Check all the parameters.
 
       if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){
-          printf("ReedSolomonDecoder DE not initilized!\n");
+          fprintf(stderr, "[Decoding]ReedSolomonDecoder DE not initilized!\n");
           return -3;
       }
 
       if(erasureLen > pCodecParameter->paritySize){
-          printf("Too many erasured data!\n");
+          fprintf(stderr, "[Decoding]Too many erasured data!\n");
           return -4;
       }
 
       if(alldataLen != pCodecParameter->stripeSize + pCodecParameter->paritySize){
-          printf("Wrong data and parity data size.\n");
+          fprintf(stderr, "[Decoding]Wrong data and parity data size.\n");
           return -5;
       }
 
@@ -208,7 +211,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_d
       //Construct d, the inverted matrix.
 
       if(gf_invert_matrix(pCodecParameter->b, pCodecParameter->d, pCodecParameter->stripeSize) < 0){
-          printf("BAD MATRIX!\n");
+          fprintf(stderr, "[Decoding]BAD MATRIX!\n");
           return -6;
       }
       int srcErrors = erasureLen - parityErrors;
@@ -254,14 +257,16 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_d
       if(isCopy){
           env->ReleaseIntArrayElements(erasures, (jint *)tmp, JNI_ABORT);
       }
+      fprintf(stdout, "[Decoding]decode success.\n");
       return 0;
  }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_destroy
   (JNIEnv *env, jclass myclass){
+      fprintf(stdout, "[Decoder destory]before destory\n");
       Codec_Parameter * pCodecParameter = NULL;
       if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){
-          printf("ISA decoder not initilized!\n");
+          fprintf(stderr, "[Decoder destory]ISA decoder not initilized!\n");
           return -7;
       }
 
@@ -271,6 +276,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawDecoder_d
       free(pCodecParameter->erasured);
       free(pCodecParameter);
       (void)pthread_setspecific(de_key, NULL);
+      fprintf(stdout, "[Decoder destory]destory success.\n");
       return 0;
 
   }
