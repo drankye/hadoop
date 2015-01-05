@@ -35,10 +35,14 @@ public class ECSchema {
     this.codecName = codec;
 
     //XXX get data size and parity size
-    String dataSize = options.get("k");
-    this.dataBlocks = Integer.parseInt(dataSize);
-    String paritySize = options.get("m");
-    this.parityBlocks = Integer.parseInt(paritySize);
+    try {
+      String dataSize = options.get("k");
+      this.dataBlocks = Integer.parseInt(dataSize);
+      String paritySize = options.get("m");
+      this.parityBlocks = Integer.parseInt(paritySize);
+    } catch (NumberFormatException e) {
+      //do-nothing
+    }
   }
 
   public String getSchemaName() {

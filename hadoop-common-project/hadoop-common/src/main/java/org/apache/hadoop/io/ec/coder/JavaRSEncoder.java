@@ -41,7 +41,7 @@ public class JavaRSEncoder extends AbstractErasureEncoder {
       ECBlock[] inputBlocks = subGroup.getDataBlocks();
       ECBlock[] outputBlocks = subGroup.getParityBlocks();
       
-      try{
+      //try{
         beforeCoding(inputBlocks, outputBlocks);
 
         while (hasNextInputs()) {
@@ -50,11 +50,11 @@ public class JavaRSEncoder extends AbstractErasureEncoder {
           encode(dataChunks, parityChunks);
           withCoded(dataChunks, parityChunks);
         }
-      } catch(Exception e) {
-    	  LOG.info("Error in encode " + e);
-      } finally {
+      //} catch(Exception e) {
+    	//  LOG.info("Error in encode " + e);
+//      } finally {
     	  postCoding(inputBlocks, outputBlocks);
-      }
+//      }
     }
 
     private void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {

@@ -235,9 +235,10 @@ public abstract class TestErasureCodecBase {
           buffer.put(new byte[CHUNK_SIZE]);
           chunks[i] = new ECChunk(buffer);
         } else {
-          byte[] segmentData = TestErasureCodecBase.this.dataManager.getDataSegment(ecBlock.getBlockId(), segmentIndex);
-          assert(segmentData.length == BLOCK_SIZE);
+          byte[] segmentData = dataManager.getDataSegment(ecBlock.getBlockId(), segmentIndex);
+          assert(segmentData.length == CHUNK_SIZE);
           buffer.put(segmentData);
+          buffer.flip();
           chunks[i] = new ECChunk(buffer);
         }
       }

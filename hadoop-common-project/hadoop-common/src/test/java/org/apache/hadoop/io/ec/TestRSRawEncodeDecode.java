@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.io.ec;
 
-import org.apache.hadoop.hdfs.ec.rawcoder.*;
 import org.apache.hadoop.io.ec.rawcoder.*;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Assert;
@@ -40,7 +39,7 @@ public class TestRSRawEncodeDecode {
     symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
   }
 
-	//@Test
+	@Test
 	public void testJavaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
@@ -130,11 +129,11 @@ public class TestRSRawEncodeDecode {
 	@Test
 	public void testEncodeDecode() {
 		// verify the production size.
-		//verifyJavaRSRawEncodeDecode(10, 4);
-		verifyIsaRSRawEncodeDecode(10, 4);
+		verifyJavaRSRawEncodeDecode(10, 4);
+		//verifyIsaRSRawEncodeDecode(10, 4);
 
 		// verify a test size
-		//verifyJavaRSRawEncodeDecode(3, 3);
+		verifyJavaRSRawEncodeDecode(3, 3);
 		//verifyIsaRSRawEncodeDecode(3, 3);
 	}
 
@@ -155,7 +154,7 @@ public class TestRSRawEncodeDecode {
 		ByteBuffer[] message = new ByteBuffer[dataSize];
 		byte[][] messageArray = new byte[dataSize][];
 		ByteBuffer[] cpMessage = new ByteBuffer[dataSize];
-		int bufsize = /*1024 * 1024 */ 16;
+		int bufsize = 1024 * 1024 * 10;
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
@@ -196,7 +195,7 @@ public class TestRSRawEncodeDecode {
 		}
 		ByteBuffer[] writeBufs = new ByteBuffer[1];
 		writeBufs[0] = ByteBuffer.wrap(new byte[bufsize]);
-		//rawDecoder.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
+		rawDecoder.decode(data, writeBufs, new int[] {erasedLocation + paritySize });
 		Assert.assertTrue("Decode failed", copy.equals(writeBufs[0]));
 	}
 }

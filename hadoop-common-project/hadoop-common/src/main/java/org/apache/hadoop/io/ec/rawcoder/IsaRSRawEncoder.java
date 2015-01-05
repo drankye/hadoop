@@ -19,7 +19,7 @@ package org.apache.hadoop.io.ec.rawcoder;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.ec.rawcoder.util.RSUtil;
+import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 

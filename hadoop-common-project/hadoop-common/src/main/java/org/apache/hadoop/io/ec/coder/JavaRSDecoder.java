@@ -95,7 +95,7 @@ public class JavaRSDecoder extends AbstractErasureDecoder {
 	ECBlock[] outputBlocks = new ECBlock[erasedLocations.length];
 	for (int i = 0; i < erasedLocations.length; i++) {
 		ECBlock readBlock = readBlocks[erasedLocations[i]];
-		outputBlocks[i] = new ECBlock(readBlock.getExtendedBlockId(), readBlock.isParity());
+		outputBlocks[i] = new ECBlock(readBlock.getBlockId(), readBlock.isParity());
 	}
 	return outputBlocks;
   }
