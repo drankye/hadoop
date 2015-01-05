@@ -89,15 +89,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
             int totalSize = paritySize + stripeSize;
             pCodecParameter->paritySize = paritySize;
             pCodecParameter->stripeSize = stripeSize;
-            pCodecParameter->data = (u8 **)malloc(sizeof(u8*) * stripeSize);
+            pCodecParameter->data = (u8 **)malloc(sizeof(u8 *) * stripeSize);
             pCodecParameter->code = (u8 **)malloc(sizeof(u8*) * paritySize);
-//            for (int i = 0;i < stripeSize; i++) {
-            // pCodecParameter->data[i] = (u8*)malloc(sizeof(u8) * 16);
-//             fprintf(stdout, "[Debug Encoder Init]test malloc,the length malloc is %d\n", sizeof(pCodecParameter->data[i])/sizeof(u8));
-//             fprintf(stdout, "[Debug Encoder Init]test malloc,data[i][1] is %d\n", pCodecParameter->data[i][1]);
-//            }
-
-
             pCodecParameter->codebuf = (jobject *)malloc(sizeof(jobject) * paritySize);
 
 
@@ -126,7 +119,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
-        fprintf(stderr, "[Encoding]Before encoding...\n");
+        fprintf(stdout, "[Encoding]Before encoding...\n");
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
@@ -148,26 +141,24 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_e
         }
         int stripeSize = pCodecParameter->stripeSize;
         int paritySize = pCodecParameter->paritySize;
-        fprintf(stderr, "[Debug Encoding]before copy data\n");
+
         for(int k = 0; k < dataLen; k++){
             pCodecParameter->data[k] = (u8 *)env->GetDirectBufferAddress(env->GetObjectArrayElement(data, k));
-            fprintf(stderr, "[Debug Encoding]data%d:\n", k);
-            for (int i = 0; i < 16; i++) {
-              fprintf(stderr, "%d ", pCodecParameter->data[k][i]);
-            }
-             fprintf(stderr, "\n");
+            fprintf(stdout, "[Debug Encoding]sys the data%d\n", pCodecParameter->data[k][1]);
+            fprintf(stdout, "[Debug Encoding]the data length is %d\n", sizeof(data[k])/sizeof(u8));
         }
         for(int m = 0; m < codeLen; m++){
             pCodecParameter->codebuf[m] = env->GetObjectArrayElement(code, m);
             pCodecParameter->code[m] = (u8 *)env->GetDirectBufferAddress(pCodecParameter->codebuf[m]);
         }
-        fprintf(stderr, "[Debug Encoding]before call ec_encode\n");
+
+        fprintf(stdout, "[Debug Encoding]before call ec_encode\n");
         ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
-        fprintf(stderr, "[Debug Encoding]after call ec_encode\n");
-        //for(int m = 0; m < codeLen; m++){
-          //  env->SetObjectArrayElement(code, m, pCodecParameter->codebuf[m]);
-        //}
-        fprintf(stderr, "[Encoding]encode success.\n");
+        fprintf(stdout, "[Debug Encoding]after call ec_encode\n");
+        for(int m = 0; m < codeLen; m++){
+            env->SetObjectArrayElement(code, m, pCodecParameter->codebuf[m]);
+        }
+        fprintf(stdout, "[Encoding]encode success.\n");
         return 0;
   }
 
