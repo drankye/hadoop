@@ -20,11 +20,12 @@ package org.apache.hadoop.hdfs;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.io.ec.ECBlockId;
 
 /**
  * An immutable key which identifies a block.
  */
-final public class ExtendedBlockId {
+final public class ExtendedBlockId implements ECBlockId{
   /**
    * The block ID for this block.
    */
