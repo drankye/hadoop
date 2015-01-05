@@ -293,27 +293,6 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
               </tasks>
             </configuration>
           </execution>
-            <execution>
-                <id>generate-jni-stubs</id>
-                <phase>process-classes</phase>
-                <goals>
-                    <goal>run</goal>
-                </goals>
-                <configuration>
-                    <exportAntProperties>true</exportAntProperties>
-                    <target>
-                        <property name="runtime_classpath" refid="maven.compile.classpath"/>
-                        <exec executable="javah">
-                            <arg value="-cp"/>
-                            <arg value="${runtime_classpath}"/>
-                            <arg value="-d"/>
-                            <arg value="${project.build.directory}/native/javah"/>
-                            <arg value="org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawEncoder"/>
-                            <arg value="org.apache.hadoop.hdfs.ec.rawcoder.IsaRSRawDecoder"/>
-                        </exec>
-                    </target>
-                </configuration>
-            </execution>
         </executions>
       </plugin>
       <plugin>
