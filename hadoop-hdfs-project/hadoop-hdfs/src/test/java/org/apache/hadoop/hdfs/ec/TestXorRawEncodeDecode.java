@@ -17,10 +17,10 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureDecoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.RawErasureEncoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.XorRawDecoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.XorRawEncoder;
+import org.apache.hadoop.io.ec.rawcoder.RawErasureDecoder;
+import org.apache.hadoop.io.ec.rawcoder.RawErasureEncoder;
+import org.apache.hadoop.io.ec.rawcoder.XorRawDecoder;
+import org.apache.hadoop.io.ec.rawcoder.XorRawEncoder;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;

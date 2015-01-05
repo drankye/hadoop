@@ -21,18 +21,19 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
-import org.apache.hadoop.hdfs.ec.codec.ErasureCodec;
-import org.apache.hadoop.hdfs.ec.coder.AbstractErasureCoderCallback;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
-import org.apache.hadoop.hdfs.ec.coder.ErasureDecoder;
-import org.apache.hadoop.hdfs.ec.coder.ErasureEncoder;
-import org.apache.hadoop.hdfs.ec.rawcoder.util.GaloisField;
-import org.apache.hadoop.hdfs.ec.grouper.BlockGrouper;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.ec.*;
+import org.apache.hadoop.io.ec.codec.ErasureCodec;
+import org.apache.hadoop.io.ec.coder.AbstractErasureCoderCallback;
+import org.apache.hadoop.io.ec.coder.ErasureCoderCallback;
+import org.apache.hadoop.io.ec.coder.ErasureDecoder;
+import org.apache.hadoop.io.ec.coder.ErasureEncoder;
+import org.apache.hadoop.io.ec.grouper.BlockGrouper;
+import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Before;
 
 import java.io.File;
@@ -302,8 +303,9 @@ public abstract class TestErasureCodecBase {
   }
 
   private File getBlockFile(ECBlock ecBlock) throws IOException {
-    Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(ecBlock.getBlockPoolId(), ecBlock.getBlockId());
-    File blockFile = DataNodeTestUtils.getBlockFile(dataNode, ecBlock.getBlockPoolId(), block);
+    ExtendedBlockId extendedBlockId = (ExtendedBlockId) ecBlock.getBlockId();
+    Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(extendedBlockId.getBlockPoolId(), extendedBlockId.getBlockId());
+    File blockFile = DataNodeTestUtils.getBlockFile(dataNode, extendedBlockId.getBlockPoolId(), block);
     return blockFile;
   }
 }

@@ -22,40 +22,13 @@ import org.apache.hadoop.hdfs.StorageType;
 import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.ec.ECBlockId;
 
-public class ECBlock {
+public class HdfsECBlock extends ECBlock{
 
-  private ExtendedBlockId blockId;
-  private boolean isParity;
-  private boolean isMissing;
-
-  public ECBlock(ExtendedBlockId blockId, boolean isParity) {
-    this.blockId = blockId;
-    this.isParity = isParity;
-  }
-  
-  public long getBlockId() {
-	  return blockId.getBlockId();
-  }
-
-  public String getBlockPoolId() {
-	  return blockId.getBlockPoolId();
-  }
-
-  public ExtendedBlockId getExtendedBlockId() {
-    return blockId;
-  }
-
-  public void setMissing(boolean isMissing) {
-    this.isMissing = isMissing;
-  }
-
-  public boolean isParity() {
-    return isParity;
-  }
-
-  public boolean isMissing() {
-    return isMissing;
+  public HdfsECBlock(ExtendedBlockId blockId, boolean isParity) {
+    super(blockId, isParity);
   }
 
   /**

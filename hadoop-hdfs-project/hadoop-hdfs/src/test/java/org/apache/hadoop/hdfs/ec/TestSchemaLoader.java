@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.ec.ECConfiguration;
+import org.apache.hadoop.io.ec.ECSchema;
+import org.apache.hadoop.io.ec.SchemaLoader;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

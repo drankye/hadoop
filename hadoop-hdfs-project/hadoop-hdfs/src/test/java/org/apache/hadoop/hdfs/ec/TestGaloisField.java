@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hdfs.ec;
 
-import org.apache.hadoop.hdfs.ec.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Assert;
 import org.junit.Test;
 
