@@ -20,19 +20,29 @@ package org.apache.hadoop.hdfs.ec;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.*;
+import org.apache.hadoop.hdfs.ExtendedBlockId;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.ec.*;
 import org.apache.hadoop.io.ec.codec.ErasureCodec;
 import org.apache.hadoop.io.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureDecoder;
 import org.apache.hadoop.io.ec.coder.ErasureEncoder;
 import org.apache.hadoop.io.ec.grouper.BlockGrouper;
+import org.apache.hadoop.io.ec.BlockGroup;
+import org.apache.hadoop.io.ec.SubBlockGroup;
+import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.ec.ECSchema;
+import org.apache.hadoop.io.ec.SchemaLoader;
+import org.apache.hadoop.io.ec.ECConfiguration;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Before;
 
@@ -64,7 +74,7 @@ public abstract class TestErasureCodecBase {
   private FileSystem fileSys;
   private DataNode dataNode;
 
-  public static final String EC_CONF_PREFIX = "hadoop.hdfs.ec.erasurecodec.codec.";
+  public static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
   public static final int BLOCK_SIZE = 512;
   public static final int CHUNK_SIZE = BLOCK_SIZE;
 

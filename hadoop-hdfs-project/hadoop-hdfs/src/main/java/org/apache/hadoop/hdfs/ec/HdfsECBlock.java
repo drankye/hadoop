@@ -19,11 +19,9 @@ package org.apache.hadoop.hdfs.ec;
 
 import org.apache.hadoop.hdfs.ExtendedBlockId;
 import org.apache.hadoop.hdfs.StorageType;
-import org.apache.hadoop.hdfs.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.io.ec.ECBlock;
-import org.apache.hadoop.io.ec.ECBlockId;
 
 public class HdfsECBlock extends ECBlock{
 

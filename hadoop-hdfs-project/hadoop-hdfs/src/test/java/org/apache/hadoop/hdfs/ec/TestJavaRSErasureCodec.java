@@ -18,6 +18,6 @@ public class TestJavaRSErasureCodec extends TestRSErasureCodec {
 
   @Override
   protected String getCodecClass() {
-    return "org.apache.hadoop.hdfs.ec.codec.JavaRSErasureCodec";
+    return "org.apache.hadoop.io.ec.codec.JavaRSErasureCodec";
   }
 }
