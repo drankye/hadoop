@@ -17,12 +17,16 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
+import org.apache.hadoop.util.NativeCodeLoader;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
+  public static final Log LOG = LogFactory.getLog(IsaRSRawDecoder.class.getName());
   private int[] matrix;
 
   public IsaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
@@ -56,8 +60,14 @@ public class IsaRSRawDecoder extends AbstractRawErasureDecoder {
   }
 
   static {
-    System.loadLibrary("isajni");
+    if (NativeCodeLoader.isNativeCodeLoaded()) {
+      loadLib();
+    } else {
+      LOG.error("failed to load ISA_RS Decoder");
+    }
   }
+
+  private static native int loadLib();
 
   private native static int init(int dataSize, int paritySize, int[] matrix);
 

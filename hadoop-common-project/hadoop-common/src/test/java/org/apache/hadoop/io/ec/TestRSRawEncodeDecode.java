@@ -39,7 +39,7 @@ public class TestRSRawEncodeDecode {
     symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
   }
 
-	@Test
+//	@Test
 	public void testJavaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
@@ -129,11 +129,11 @@ public class TestRSRawEncodeDecode {
 	@Test
 	public void testEncodeDecode() {
 		// verify the production size.
-		verifyJavaRSRawEncodeDecode(10, 4);
-		//verifyIsaRSRawEncodeDecode(10, 4);
+//		verifyJavaRSRawEncodeDecode(10, 4);
+		verifyIsaRSRawEncodeDecode(10, 4);
 
 		// verify a test size
-		verifyJavaRSRawEncodeDecode(3, 3);
+//		verifyJavaRSRawEncodeDecode(3, 3);
 		//verifyIsaRSRawEncodeDecode(3, 3);
 	}
 

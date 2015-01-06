@@ -20,6 +20,7 @@ package org.apache.hadoop.io.ec.rawcoder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
+import org.apache.hadoop.util.NativeCodeLoader;
 
 import java.nio.ByteBuffer;
 
@@ -43,13 +44,19 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     int result = encode(inputs, outputs, chunkSize());
 
     if(result != 0) {
-      LOG.error("Isa_RS encode fail. The error code is " + result);
+      LOG.error("ISA_RS encode fail. The error code is " + result);
     }
   }
 
   static {
-    System.loadLibrary("isajni");
+    if (NativeCodeLoader.isNativeCodeLoaded()) {
+      loadLib();
+    } else {
+      LOG.error("failed to load ISA_RS Encoder");
+    }
   }
+
+  private static native int loadLib();
 
   private static native int init(int dataSize, int paritySize, int[] matrix);
 

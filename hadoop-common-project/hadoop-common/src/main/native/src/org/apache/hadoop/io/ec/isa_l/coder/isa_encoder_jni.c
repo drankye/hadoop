@@ -37,7 +37,7 @@ or Intel's suppliers or licensors in any way.
 #include "../include/erasure_code.h"
 #include "../include/types.h"
 #include "../include/gf_vect_mul.h"
-#include "org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder.h"
+#include "org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -67,7 +67,7 @@ static void make_key(){
     (void) pthread_key_create(&en_key, NULL);
     (void) pthread_key_create(&de_key, NULL);
 }
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
         fprintf(stdout, "[Encoder Init]Isa encoder init.\n");
         Codec_Parameter * pCodecParameter = NULL;
@@ -91,12 +91,6 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
             pCodecParameter->stripeSize = stripeSize;
             pCodecParameter->data = (u8 **)malloc(sizeof(u8*) * stripeSize);
             pCodecParameter->code = (u8 **)malloc(sizeof(u8*) * paritySize);
-//            for (int i = 0;i < stripeSize; i++) {
-            // pCodecParameter->data[i] = (u8*)malloc(sizeof(u8) * 16);
-//             fprintf(stdout, "[Debug Encoder Init]test malloc,the length malloc is %d\n", sizeof(pCodecParameter->data[i])/sizeof(u8));
-//             fprintf(stdout, "[Debug Encoder Init]test malloc,data[i][1] is %d\n", pCodecParameter->data[i][1]);
-//            }
-
 
             pCodecParameter->codebuf = (jobject *)malloc(sizeof(jobject) * paritySize);
 
@@ -104,7 +98,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
            // gf_mk_field();
             //gf_gen_rs_matrix(pCodecParameter->a, totalSize, stripeSize);
             int i, j;
-            jmatrix = env->GetIntArrayElements(matrix, false);
+            jmatrix = (*env)->GetIntArrayElements(env, matrix, JNI_FALSE);
             memset(pCodecParameter->a, 0, stripeSize*totalSize);
             for(i=0; i<stripeSize; i++){
                  pCodecParameter->a[stripeSize*i + i] = 1;
@@ -124,7 +118,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_i
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_encode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
         fprintf(stderr, "[Encoding]Before encoding...\n");
         int dataLen, codeLen;
@@ -135,8 +129,8 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_e
            fprintf(stderr, "[Encoding]ISA encoder not initilized!\n");
             return -3;
         }
-        dataLen = env->GetArrayLength(data);
-        codeLen = env->GetArrayLength(code);
+        dataLen = (*env)->GetArrayLength(env, data);
+        codeLen = (*env)->GetArrayLength(env, code);
 
         if(dataLen != pCodecParameter->stripeSize){
             fprintf(stderr, "[Encoding]wrong stripe size, expect %d but got %d\n", pCodecParameter->stripeSize, dataLen);
@@ -149,17 +143,20 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_e
         int stripeSize = pCodecParameter->stripeSize;
         int paritySize = pCodecParameter->paritySize;
         fprintf(stderr, "[Debug Encoding]before copy data\n");
-        for(int k = 0; k < dataLen; k++){
-            pCodecParameter->data[k] = (u8 *)env->GetDirectBufferAddress(env->GetObjectArrayElement(data, k));
+        int k;
+        for(k = 0;k < dataLen; k++){
+            pCodecParameter->data[k] = (u8 *)(*env)->GetDirectBufferAddress(env,(*env)->GetObjectArrayElement(env, data, k));
             fprintf(stderr, "[Debug Encoding]data%d:\n", k);
-            for (int i = 0; i < 16; i++) {
+            int i;
+            for (i = 0;i < 16; i++) {
               fprintf(stderr, "%d ", pCodecParameter->data[k][i]);
             }
              fprintf(stderr, "\n");
         }
-        for(int m = 0; m < codeLen; m++){
-            pCodecParameter->codebuf[m] = env->GetObjectArrayElement(code, m);
-            pCodecParameter->code[m] = (u8 *)env->GetDirectBufferAddress(pCodecParameter->codebuf[m]);
+        int m;
+        for(m = 0; m < codeLen; m++){
+            pCodecParameter->codebuf[m] = (*env)->GetObjectArrayElement(env, code, m);
+            pCodecParameter->code[m] = (u8 *)(*env)->GetDirectBufferAddress(env, pCodecParameter->codebuf[m]);
         }
         fprintf(stderr, "[Debug Encoding]before call ec_encode\n");
         ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
@@ -171,7 +168,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_e
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_hdfs_ec_rawcoder_IsaRSRawEncoder_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_destroy
   (JNIEnv *env, jclass myclass){
         fprintf(stdout, "[Encoder destory]before destory\n");
         Codec_Parameter * pCodecParameter = NULL;
