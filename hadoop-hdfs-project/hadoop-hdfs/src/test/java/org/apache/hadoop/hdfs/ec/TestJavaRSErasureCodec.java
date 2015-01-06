@@ -2,9 +2,6 @@ package org.apache.hadoop.hdfs.ec;
 
 import org.junit.Test;
 
-import java.io.FileWriter;
-import java.io.PrintWriter;
-
 public class TestJavaRSErasureCodec extends TestRSErasureCodec {
 
   @Test
