@@ -4,9 +4,20 @@
 
 #ifndef _Included_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder
 #define _Included_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder
+
+#include "org_apache_hadoop.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+/*
+ * Class:     org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder
+ * Method:    loadLib
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_loadLib
+  (JNIEnv *, jclass);
+
 /*
  * Class:     org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder
  * Method:    init

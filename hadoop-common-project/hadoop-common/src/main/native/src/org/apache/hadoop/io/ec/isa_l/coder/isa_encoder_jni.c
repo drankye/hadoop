@@ -41,6 +41,8 @@ or Intel's suppliers or licensors in any way.
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
+#include <dlfcn.h>
+#include "config.h"
 
 #define MMAX 30
 #define KMAX 20
@@ -63,13 +65,33 @@ typedef struct _codec_parameter{
     jobject * codebuf;
 }Codec_Parameter;
 
+static void (*dlsym_ec_init_tables)(int, int, unsigned char*, unsigned char*);
+static void (*dlsym_ec_encode_data)(int, int, int, unsigned char*, unsigned char*, unsigned char*);
+
 static void make_key(){
     (void) pthread_key_create(&en_key, NULL);
-    (void) pthread_key_create(&de_key, NULL);
+    //(void) pthread_key_create(&de_key, NULL);
 }
+
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_loadLib
+  (JNIEnv *env, jclass myclass) {
+    // Load libsnappy.so
+  void *libec = dlopen(HADOOP_EC_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
+  if (!libec) {
+    char msg[1000];
+    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_EC_LIBRARY, dlerror());
+    THROW(env, "java/lang/UnsatisfiedLinkError", msg);
+    return 0;
+  }
+  dlerror();                                 // Clear any existing error
+  LOAD_DYNAMIC_SYMBOL(dlsym_ec_init_tables, env, libec, "ec_init_tables");
+  LOAD_DYNAMIC_SYMBOL(dlsym_ec_encode_data, env, libec, "ec_encode_data");
+  return 0;
+}
+
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
-        fprintf(stdout, "[Encoder Init]Isa encoder init.\n");
+        fprintf(stdout, "[Encoder Init]before init.\n");
         Codec_Parameter * pCodecParameter = NULL;
         jint * jmatrix = NULL;
         pthread_once(&key_once, make_key);
@@ -110,17 +132,17 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_ini
                 }
             }
                
-            ec_init_tables(stripeSize, paritySize, &(pCodecParameter->a)[stripeSize * stripeSize], pCodecParameter->g_tbls);
+            dlsym_ec_init_tables(stripeSize, paritySize, &(pCodecParameter->a)[stripeSize * stripeSize], pCodecParameter->g_tbls);
             
             (void) pthread_setspecific(en_key, pCodecParameter);
         }
-        fprintf(stdout, "[Encoder Init]Isa encoder init successful.\n");
+        fprintf(stdout, "[Encoder Init]init success.\n");
         return 0;
   }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
-        fprintf(stderr, "[Encoding]Before encoding...\n");
+        fprintf(stdout, "[Encoding]before encode.\n");
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
@@ -142,29 +164,21 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_enc
         }
         int stripeSize = pCodecParameter->stripeSize;
         int paritySize = pCodecParameter->paritySize;
-        fprintf(stderr, "[Debug Encoding]before copy data\n");
         int k;
         for(k = 0;k < dataLen; k++){
-            pCodecParameter->data[k] = (u8 *)(*env)->GetDirectBufferAddress(env,(*env)->GetObjectArrayElement(env, data, k));
-            fprintf(stderr, "[Debug Encoding]data%d:\n", k);
-            int i;
-            for (i = 0;i < 16; i++) {
-              fprintf(stderr, "%d ", pCodecParameter->data[k][i]);
-            }
-             fprintf(stderr, "\n");
+            jobject byteBuffer = (*env)->GetObjectArrayElement(env, data, k);
+            pCodecParameter->data[k] = (u8 *)((*env)->GetDirectBufferAddress(env,byteBuffer));
         }
         int m;
         for(m = 0; m < codeLen; m++){
             pCodecParameter->codebuf[m] = (*env)->GetObjectArrayElement(env, code, m);
             pCodecParameter->code[m] = (u8 *)(*env)->GetDirectBufferAddress(env, pCodecParameter->codebuf[m]);
         }
-        fprintf(stderr, "[Debug Encoding]before call ec_encode\n");
-        ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
-        fprintf(stderr, "[Debug Encoding]after call ec_encode\n");
-        //for(int m = 0; m < codeLen; m++){
-          //  env->SetObjectArrayElement(code, m, pCodecParameter->codebuf[m]);
-        //}
-        fprintf(stderr, "[Encoding]encode success.\n");
+        dlsym_ec_encode_data(chunkSize, stripeSize, paritySize, pCodecParameter->g_tbls, pCodecParameter->data, pCodecParameter->code);
+        for(m = 0; m < codeLen; m++){
+            (*env)->SetObjectArrayElement(env, code, m, pCodecParameter->codebuf[m]);
+        }
+        fprintf(stdout, "[Encoding]encode success.\n");
         return 0;
   }
 

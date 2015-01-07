@@ -32,7 +32,7 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     super(dataSize, paritySize, chunkSize);
 
     matrix = RSUtil.initMatrix(dataSize, paritySize);
-//    init(dataSize, paritySize, matrix);
+    init(dataSize, paritySize, matrix);
   }
 
   @Override
@@ -40,7 +40,7 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-    init(dataSize(), paritySize(), matrix);
+//    init(dataSize(), paritySize(), matrix);
     int result = encode(inputs, outputs, chunkSize());
 
     if(result != 0) {

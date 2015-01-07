@@ -41,6 +41,8 @@ or Intel's suppliers or licensors in any way.
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
+#include <dlfcn.h>
+#include "config.h"
 
 #define MMAX 30
 #define KMAX 20
@@ -68,9 +70,31 @@ typedef struct _codec_parameter{
     int * erasured;
 }Codec_Parameter;
 
+static void (*dlsym_ec_init_tables)(int, int, unsigned char*, unsigned char*);
+static void (*dlsym_ec_encode_data)(int, int, int, unsigned char*, unsigned char*, unsigned char*);
+
 static void make_key(){
     (void) pthread_key_create(&de_key, NULL);
-    (void) pthread_key_create(&en_key, NULL);
+//    (void) pthread_key_create(&en_key, NULL);
+}
+
+
+
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_loadLib
+  (JNIEnv *env, jclass myclass) {
+    // Load liberasure_code.so
+  void *libec = dlopen(HADOOP_EC_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
+  if (!libec) {
+    char msg[1000];
+    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_EC_LIBRARY, dlerror());
+    THROW(env, "java/lang/UnsatisfiedLinkError", msg);
+    return 0;
+  }
+
+  dlerror();                                 // Clear any existing error
+  LOAD_DYNAMIC_SYMBOL(dlsym_ec_init_tables, env, libec, "ec_init_tables");
+  LOAD_DYNAMIC_SYMBOL(dlsym_ec_encode_data, env, libec, "ec_encode_data");
+  return 0;
 }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_init
@@ -117,7 +141,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_ini
                 }
             }
                
-            ec_init_tables(stripeSize, paritySize, &(pCodecParameter->a)[stripeSize * stripeSize], pCodecParameter->g_tbls);
+            dlsym_ec_init_tables(stripeSize, paritySize, &(pCodecParameter->a)[stripeSize * stripeSize], pCodecParameter->g_tbls);
             (void) pthread_setspecific(de_key, pCodecParameter);
         }
         fprintf(stdout, "[Decoder init]init success.\n");
@@ -181,6 +205,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_dec
       for(j = pCodecParameter->paritySize, r = 0, i = 0; j < pCodecParameter->paritySize + pCodecParameter->stripeSize; j++){
           pCodecParameter->datajbuf[j] = (*env)->GetObjectArrayElement(env, alldata, j);
           pCodecParameter->data[j] = (u8 *)(*env)->GetDirectBufferAddress(env, pCodecParameter->datajbuf[j]);
+
           if(pCodecParameter->erasured[j - pCodecParameter->paritySize] == -1){
                pCodecParameter->recov[r++] = pCodecParameter->data[j];
           }
@@ -193,6 +218,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_dec
       for (j = 0; j < pCodecParameter->paritySize ; j++){
           pCodecParameter->datajbuf[j] = (*env)->GetObjectArrayElement(env, alldata, j);
           pCodecParameter->data[j] = (u8 *)(*env)->GetDirectBufferAddress(env, pCodecParameter->datajbuf[j]);
+
           if(pCodecParameter->erasured[j + pCodecParameter->stripeSize] == -1) {
               pCodecParameter->recov[r++] = pCodecParameter->data[j];
           } else {
@@ -244,7 +270,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_dec
       ec_init_tables(pCodecParameter->stripeSize, erasureLen, pCodecParameter->c, pCodecParameter->g_tbls);
 
     // Get all the repaired data into pCodecParameter->data, in the first erasuredLen rows.
-      ec_encode_data(chunkSize, pCodecParameter->stripeSize, erasureLen, pCodecParameter->g_tbls, 
+      dlsym_ec_encode_data(chunkSize, pCodecParameter->stripeSize, erasureLen, pCodecParameter->g_tbls,
                         pCodecParameter->recov, pCodecParameter->code);
 
     // Set the repaired data to alldata. 
