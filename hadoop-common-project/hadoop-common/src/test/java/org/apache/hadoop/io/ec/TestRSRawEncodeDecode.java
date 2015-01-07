@@ -48,7 +48,7 @@ public class TestRSRawEncodeDecode {
 		testRSPerformance(encoder, decoder);
 	}
 
-	//@Test
+	@Test
 	public void testIsaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
@@ -74,6 +74,7 @@ public class TestRSRawEncodeDecode {
 			message[i] = byteArray;
 			dataForEncode[i] = ByteBuffer.allocateDirect(bufsize);
 			dataForEncode[i].put(byteArray);
+			dataForEncode[i].flip();
 		}
 		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
@@ -101,9 +102,11 @@ public class TestRSRawEncodeDecode {
 		}
 		data[paritySize] = ByteBuffer.allocateDirect(bufsize);
 		data[paritySize].put(new byte[bufsize]);
+		data[paritySize].flip();
 		for (int i = 1; i < dataSize; i++) {
 			data[i + paritySize] = ByteBuffer.allocateDirect(bufsize);
 			data[i + paritySize].put(dataForEncode[i]);
+			data[i + paritySize].flip();
 		}
 
 		long decodeStart = System.currentTimeMillis();
