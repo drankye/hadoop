@@ -60,61 +60,50 @@ public class TestRSRawEncodeDecode {
 	private void testRSPerformance(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder) {
 		int dataSize = 10;
 		int paritySize = 4;
+		int bufsize = CHUNK_SIZE;
 
 		int symbolMax = (int) Math.pow(2, symbolSize);
-		ByteBuffer[] message = new ByteBuffer[dataSize];
-		byte[][] messageArray = new byte[dataSize][];
-		int bufsize = 1024 * 1024 * 10;
+		byte[][] message = new byte[dataSize][];
+
+		ByteBuffer[] dataForEncode = new ByteBuffer[dataSize];
 		for (int i = 0; i < dataSize; i++) {
 			byte[] byteArray = new byte[bufsize];
 			for (int j = 0; j < bufsize; j++) {
 				byteArray[j] = (byte) RAND.nextInt(symbolMax);
 			}
-			message[i] = ByteBuffer.wrap(byteArray);
-			messageArray[i] = byteArray;
+			message[i] = byteArray;
+			dataForEncode[i] = ByteBuffer.allocateDirect(bufsize);
+			dataForEncode[i].put(byteArray);
 		}
 		ByteBuffer[] parity = new ByteBuffer[paritySize];
 		for (int i = 0; i < paritySize; i++) {
-			parity[i] = ByteBuffer.wrap(new byte[bufsize]);
+			parity[i] = ByteBuffer.allocateDirect(bufsize);
 		}
-		long encodeStart = System.currentTimeMillis();
 
-		ByteBuffer[] tmpIn = new ByteBuffer[dataSize];
-		ByteBuffer[] tmpOut = new ByteBuffer[paritySize];
-		for (int i = 0; i < tmpOut.length; i++) {
-			tmpOut[i] = ByteBuffer.wrap(new byte[bufsize]);
-		}
-		for (int i = 0; i < dataSize; i++) {
-			byte[] cpByte = Arrays.copyOfRange(messageArray[i], 0, messageArray[i].length);
-			tmpIn[i] = ByteBuffer.wrap(cpByte);
-		}
-		rawEncoder.encode(tmpIn, tmpOut);
-		// Copy parity.
-		for (int i = 0; i < paritySize; i++) {
-			byte[] cpByte = new byte[bufsize];
-			tmpOut[i].get(cpByte);
-			parity[i] = ByteBuffer.wrap(cpByte);
-		}
+		long encodeStart = System.currentTimeMillis();
+		rawEncoder.encode(dataForEncode, parity);
 		long encodeEnd = System.currentTimeMillis();
 		float encodeMSecs = (encodeEnd - encodeStart);
 		System.out.println("Time to " + rawEncoder.getClass().getName() + " = " + encodeMSecs + "msec ("
-				+ messageArray[0].length / (1000 * encodeMSecs) + " MB/s)");
+				+ message[0].length / (1000 * encodeMSecs) + " MB/s)");
+
 
 		int[] erasedLocations = new int[] { 4, 1, 5, 7 };
 		ByteBuffer[] erasedValues = new ByteBuffer[4];
 		for (int i = 0; i < erasedValues.length; i++) {
-			erasedValues[i] = ByteBuffer.wrap(new byte[bufsize]);
+			erasedValues[i] = ByteBuffer.allocateDirect(bufsize);
 		}
-		byte[] cpByte = Arrays.copyOfRange(messageArray[0], 0, messageArray[0].length);
-		ByteBuffer copy = ByteBuffer.wrap(cpByte);
+		byte[] realDataIndex0 = Arrays.copyOfRange(message[0], 0, message[0].length);
 
 		ByteBuffer[] data = new ByteBuffer[paritySize + dataSize];
 		for (int i = 0; i < paritySize; i++) {
 			data[i] = parity[i];
 		}
-		data[paritySize] = ByteBuffer.wrap(new byte[bufsize]);
+		data[paritySize] = ByteBuffer.allocateDirect(bufsize);
+		data[paritySize].put(new byte[bufsize]);
 		for (int i = 1; i < dataSize; i++) {
-			data[i + paritySize] = message[i];
+			data[i + paritySize] = ByteBuffer.allocateDirect(bufsize);
+			data[i + paritySize].put(dataForEncode[i]);
 		}
 
 		long decodeStart = System.currentTimeMillis();
@@ -122,11 +111,14 @@ public class TestRSRawEncodeDecode {
 		long decodeEnd = System.currentTimeMillis();
 		float decodeMSecs = (decodeEnd - decodeStart);
 		System.out.println("Time to decode = " + decodeMSecs + "msec ("
-				+ messageArray[0].length / (1000 * decodeMSecs) + " MB/s)");
-    Assert.assertTrue("Decode failed", copy.equals(erasedValues[0]));
+				+ message[0].length / (1000 * decodeMSecs) + " MB/s)");
+
+		byte[] dataAfterCorrect = new byte[bufsize];
+		erasedValues[0].get(dataAfterCorrect);
+    Assert.assertTrue("Decode failed", Arrays.equals(realDataIndex0, dataAfterCorrect));
 	}
 
-	@Test
+//	@Test
 	public void testEncodeDecode() {
 		// verify the production size.
 		verifyJavaRSRawEncodeDecode(10, 4);
@@ -154,7 +146,6 @@ public class TestRSRawEncodeDecode {
 			}
 		});
 		encodeDecodeThread.start();
-
 	}
 
 	private void verifyRSEncodeDecode(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder, int dataSize, int paritySize) {
