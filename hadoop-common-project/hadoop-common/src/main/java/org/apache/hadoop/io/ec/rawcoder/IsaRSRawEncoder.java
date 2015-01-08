@@ -40,7 +40,6 @@ public class IsaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-//    init(dataSize(), paritySize(), matrix);
     int result = encode(inputs, outputs, chunkSize());
 
     if(result != 0) {

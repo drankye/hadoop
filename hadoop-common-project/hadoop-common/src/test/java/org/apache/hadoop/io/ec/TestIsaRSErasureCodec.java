@@ -1,8 +1,10 @@
 package org.apache.hadoop.io.ec;
 
+import org.junit.Test;
+
 public class TestIsaRSErasureCodec extends TestRSErasureCodec {
 
-  //@Test
+  @Test
   public void testCodec() throws Exception {
     int dataSize = 10;
     int paritySize = 4;

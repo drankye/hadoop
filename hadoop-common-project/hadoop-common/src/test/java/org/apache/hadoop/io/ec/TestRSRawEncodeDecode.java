@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.io.ec;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.ec.rawcoder.*;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Assert;
@@ -30,16 +32,17 @@ import java.util.Random;
  * Ported from HDFS-RAID
  */
 public class TestRSRawEncodeDecode {
+	public static final Log LOG = LogFactory.getLog(IsaRSRawEncoder.class.getName());
 	final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
   private static int symbolSize = 0;
-	private static int CHUNK_SIZE = 16 * 1024;
+	private static int CHUNK_SIZE = 1024 * 1024;
 
   static {
     symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
   }
 
-//	@Test
+	@Test
 	public void testJavaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
@@ -85,9 +88,8 @@ public class TestRSRawEncodeDecode {
 		rawEncoder.encode(dataForEncode, parity);
 		long encodeEnd = System.currentTimeMillis();
 		float encodeMSecs = (encodeEnd - encodeStart);
-		System.out.println("Time to " + rawEncoder.getClass().getName() + " = " + encodeMSecs + "msec ("
+		LOG.info("Time to " + rawEncoder.getClass().getName() + " = " + encodeMSecs + "msec ("
 				+ message[0].length / (1000 * encodeMSecs) + " MB/s)");
-
 
 		int[] erasedLocations = new int[] { 4, 1, 5, 7 };
 		ByteBuffer[] erasedValues = new ByteBuffer[4];
@@ -105,7 +107,7 @@ public class TestRSRawEncodeDecode {
 		data[paritySize].flip();
 		for (int i = 1; i < dataSize; i++) {
 			data[i + paritySize] = ByteBuffer.allocateDirect(bufsize);
-			data[i + paritySize].put(dataForEncode[i]);
+			data[i + paritySize].put(message[i]);
 			data[i + paritySize].flip();
 		}
 
@@ -113,7 +115,7 @@ public class TestRSRawEncodeDecode {
 		rawDecoder.decode(data, erasedValues, erasedLocations);
 		long decodeEnd = System.currentTimeMillis();
 		float decodeMSecs = (decodeEnd - decodeStart);
-		System.out.println("Time to decode = " + decodeMSecs + "msec ("
+		LOG.info("Time to " + rawDecoder.getClass().getName() + " = " + decodeMSecs + "msec ("
 				+ message[0].length / (1000 * decodeMSecs) + " MB/s)");
 
 		byte[] dataAfterCorrect = new byte[bufsize];
@@ -121,7 +123,7 @@ public class TestRSRawEncodeDecode {
     Assert.assertTrue("Decode failed", Arrays.equals(realDataIndex0, dataAfterCorrect));
 	}
 
-//	@Test
+	@Test
 	public void testEncodeDecode() {
 		// verify the production size.
 		verifyJavaRSRawEncodeDecode(10, 4);
