@@ -77,6 +77,7 @@ public abstract class TestErasureCodecBase {
 
   protected void doTest() throws Exception {
     ECSchema schema = loadSchema(schemaName);
+    assert(schema != null);
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     BlockGrouper blockGrouper = codec.createBlockGrouper();
@@ -169,7 +170,12 @@ public abstract class TestErasureCodecBase {
     List<ECSchema> schemas = schemaLoader.loadSchema(conf);
     assertEquals(1, schemas.size());
 
-    return schemas.get(0);
+    for (ECSchema schema : schemas) {
+      if (schema.getSchemaName().equals(schemaName)) {
+        return schema;
+      }
+    }
+    return null;
   }
 
   private class CallbackForTest extends AbstractErasureCoderCallback {

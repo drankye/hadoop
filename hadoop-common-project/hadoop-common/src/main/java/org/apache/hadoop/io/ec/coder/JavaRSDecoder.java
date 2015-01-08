@@ -29,75 +29,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JavaRSDecoder extends AbstractErasureDecoder {
-  private static final Log LOG =
-		    LogFactory.getLog(JavaRSDecoder.class.getName());
+public class JavaRSDecoder extends RSDecoder {
 
   public JavaRSDecoder(int dataSize, int paritySize, int chunkSize) {
     super(new JavaRSRawDecoder(dataSize, paritySize, chunkSize));
-  }
-
-  @Override
-  public void decode(BlockGroup blockGroup) {
-    SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
-    ECBlock[] readBlocks = combineBlocks(subBlockGroup.getDataBlocks(), subBlockGroup.getParityBlocks());
-    int[] erasedLocations = getErasedLocations(readBlocks);
-    ECBlock[] outputBlocks = getDecodeOutputBlocks(readBlocks, erasedLocations);
-    beforeCoding(readBlocks, outputBlocks);
-      
-    try {
-      while (hasNextInputs()) {
-        ECChunk[] dataChunks = getNextInputChunks(readBlocks);
-        ByteBuffer[] readBuffs = convert(dataChunks);
-        ECChunk[] outputChunks = getNextOutputChunks(outputBlocks);
-        ByteBuffer[] outputBuffs = convert(outputChunks);
-
-        getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
-
-        withCoded(dataChunks, outputChunks);
-      }
-    } catch(Exception e) {
-    	LOG.info("Error in decode " + e);
-    } finally {
-      postCoding(readBlocks, outputBlocks);
-    }
-  }
-
-  private ECBlock[] combineBlocks(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    ECBlock[] result = new ECBlock[dataBlocks.length + parityBlocks.length];
-    for (int i = 0; i < parityBlocks.length; ++i) {
-      result[i] = parityBlocks[i];
-    }
-    for (int i = 0; i < dataBlocks.length; ++i) {
-      result[i + parityBlocks.length] = dataBlocks[i];
-    }
-    return result;
-  }
-
-  private int[] getErasedLocations(ECBlock[] readBlocks) {
-	List<Integer> erasedLocationList = new ArrayList<Integer>();
-	for (int i = 0; i < readBlocks.length; i++) {
-	  ECBlock readBlock = readBlocks[i];
-	  if (readBlock.isMissing()) {
-	    erasedLocationList.add(i);
-	  }
-	}
-
-	//change to arrays
-	int[] erasedLocations = new int[erasedLocationList.size()];
-	for (int i = 0; i < erasedLocationList.size(); i++) {
-	  erasedLocations[i] = erasedLocationList.get(i);
-	}
-	return erasedLocations;
-  }
-  
-  private ECBlock[] getDecodeOutputBlocks(ECBlock[] readBlocks, int[] erasedLocations) {
-	ECBlock[] outputBlocks = new ECBlock[erasedLocations.length];
-	for (int i = 0; i < erasedLocations.length; i++) {
-		ECBlock readBlock = readBlocks[erasedLocations[i]];
-		outputBlocks[i] = new ECBlock(readBlock.getBlockId(), readBlock.isParity());
-	}
-	return outputBlocks;
   }
 
 }

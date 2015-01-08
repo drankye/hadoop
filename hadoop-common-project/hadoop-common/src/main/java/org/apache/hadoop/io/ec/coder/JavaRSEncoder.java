@@ -27,41 +27,10 @@ import org.apache.hadoop.io.ec.rawcoder.JavaRSRawEncoder;
 
 import java.nio.ByteBuffer;
 
-public class JavaRSEncoder extends AbstractErasureEncoder {
-	private static final Log LOG =
-		    LogFactory.getLog(JavaRSDecoder.class.getName());
-	
-    public JavaRSEncoder(int dataSize, int paritySize, int chunkSize) {
-        super(new JavaRSRawEncoder(dataSize, paritySize, chunkSize));
-    }
+public class JavaRSEncoder extends RSEncoder{
 
-    @Override
-    public void encode(BlockGroup blockGroup) {
-      SubBlockGroup subGroup = blockGroup.getSubGroups().iterator().next();
-      ECBlock[] inputBlocks = subGroup.getDataBlocks();
-      ECBlock[] outputBlocks = subGroup.getParityBlocks();
-      
-      //try{
-        beforeCoding(inputBlocks, outputBlocks);
-
-        while (hasNextInputs()) {
-          ECChunk[] dataChunks = getNextInputChunks(inputBlocks);
-          ECChunk[] parityChunks = getNextOutputChunks(outputBlocks);
-          encode(dataChunks, parityChunks);
-          withCoded(dataChunks, parityChunks);
-        }
-      //} catch(Exception e) {
-    	//  LOG.info("Error in encode " + e);
-//      } finally {
-    	  postCoding(inputBlocks, outputBlocks);
-//      }
-    }
-
-    private void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
-        ByteBuffer[] dataByteBuffers = convert(dataChunks);
-        ByteBuffer[] outputByteBuffers = convert(outputChunks);
-
-        getRawEncoder().encode(dataByteBuffers, outputByteBuffers);
-    }
+  public JavaRSEncoder(int dataSize, int paritySize, int chunkSize) {
+    super(new JavaRSRawEncoder(dataSize, paritySize, chunkSize));
+  }
 
 }
