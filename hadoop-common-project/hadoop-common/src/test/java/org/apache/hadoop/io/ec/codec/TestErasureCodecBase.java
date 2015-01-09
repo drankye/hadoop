@@ -47,7 +47,7 @@ public abstract class TestErasureCodecBase {
   protected int symbolMax = 0;
 
   protected static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
-  protected static final int BLOCK_SIZE = 1024 * 1024;
+  protected int BLOCK_SIZE = 1024 * 1024;
   protected int CHUNK_SIZE;
   protected int BLOCK_CHUNK_SIZE_MULIPLE;
 
