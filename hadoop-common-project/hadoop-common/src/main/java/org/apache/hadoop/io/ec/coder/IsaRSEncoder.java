@@ -18,16 +18,16 @@
 package org.apache.hadoop.io.ec.coder;
 
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.ec.BlockGroup;
-import org.apache.hadoop.io.ec.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.ec.SubBlockGroup;
 import org.apache.hadoop.io.ec.rawcoder.IsaRSRawEncoder;
 
 public class IsaRSEncoder extends RSEncoder {
   public IsaRSEncoder(int dataSize, int paritySize, int chunkSize) {
     super(new IsaRSRawEncoder(dataSize, paritySize, chunkSize));
+  }
+
+  @Override
+  protected void end() {
+    IsaRSRawEncoder rawEncoder = (IsaRSRawEncoder)getRawEncoder();
+    rawEncoder.end();
   }
 }

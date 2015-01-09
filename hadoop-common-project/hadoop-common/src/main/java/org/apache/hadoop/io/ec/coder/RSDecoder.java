@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RSDecoder extends AbstractErasureDecoder {
+public abstract class RSDecoder extends AbstractErasureDecoder {
   private static final Log LOG =
       LogFactory.getLog(RSDecoder.class.getName());
 
@@ -59,8 +59,11 @@ public class RSDecoder extends AbstractErasureDecoder {
       LOG.info("Error in decode " + e);
     } finally {
       postCoding(readBlocks, outputBlocks);
+      end();
     }
   }
+
+  protected abstract void end();
 
   private void decode(ECChunk[] inputBlocks, ECChunk[] outputBlocks, int[] erasedLocations) {
     ByteBuffer[] readBuffs = convert(inputBlocks);

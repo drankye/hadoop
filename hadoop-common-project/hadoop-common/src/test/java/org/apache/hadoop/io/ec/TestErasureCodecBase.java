@@ -51,9 +51,9 @@ public abstract class TestErasureCodecBase {
   private int symbolMax = 0;
 
   public static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
-  public static final int BLOCK_SIZE = 1024 * 1024 * 10;
-  public static final int CHUNK_SIZE = 1024;
-  public static final int BLOCK_CHUNK_SIZE_MULIPLE = BLOCK_SIZE / CHUNK_SIZE;
+  public static final int BLOCK_SIZE = 1024 * 1024;
+  public int CHUNK_SIZE;
+  public int BLOCK_CHUNK_SIZE_MULIPLE;
 
 
   protected Configuration conf;
@@ -78,6 +78,8 @@ public abstract class TestErasureCodecBase {
   protected void doTest() throws Exception {
     ECSchema schema = loadSchema(schemaName);
     assert(schema != null);
+    CHUNK_SIZE = schema.getChunkSize();
+    BLOCK_CHUNK_SIZE_MULIPLE = BLOCK_SIZE / CHUNK_SIZE;
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     BlockGrouper blockGrouper = codec.createBlockGrouper();
@@ -98,6 +100,7 @@ public abstract class TestErasureCodecBase {
      */
     int erasedLocation = RAND.nextInt(numDataBlocks);
     blockGroup.getSubGroups().get(0).getDataBlocks()[erasedLocation].setMissing(true);
+    dataManager.eraseData(erasedLocation);
 
     boolean canRecovery = blockGrouper.anyRecoverable(blockGroup);
     if (!canRecovery) {
@@ -239,6 +242,7 @@ public abstract class TestErasureCodecBase {
         if (ecBlock.isMissing()) {
           //fill zero datas
           buffer.put(new byte[CHUNK_SIZE]);
+          buffer.flip();
           chunks[i] = new ECChunk(buffer);
         } else {
           byte[] segmentData = dataManager.getDataSegment(ecBlock.getBlockId(), segmentIndex);
@@ -285,6 +289,10 @@ public abstract class TestErasureCodecBase {
       for (int i = 0; i < fillData.length; i++) {
         data[idForTest.getId()][i + segmentIndex * CHUNK_SIZE] = fillData[i];
       }
+    }
+
+    public void eraseData(int erasedLocation) {
+      data[erasedLocation] = new byte[BLOCK_SIZE];
     }
   }
 

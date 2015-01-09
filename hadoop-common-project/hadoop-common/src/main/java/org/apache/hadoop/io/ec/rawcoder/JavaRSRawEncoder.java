@@ -53,7 +53,7 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
     assert (dataSize() == inputs.length);
     assert (paritySize() == outputs.length);
 
-    byte[][] outputsData = new byte[outputs.length][outputs[0].limit()];
+    byte[][] outputsData = new byte[outputs.length][chunkSize()];
     // cleanup the write buffer
     for (int i = 0; i < outputsData.length; i++) {
       Arrays.fill(outputsData[i], (byte) 0);

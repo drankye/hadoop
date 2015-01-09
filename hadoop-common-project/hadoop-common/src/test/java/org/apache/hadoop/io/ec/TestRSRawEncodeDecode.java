@@ -147,7 +147,7 @@ public class TestRSRawEncodeDecode {
 			public void run() {
 				RawErasureEncoder rawEncoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
 				RawErasureDecoder rawDecoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
-				verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
+					verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
 			}
 		});
 		encodeDecodeThread.start();

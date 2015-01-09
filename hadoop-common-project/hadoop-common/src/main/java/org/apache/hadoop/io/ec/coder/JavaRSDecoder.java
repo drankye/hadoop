@@ -35,4 +35,8 @@ public class JavaRSDecoder extends RSDecoder {
     super(new JavaRSRawDecoder(dataSize, paritySize, chunkSize));
   }
 
+  @Override
+  protected void end() {
+    //do-nothing
+  }
 }

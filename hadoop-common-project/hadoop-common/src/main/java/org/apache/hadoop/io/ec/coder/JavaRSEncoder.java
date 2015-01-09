@@ -33,4 +33,8 @@ public class JavaRSEncoder extends RSEncoder{
     super(new JavaRSRawEncoder(dataSize, paritySize, chunkSize));
   }
 
+  @Override
+  protected void end() {
+    //do-nothing
+  }
 }

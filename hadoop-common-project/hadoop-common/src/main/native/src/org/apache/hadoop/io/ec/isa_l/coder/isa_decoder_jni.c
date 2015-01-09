@@ -50,7 +50,7 @@ or Intel's suppliers or licensors in any way.
 typedef unsigned char u8;
 
 pthread_key_t de_key;
-extern pthread_key_t en_key;
+//extern pthread_key_t en_key;
 static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 typedef struct _codec_parameter{
@@ -150,7 +150,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_ini
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_decode
   (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize) {
-      fprintf(stdout, "[Decoding]before decode.\n");
+      fprintf(stderr, "[Decoding]before decode.\n");
       Codec_Parameter * pCodecParameter = NULL;
       pthread_once(&key_once, make_key);
       jboolean isCopy;
@@ -283,7 +283,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_dec
       if(isCopy){
           (*env)->ReleaseIntArrayElements(env, erasures, (jint *)tmp, JNI_ABORT);
       }
-      fprintf(stdout, "[Decoding]decode success.\n");
+      fprintf(stderr, "[Decoding]decode success.\n");
       return 0;
  }
 
@@ -293,7 +293,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_des
       Codec_Parameter * pCodecParameter = NULL;
       if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){
           fprintf(stderr, "[Decoder destory]ISA decoder not initilized!\n");
-          return -7;
+          return 0;
       }
 
       free(pCodecParameter->data);

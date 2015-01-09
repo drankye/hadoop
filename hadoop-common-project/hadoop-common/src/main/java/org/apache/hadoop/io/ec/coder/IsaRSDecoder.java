@@ -20,6 +20,7 @@ package org.apache.hadoop.io.ec.coder;
 
 import org.apache.hadoop.io.ec.BlockGroup;
 import org.apache.hadoop.io.ec.rawcoder.IsaRSRawDecoder;
+import org.apache.hadoop.io.ec.rawcoder.RawErasureDecoder;
 
 public class IsaRSDecoder extends RSDecoder {
 
@@ -27,4 +28,9 @@ public class IsaRSDecoder extends RSDecoder {
     super(new IsaRSRawDecoder(dataSize, paritySize, chunkSize));
   }
 
+  @Override
+  protected void end() {
+    IsaRSRawDecoder rawDecoder = (IsaRSRawDecoder)getRawDecoder();
+    rawDecoder.end();
+  }
 }
