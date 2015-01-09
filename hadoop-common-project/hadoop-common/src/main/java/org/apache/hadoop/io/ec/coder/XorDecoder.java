@@ -23,19 +23,16 @@ import org.apache.hadoop.io.ec.BlockGroup;
 import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.SubBlockGroup;
-import org.apache.hadoop.io.ec.rawcoder.JavaRSRawDecoder;
-import org.apache.hadoop.io.ec.rawcoder.RawErasureDecoder;
+import org.apache.hadoop.io.ec.rawcoder.XorRawDecoder;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-public class RSDecoder extends AbstractErasureDecoder {
+public class XorDecoder extends AbstractErasureDecoder{
   private static final Log LOG =
       LogFactory.getLog(RSDecoder.class.getName());
 
-  public RSDecoder(RawErasureDecoder rawDecoder) {
-    super(rawDecoder);
+  public XorDecoder(int dataSize, int chunkSize) {
+    super(new XorRawDecoder(dataSize, chunkSize));
   }
 
   @Override
@@ -51,7 +48,9 @@ public class RSDecoder extends AbstractErasureDecoder {
         ECChunk[] dataChunks = getNextInputChunks(readBlocks);
         ECChunk[] outputChunks = getNextOutputChunks(outputBlocks);
 
-        decode(dataChunks, outputChunks, erasedLocations);
+        ByteBuffer[] readBuffs = convert(dataChunks);
+        ByteBuffer[] outputBuffs = convert(outputChunks);
+        getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
 
         withCoded(dataChunks, outputChunks);
       }
@@ -62,23 +61,14 @@ public class RSDecoder extends AbstractErasureDecoder {
     }
   }
 
-  private void decode(ECChunk[] inputChunks, ECChunk[] outputChunks, int[] erasedLocations) {
-    ByteBuffer[] readBuffs = convert(inputChunks);
-    ByteBuffer[] outputBuffs = convert(outputChunks);
-
-    getRawDecoder().decode(readBuffs, outputBuffs, erasedLocations);
-  }
-
   private ECBlock[] combineBlocks(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
     ECBlock[] result = new ECBlock[dataBlocks.length + parityBlocks.length];
-    for (int i = 0; i < parityBlocks.length; ++i) {
-      result[i] = parityBlocks[i];
-    }
     for (int i = 0; i < dataBlocks.length; ++i) {
-      result[i + parityBlocks.length] = dataBlocks[i];
+      result[i] = dataBlocks[i];
+    }
+    for (int i = 0; i < parityBlocks.length; ++i) {
+      result[i + dataBlocks.length] = parityBlocks[i];
     }
     return result;
   }
-
-
 }

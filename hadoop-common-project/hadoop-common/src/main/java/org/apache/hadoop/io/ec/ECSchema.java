@@ -17,9 +17,14 @@
  */
 package org.apache.hadoop.io.ec;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.Map;
 
 public class ECSchema {
+  private static final Log LOG =
+      LogFactory.getLog(ECSchema.class.getName());
 
   private String schemaName;
   private String schemaClassName;
@@ -34,14 +39,13 @@ public class ECSchema {
     this.options = options;
     this.codecName = codec;
 
-    //XXX get data size and parity size
+    String dataSize = options.get("k");
+    String paritySize = options.get("m");
     try {
-      String dataSize = options.get("k");
       this.dataBlocks = Integer.parseInt(dataSize);
-      String paritySize = options.get("m");
       this.parityBlocks = Integer.parseInt(paritySize);
     } catch (NumberFormatException e) {
-      //do-nothing
+      LOG.error("Error format of data size:" + dataSize + "or parity size:" + paritySize);
     }
   }
 
