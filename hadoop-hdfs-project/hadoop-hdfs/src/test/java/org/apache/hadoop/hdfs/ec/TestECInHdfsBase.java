@@ -167,10 +167,16 @@ public abstract class TestECInHdfsBase extends TestErasureCodecBase{
          * For simple, we prepare for and load all the chunks at this phase.
          * Actually chunks should be read one by one only when needed while encoding/decoding.
          */
-        inputChunks = new ECChunk[1][];
-        inputChunks[0] = getChunks(inputBlocks);
-        outputChunks = new ECChunk[1][];
-        outputChunks[0] = getChunks(outputBlocks);
+        byte[][] inputData = getData(inputBlocks);
+        byte[][] outputData = getData(outputBlocks);
+
+        inputChunks = new ECChunk[BLOCK_CHUNK_SIZE_MULIPLE][];
+        outputChunks = new ECChunk[BLOCK_CHUNK_SIZE_MULIPLE][];
+
+        for (int i = 0; i < BLOCK_CHUNK_SIZE_MULIPLE; i++) {
+          inputChunks[i] = getChunks(inputBlocks, i, inputData);
+          outputChunks[i] = getChunks(outputBlocks, i, outputData);
+        }
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -197,39 +203,68 @@ public abstract class TestECInHdfsBase extends TestErasureCodecBase{
 
     @Override
     public void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
-      /**
-       * For simple, a block has only one chunk. Actually a block can contain
-       * multiple chunks.
-       */
       try {
-        for (int i = 0; i < outputChunks[0].length; i++) {
-          ECBlock ecBlock = outputBlocks[i];
-          File blockFile = getBlockFile(ecBlock);
-          ByteBuffer byteBuffer = outputChunks[0][i].getChunkBuffer();
+        for (int blockIndex = 0; blockIndex < outputBlocks.length; blockIndex++) {
+          ByteBuffer blockByteBuffer = assemble(outputChunks, blockIndex);
 
+          ECBlock ecBlock = outputBlocks[blockIndex];
+          File blockFile = getBlockFile(ecBlock);
           RandomAccessFile raf = new RandomAccessFile(blockFile, "rw");
           FileChannel fc = raf.getChannel();
-          IOUtils.writeFully(fc, byteBuffer);
+          IOUtils.writeFully(fc, blockByteBuffer);
         }
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
 
-    private ECChunk[] getChunks(ECBlock[] dataEcBlocks) throws IOException {
+    /**
+     * assemble chunks data to a block
+     */
+    private ByteBuffer assemble(ECChunk[][] chunks, int blockIndex) {
+      ByteBuffer byteBuffer = chunks[0][blockIndex].getChunkBuffer();
+      for (int i = 1;i < BLOCK_CHUNK_SIZE_MULIPLE; i++) {
+        ByteBuffer buffer = chunks[i][blockIndex].getChunkBuffer();
+        byte[] data = new byte[CHUNK_SIZE];
+        buffer.get(data);
+        byteBuffer.put(data);
+      }
+      byteBuffer.flip();
+      return byteBuffer;
+    }
+
+    private ECChunk[] getChunks(ECBlock[] dataEcBlocks, int segmentIndex, byte[][] data) {
       ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
       for (int i = 0; i < dataEcBlocks.length; i++) {
         ECBlock ecBlock = dataEcBlocks[i];
+        ByteBuffer buffer = ByteBuffer.allocateDirect(CHUNK_SIZE);
         if (ecBlock.isMissing()) {
-          chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
+          //fill zero datas
+          buffer.put(new byte[CHUNK_SIZE]);
+          buffer.flip();
+          chunks[i] = new ECChunk(buffer);
         } else {
-          File blockFile = getBlockFile(ecBlock);
-          byte[] buffer = new byte[BLOCK_SIZE];
-          IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
-          chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
+          byte[] segmentData = Arrays.copyOfRange(data[i], segmentIndex * CHUNK_SIZE, (segmentIndex + 1) * CHUNK_SIZE);
+          assert(segmentData.length == CHUNK_SIZE);
+          buffer.put(segmentData);
+          buffer.flip();
+          chunks[i] = new ECChunk(buffer);
         }
       }
       return chunks;
+    }
+
+    private byte[][] getData(ECBlock[] dataEcBlocks) throws IOException {
+      byte[][] data = new byte[dataEcBlocks.length][];
+      for (int i = 0; i < dataEcBlocks.length; i++) {
+        ECBlock ecBlock = dataEcBlocks[i];
+        if (ecBlock.isMissing()) {
+          data[i] = new byte[CHUNK_SIZE];
+        } else {
+          data[i] = getBlockData(ecBlock);
+        }
+      }
+      return data;
     }
   }
 
