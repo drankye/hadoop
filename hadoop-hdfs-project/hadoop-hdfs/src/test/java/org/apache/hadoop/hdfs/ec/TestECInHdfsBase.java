@@ -222,8 +222,8 @@ public abstract class TestECInHdfsBase extends TestErasureCodecBase{
      * assemble chunks data to a block
      */
     private ByteBuffer assemble(ECChunk[][] chunks, int blockIndex) {
-      ByteBuffer byteBuffer = chunks[0][blockIndex].getChunkBuffer();
-      for (int i = 1;i < BLOCK_CHUNK_SIZE_MULIPLE; i++) {
+      ByteBuffer byteBuffer = ByteBuffer.allocateDirect(BLOCK_SIZE);
+      for (int i = 0;i < BLOCK_CHUNK_SIZE_MULIPLE; i++) {
         ByteBuffer buffer = chunks[i][blockIndex].getChunkBuffer();
         byte[] data = new byte[CHUNK_SIZE];
         buffer.get(data);
