@@ -98,4 +98,12 @@ public abstract class BlockGrouper {
   protected ECSchema getSchema() {
     return schema;
   }
+
+  protected ECBlock[] convert(List<? extends ECBlockId> blockIds, boolean isParity) {
+    ECBlock[] blocks = new ECBlock[blockIds.size()];
+    for (int i = 0; i < blockIds.size(); i++) {
+      blocks[i] = new ECBlock(blockIds.get(i), isParity);
+    }
+    return blocks;
+  }
 }

@@ -15,13 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.ec.codec;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.ec.codec.ErasureCodec;
+import org.apache.hadoop.io.ec.*;
 import org.apache.hadoop.io.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureDecoder;
@@ -31,11 +28,8 @@ import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Before;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
@@ -57,8 +51,8 @@ public abstract class TestErasureCodecBase {
 
 
   protected Configuration conf;
-  protected String codecName = "JavaRScodec";
-  protected String schemaName = "JavaRS_10_4";
+  protected String codecName = "codec_for_test";
+  protected String schemaName = "schema_for_test";
 
   private BlockDataManager dataManager;
   private byte[][] message;

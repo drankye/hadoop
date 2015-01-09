@@ -15,31 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.ec.grouper;
 
-public class ECBlockIdForTest implements  ECBlockId{
-  private int id;
+import org.apache.hadoop.io.ec.BlockGroup;
+import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.ec.ECBlockId;
+import org.apache.hadoop.io.ec.SubBlockGroup;
 
-  public ECBlockIdForTest(int id) {
-    this.id = id;
-  }
+import java.util.List;
 
-  public int getId() {
-    return id;
+public class XorBlockGrouper extends BlockGrouper{
+
+  @Override
+  public BlockGroup makeBlockGroup(List<? extends ECBlockId> dataBlocks, List<? extends ECBlockId> parityBlocks) {
+    ECBlock[] dataEcBlocks = convert(dataBlocks, false);
+    ECBlock[] parityEcBlocks = convert(parityBlocks, true);
+
+    SubBlockGroup subBlockGroup = new SubBlockGroup(dataEcBlocks, parityEcBlocks);
+    BlockGroup group = new BlockGroup();
+    group.addSubGroup(subBlockGroup);
+
+    group.setSchemaName(getSchema().getSchemaName());
+    return group;
   }
 
   @Override
-  public boolean equals(Object anotherId) {
-    if (!(anotherId instanceof ECBlockIdForTest)) {
-      return false;
-    }
-
-    ECBlockIdForTest idForTest = (ECBlockIdForTest)anotherId;
-    return this.id == idForTest.id;
-  }
-
-  @Override
-  public int hashCode() {
-    return id + 1;
+  public BlockGroup makeRecoverableGroup(BlockGroup blockGroup) {
+    return blockGroup;
   }
 }

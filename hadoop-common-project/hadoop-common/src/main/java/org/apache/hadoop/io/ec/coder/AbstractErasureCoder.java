@@ -22,6 +22,8 @@ import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AbstractErasureCoder {
 
@@ -63,5 +65,36 @@ public abstract class AbstractErasureCoder {
     }
 
     return buffers;
+  }
+
+  /**
+   * Find out which blocks are missing in order to get erased locations
+   * @param inputBlocks all decode input blocks
+   * @return erased location list
+   */
+  protected int[] getErasedLocations(ECBlock[] inputBlocks) {
+    List<Integer> erasedLocationList = new ArrayList<Integer>();
+    for (int i = 0; i < inputBlocks.length; i++) {
+      ECBlock readBlock = inputBlocks[i];
+      if (readBlock.isMissing()) {
+        erasedLocationList.add(i);
+      }
+    }
+
+    //change to arrays
+    int[] erasedLocations = new int[erasedLocationList.size()];
+    for (int i = 0; i < erasedLocationList.size(); i++) {
+      erasedLocations[i] = erasedLocationList.get(i);
+    }
+    return erasedLocations;
+  }
+
+  protected ECBlock[] getErasedBlocks(ECBlock[] inputBlocks, int[] erasedLocations) {
+    ECBlock[] outputBlocks = new ECBlock[erasedLocations.length];
+    for (int i = 0; i < erasedLocations.length; i++) {
+      ECBlock readBlock = inputBlocks[erasedLocations[i]];
+      outputBlocks[i] = new ECBlock(readBlock.getBlockId(), readBlock.isParity());
+    }
+    return outputBlocks;
   }
 }
