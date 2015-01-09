@@ -31,6 +31,7 @@ import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ec.codec.ErasureCodec;
+import org.apache.hadoop.io.ec.codec.TestErasureCodecBase;
 import org.apache.hadoop.io.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureDecoder;
@@ -44,6 +45,7 @@ import org.apache.hadoop.io.ec.ECSchema;
 import org.apache.hadoop.io.ec.SchemaLoader;
 import org.apache.hadoop.io.ec.ECConfiguration;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
+import org.bouncycastle.jce.provider.symmetric.AES;
 import org.junit.Before;
 
 import java.io.File;
@@ -60,103 +62,38 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public abstract class TestErasureCodecBase {
-  private static final String TEST_DIR =
-      new File(System.getProperty("test.build.data", "/tmp")).getAbsolutePath();
+public abstract class TestECInHdfsBase extends TestErasureCodecBase{
   private final static String DATA_FILE = new File(TEST_DIR, "data").getAbsolutePath();
   private final static String PARITY_FILE = new File(TEST_DIR, "parity").getAbsolutePath();
-  public final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs").getAbsolutePath();
-
-  private final Random RAND = new Random();
-  private GaloisField GF = GaloisField.getInstance();
-  private int symbolMax = 0;
 
   private FileSystem fileSys;
   private DataNode dataNode;
 
-  public static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
-  public static final int BLOCK_SIZE = 512;
-  public static final int CHUNK_SIZE = BLOCK_SIZE;
-
-  protected Configuration conf;
-  protected String codecName = "JavaRScodec";
-  protected String schemaName = "JavaRS_10_4";
-
-  private ByteBuffer[] message;
-
   protected abstract String getCodecClass();
 
-  @Before
+  @Override
   public void init() throws IOException {
-    int symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
-    symbolMax = (int) Math.pow(2, symbolSize);
+    super.init();
 
     int numDataNodes = 1;
-    conf = new HdfsConfiguration();
-    conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
-    conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
-    conf.set(EC_CONF_PREFIX + codecName, getCodecClass());
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
     cluster.waitActive();
     fileSys = cluster.getFileSystem();
     dataNode = cluster.getDataNodes().get(0);
   }
 
-  protected void doTest() throws Exception {
-    ECSchema schema = loadSchema(schemaName);
-
-    /**
-     * Both ECManager and ECWorker need to do below
-     */
-    ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
-    BlockGrouper blockGrouper = codec.createBlockGrouper();
-    int numDataBlocks = blockGrouper.getDataBlocks();
-    int numParityBlocks = blockGrouper.getParityBlocks();
-
-    /**
-     * Below steps are to be done by NameNode/ECManager
-     */
-    List<ExtendedBlockId> dataBlocks = prepareDataBlocks(numDataBlocks);
-    List<ExtendedBlockId> parityBlocks = prepareParityBlocks(numParityBlocks);
-    BlockGroup blockGroup = blockGrouper.makeBlockGroup(dataBlocks, parityBlocks);
-
-    /**
-     * Below steps are to be done by DataNode/ECWorker
-     */
-    encode(schema, blockGroup);
-
-    /**
-     * Intently make some block 'missing'
-     */
-    int erasedLocation = RAND.nextInt(numDataBlocks);
-    blockGroup.getSubGroups().get(0).getDataBlocks()[erasedLocation].setMissing(true);
-
-    boolean canRecovery = blockGrouper.anyRecoverable(blockGroup);
-    if (!canRecovery) {
-      assertTrue(false);
-    }
-    BlockGroup groupUsedToRecovery = blockGrouper.makeRecoverableGroup(blockGroup);
-
-    /**
-     * Below steps are to be done by DataNode/ECWorker
-     */
-    decode(schema, groupUsedToRecovery);
-
-    /**
-     * Post check and see if it's right back
-     */
-    verifyData(erasedLocation, groupUsedToRecovery);
+  @Override
+  protected void initConf() {
+    conf = new HdfsConfiguration();
+    conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
   }
 
-  private List<ExtendedBlockId> prepareDataBlocks(int numDataBlocks) throws IOException {
+  @Override
+  protected List<ExtendedBlockId> prepareDataBlocks(int numDataBlocks) throws IOException {
     DFSTestUtil.createFile(fileSys, new Path(DATA_FILE), 0, (short) 1, 0);
-    message = new ByteBuffer[numDataBlocks];
     for (int i = 0; i < numDataBlocks; i++) {
-      byte[] byteArray = new byte[BLOCK_SIZE];
-      for (int j = 0; j < BLOCK_SIZE; j++) {
-        byteArray[j] = (byte) RAND.nextInt(symbolMax);
-      }
-      message[i] = ByteBuffer.wrap(byteArray);
+      byte[] byteArray = generateData(BLOCK_SIZE);
+      message[i] = byteArray;
       DFSTestUtil.appendFile(fileSys, new Path(DATA_FILE), byteArray);
     }
     List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(DATA_FILE));
@@ -165,7 +102,8 @@ public abstract class TestErasureCodecBase {
     return getBlockIds(blocks);
   }
 
-  private List<ExtendedBlockId> prepareParityBlocks(int numParityBlocks) throws IOException {
+  @Override
+  protected List<ExtendedBlockId> prepareParityBlocks(int numParityBlocks) throws IOException {
     DFSTestUtil.createFile(fileSys, new Path(PARITY_FILE), numParityBlocks * BLOCK_SIZE, (short) 1, 0);
     List<LocatedBlock> blocks = DFSTestUtil.getAllBlocks(fileSys, new Path(PARITY_FILE));
     assertTrue(numParityBlocks == blocks.size());
@@ -180,18 +118,19 @@ public abstract class TestErasureCodecBase {
     return ids;
   }
 
-  private void verifyData(int erasedLocation, BlockGroup blockGroup) throws IOException {
-    ByteBuffer copyBuffer = message[erasedLocation];
-    byte[] copy = new byte[BLOCK_SIZE];
-    copyBuffer.get(copy);
-
-    SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
-    ECBlock recoveryBlock = subBlockGroup.getDataBlocks()[erasedLocation];
-    File file = getBlockFile(recoveryBlock);
+  @Override
+  protected byte[] getBlockData(ECBlock ecBlock) throws IOException {
+    File file = getBlockFile(ecBlock);
     byte[] buffer = new byte[BLOCK_SIZE];
     IOUtils.readFully(new FileInputStream(file), buffer, 0, BLOCK_SIZE);
+    return buffer;
+  }
 
-    assertTrue(Arrays.equals(copy, buffer));
+  private File getBlockFile(ECBlock ecBlock) throws IOException {
+    ExtendedBlockId extendedBlockId = (ExtendedBlockId) ecBlock.getBlockId();
+    Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(extendedBlockId.getBlockPoolId(), extendedBlockId.getBlockId());
+    File blockFile = DataNodeTestUtils.getBlockFile(dataNode, extendedBlockId.getBlockPoolId(), block);
+    return blockFile;
   }
 
   /**
@@ -200,15 +139,9 @@ public abstract class TestErasureCodecBase {
    *
    * @param schema
    */
+  @Override
   protected void encode(ECSchema schema, BlockGroup blockGroup) throws Exception {
-    assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
-
-    ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
-    ErasureEncoder encoder = codec.createEncoder();
-
-    ErasureCoderCallback encodeCallback = new CallbackForTest();
-    encoder.setCallback(encodeCallback);
-    encoder.encode(blockGroup);
+    super.encode(schema, blockGroup, new CallbackForHdfs());
   }
 
   /**
@@ -216,24 +149,12 @@ public abstract class TestErasureCodecBase {
    *
    * @param schema
    */
+  @Override
   protected void decode(ECSchema schema, BlockGroup blockGroup) throws Exception {
-    assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
-
-    ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
-    ErasureDecoder decoder = codec.createDecoder();
-    decoder.setCallback(new CallbackForTest());
-    decoder.decode(blockGroup);
+    super.decode(schema, blockGroup, new CallbackForHdfs());
   }
 
-  protected ECSchema loadSchema(String schemaName) throws Exception {
-    SchemaLoader schemaLoader = new SchemaLoader();
-    List<ECSchema> schemas = schemaLoader.loadSchema(conf);
-    assertEquals(1, schemas.size());
-
-    return schemas.get(0);
-  }
-
-  private class CallbackForTest extends AbstractErasureCoderCallback {
+  private class CallbackForHdfs extends AbstractErasureCoderCallback {
     private ECChunk[][] inputChunks;
     private ECChunk[][] outputChunks;
     private int readInputIndex;
@@ -294,28 +215,23 @@ public abstract class TestErasureCodecBase {
         e.printStackTrace();
       }
     }
-  }
 
-  private ECChunk[] getChunks(ECBlock[] dataEcBlocks) throws IOException {
-    ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
-    for (int i = 0; i < dataEcBlocks.length; i++) {
-      ECBlock ecBlock = dataEcBlocks[i];
-      if (ecBlock.isMissing()) {
-        chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
-      } else {
-        File blockFile = getBlockFile(ecBlock);
-        byte[] buffer = new byte[BLOCK_SIZE];
-        IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
-        chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
+    private ECChunk[] getChunks(ECBlock[] dataEcBlocks) throws IOException {
+      ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
+      for (int i = 0; i < dataEcBlocks.length; i++) {
+        ECBlock ecBlock = dataEcBlocks[i];
+        if (ecBlock.isMissing()) {
+          chunks[i] = new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]));
+        } else {
+          File blockFile = getBlockFile(ecBlock);
+          byte[] buffer = new byte[BLOCK_SIZE];
+          IOUtils.readFully(new FileInputStream(blockFile), buffer, 0, CHUNK_SIZE);
+          chunks[i] = new ECChunk(ByteBuffer.wrap(buffer));
+        }
       }
+      return chunks;
     }
-    return chunks;
   }
 
-  private File getBlockFile(ECBlock ecBlock) throws IOException {
-    ExtendedBlockId extendedBlockId = (ExtendedBlockId) ecBlock.getBlockId();
-    Block block = DataNodeTestUtils.getFSDataset(dataNode).getStoredBlock(extendedBlockId.getBlockPoolId(), extendedBlockId.getBlockId());
-    File blockFile = DataNodeTestUtils.getBlockFile(dataNode, extendedBlockId.getBlockPoolId(), block);
-    return blockFile;
-  }
+
 }

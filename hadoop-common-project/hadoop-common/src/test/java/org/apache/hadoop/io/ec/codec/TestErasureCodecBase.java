@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.ec.codec;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ec.*;
 import org.apache.hadoop.io.ec.coder.AbstractErasureCoderCallback;
 import org.apache.hadoop.io.ec.coder.ErasureCoderCallback;
@@ -28,6 +29,7 @@ import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Before;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -36,26 +38,26 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public abstract class TestErasureCodecBase {
-  private static final String TEST_DIR =
+  protected static final String TEST_DIR =
       new File(System.getProperty("test.build.data", "/tmp")).getAbsolutePath();
-  public final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs").getAbsolutePath();
+  protected final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs").getAbsolutePath();
 
-  private final Random RAND = new Random();
-  private GaloisField GF = GaloisField.getInstance();
-  private int symbolMax = 0;
+  protected final Random RAND = new Random();
+  protected GaloisField GF = GaloisField.getInstance();
+  protected int symbolMax = 0;
 
-  public static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
-  public static final int BLOCK_SIZE = 1024 * 1024;
-  public int CHUNK_SIZE;
-  public int BLOCK_CHUNK_SIZE_MULIPLE;
+  protected static final String EC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
+  protected static final int BLOCK_SIZE = 1024 * 1024;
+  protected int CHUNK_SIZE;
+  protected int BLOCK_CHUNK_SIZE_MULIPLE;
 
 
   protected Configuration conf;
   protected String codecName = "codec_for_test";
   protected String schemaName = "schema_for_test";
 
+  protected byte[][] message;
   private BlockDataManager dataManager;
-  private byte[][] message;
 
   protected abstract String getCodecClass();
 
@@ -64,9 +66,13 @@ public abstract class TestErasureCodecBase {
     int symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
     symbolMax = (int) Math.pow(2, symbolSize);
 
-    conf = new Configuration();
+    initConf();
     conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
     conf.set(EC_CONF_PREFIX + codecName, getCodecClass());
+  }
+
+  protected void initConf() {
+    conf = new Configuration();
   }
 
   protected void doTest() throws Exception {
@@ -83,8 +89,8 @@ public abstract class TestErasureCodecBase {
     dataManager = new BlockDataManager(numDataBlocks, numParityBlocks);
     message = new byte[numDataBlocks][];
 
-    List<ECBlockIdForTest> dataBlocks = prepareDataBlocks(numDataBlocks);
-    List<ECBlockIdForTest> parityBlocks = prepareParityBlocks(numParityBlocks);
+    List<? extends ECBlockId> dataBlocks = prepareDataBlocks(numDataBlocks);
+    List<? extends ECBlockId> parityBlocks = prepareParityBlocks(numParityBlocks);
     BlockGroup blockGroup = blockGrouper.makeBlockGroup(dataBlocks, parityBlocks);
 
     encode(schema, blockGroup);
@@ -110,13 +116,10 @@ public abstract class TestErasureCodecBase {
     verifyData(erasedLocation, groupUsedToRecovery);
   }
 
-  private List<ECBlockIdForTest> prepareDataBlocks(int numDataBlocks) {
+  protected List<? extends ECBlockId> prepareDataBlocks(int numDataBlocks) throws Exception{
     List<ECBlockIdForTest> idLists = new ArrayList<ECBlockIdForTest>();
     for (int i = 0; i < numDataBlocks; i++) {
-      byte[] byteArray = new byte[BLOCK_SIZE];
-      for (int j = 0; j < BLOCK_SIZE; j++) {
-        byteArray[j] = (byte) RAND.nextInt(symbolMax);
-      }
+      byte[] byteArray = generateData(BLOCK_SIZE);
       message[i] = byteArray;
       dataManager.fillData(i, Arrays.copyOf(byteArray, byteArray.length));
       idLists.add(new ECBlockIdForTest(i));
@@ -124,7 +127,15 @@ public abstract class TestErasureCodecBase {
     return idLists;
   }
 
-  private List<ECBlockIdForTest> prepareParityBlocks(int numParityBlocks) {
+  protected byte[] generateData(int length) {
+    byte[] byteArray = new byte[length];
+    for (int j = 0; j < length; j++) {
+      byteArray[j] = (byte) RAND.nextInt(symbolMax);
+    }
+    return byteArray;
+  }
+
+  protected List<? extends ECBlockId> prepareParityBlocks(int numParityBlocks) throws Exception{
     List<ECBlockIdForTest> ids = new ArrayList<ECBlockIdForTest>();
     for (int i = 0;i < numParityBlocks; i++) {
       ids.add(new ECBlockIdForTest(dataManager.parityBeginIndex() + i));
@@ -132,33 +143,44 @@ public abstract class TestErasureCodecBase {
     return ids;
   }
 
-  private void verifyData(int erasedLocation, BlockGroup blockGroup) throws IOException {
+  protected void verifyData(int erasedLocation, BlockGroup blockGroup) throws Exception {
     byte[] rightData = message[erasedLocation];
 
     SubBlockGroup subBlockGroup = blockGroup.getSubGroups().iterator().next();
     ECBlock recoveryBlock = subBlockGroup.getDataBlocks()[erasedLocation];
-    byte[] actualData = dataManager.getData(recoveryBlock);
 
+    byte[] actualData = getBlockData(recoveryBlock);
     assertTrue(Arrays.equals(rightData, actualData));
   }
 
+  protected byte[] getBlockData(ECBlock ecBlock) throws Exception {
+    return dataManager.getData(ecBlock);
+  }
+
   protected void encode(ECSchema schema, BlockGroup blockGroup) throws Exception {
+    encode(schema, blockGroup, new CallbackForTest());
+  }
+
+  protected void decode(ECSchema schema, BlockGroup blockGroup) throws Exception {
+    decode(schema, blockGroup, new CallbackForTest());
+  }
+
+  protected void encode(ECSchema schema, BlockGroup blockGroup, ErasureCoderCallback callback) throws Exception {
     assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     ErasureEncoder encoder = codec.createEncoder();
 
-    ErasureCoderCallback encodeCallback = new CallbackForTest();
-    encoder.setCallback(encodeCallback);
+    encoder.setCallback(callback);
     encoder.encode(blockGroup);
   }
 
-  protected void decode(ECSchema schema, BlockGroup blockGroup) throws Exception {
+  protected void decode(ECSchema schema, BlockGroup blockGroup, ErasureCoderCallback callback) throws Exception {
     assertTrue(blockGroup.getSchemaName().equals(schema.getSchemaName()));
 
     ErasureCodec codec = ErasureCodec.createErasureCodec(schema);
     ErasureDecoder decoder = codec.createDecoder();
-    decoder.setCallback(new CallbackForTest());
+    decoder.setCallback(callback);
     decoder.decode(blockGroup);
   }
 

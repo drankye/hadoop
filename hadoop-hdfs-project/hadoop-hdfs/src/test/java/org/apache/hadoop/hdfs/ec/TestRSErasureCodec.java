@@ -3,7 +3,7 @@ package org.apache.hadoop.hdfs.ec;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-public abstract class TestRSErasureCodec extends TestErasureCodecBase {
+public abstract class TestRSErasureCodec extends TestECInHdfsBase {
 
   protected void prepareSchema(String codecName, String schemaName, int dataSize, int paritySize) throws Exception{
     PrintWriter out = new PrintWriter(new FileWriter(SCHEMA_FILE));
