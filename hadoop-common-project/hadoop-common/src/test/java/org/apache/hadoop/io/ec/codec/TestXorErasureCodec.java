@@ -34,7 +34,7 @@ public class TestXorErasureCodec extends TestErasureCodecBase{
 
   @Override
   protected String getCodecClass() {
-    return "org.apache.hadoop.io.ec.codec.XorRSErasureCodec";
+    return "org.apache.hadoop.io.ec.codec.XorErasureCodec";
   }
 
   protected void prepareSchema(String codecName, String schemaName, int dataSize) throws Exception{

@@ -30,6 +30,7 @@ public class TestSchemaLoader {
 		out.println("  </schema>");
 		out.println("  <schema name=\"LRCk6l2r2\">");
 		out.println("    <k>6</k>");
+		out.println("    <m>6</m>");
 		out.println("    <l>3</l>");
 		out.println("    <r>2</r>");
 		out.println("    <codec>LRC-ISA</codec>");
