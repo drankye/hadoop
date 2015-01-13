@@ -23,7 +23,6 @@ import org.apache.hadoop.io.ec.BlockGroup;
 import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.SubBlockGroup;
-import org.apache.hadoop.io.ec.rawcoder.IsaRSRawEncoder;
 import org.apache.hadoop.io.ec.rawcoder.RawErasureEncoder;
 
 import java.nio.ByteBuffer;
@@ -54,11 +53,8 @@ public abstract class RSEncoder extends AbstractErasureEncoder{
       LOG.info("Error in encode " + e);
     } finally {
       postCoding(inputBlocks, outputBlocks);
-      end();
     }
   }
-
-  protected abstract void end();
 
   protected void encode(ECChunk[] dataChunks, ECChunk[] outputChunks) {
     ByteBuffer[] dataByteBuffers = convert(dataChunks);

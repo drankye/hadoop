@@ -23,12 +23,9 @@ import org.apache.hadoop.io.ec.BlockGroup;
 import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.SubBlockGroup;
-import org.apache.hadoop.io.ec.rawcoder.JavaRSRawDecoder;
 import org.apache.hadoop.io.ec.rawcoder.RawErasureDecoder;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class RSDecoder extends AbstractErasureDecoder {
   private static final Log LOG =

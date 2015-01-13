@@ -17,11 +17,7 @@
  */
 package org.apache.hadoop.io.ec.coder;
 
-
-import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.rawcoder.RawErasureEncoder;
-
-import java.nio.ByteBuffer;
 
 public abstract class AbstractErasureEncoder extends AbstractErasureCoder implements ErasureEncoder {
 
@@ -34,6 +30,4 @@ public abstract class AbstractErasureEncoder extends AbstractErasureCoder implem
   protected RawErasureEncoder getRawEncoder() {
     return rawEncoder;
   }
-
-
 }

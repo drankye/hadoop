@@ -17,17 +17,7 @@
  */
 package org.apache.hadoop.io.ec.coder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.ec.BlockGroup;
-import org.apache.hadoop.io.ec.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.ec.SubBlockGroup;
 import org.apache.hadoop.io.ec.rawcoder.JavaRSRawDecoder;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class JavaRSDecoder extends RSDecoder {
 
@@ -35,8 +25,4 @@ public class JavaRSDecoder extends RSDecoder {
     super(new JavaRSRawDecoder(dataSize, paritySize, chunkSize));
   }
 
-  @Override
-  protected void end() {
-    //do-nothing
-  }
 }

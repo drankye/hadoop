@@ -17,15 +17,7 @@
  */
 package org.apache.hadoop.io.ec.coder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.ec.BlockGroup;
-import org.apache.hadoop.io.ec.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.ec.SubBlockGroup;
 import org.apache.hadoop.io.ec.rawcoder.JavaRSRawEncoder;
-
-import java.nio.ByteBuffer;
 
 public class JavaRSEncoder extends RSEncoder{
 
@@ -33,8 +25,4 @@ public class JavaRSEncoder extends RSEncoder{
     super(new JavaRSRawEncoder(dataSize, paritySize, chunkSize));
   }
 
-  @Override
-  protected void end() {
-    //do-nothing
-  }
 }

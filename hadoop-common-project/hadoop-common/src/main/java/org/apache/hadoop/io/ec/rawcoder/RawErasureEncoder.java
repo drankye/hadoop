@@ -24,6 +24,9 @@ import java.nio.ByteBuffer;
  */
 public interface RawErasureEncoder {
 
+  /**
+   * encode with inputs and generates outputs
+   */
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 
   /**
@@ -36,5 +39,8 @@ public interface RawErasureEncoder {
    */
   public int paritySize();
 
-
+  /**
+   * Should be called when release this coder
+   */
+  public void clean();
 }

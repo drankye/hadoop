@@ -21,8 +21,9 @@ import org.apache.hadoop.io.ec.BlockGroup;
 
 public interface ErasureEncoder {
 
-    public void encode(BlockGroup blockGroup);
+  public void encode(BlockGroup blockGroup);
 
-    public void setCallback(ErasureCoderCallback callback);
+  public void setCallback(ErasureCoderCallback callback);
 
+  public void clean();
 }

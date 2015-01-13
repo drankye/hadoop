@@ -31,4 +31,6 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder implem
   protected RawErasureDecoder getRawDecoder() {
     return rawDecoder;
   }
+
+  public void clean() {}
 }

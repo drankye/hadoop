@@ -71,4 +71,5 @@ public abstract class AbstractRawErasureCoder {
     }
   }
 
+  public void clean() {}
 }

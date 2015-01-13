@@ -24,6 +24,12 @@ import java.nio.ByteBuffer;
  */
 public interface RawErasureDecoder {
 
+  /**
+   * decode with inputs and erasedIndexes, generates outputs
+   * @param inputs
+   * @param outputs
+   * @param erasedIndexes
+   */
   public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
   /**
@@ -35,4 +41,9 @@ public interface RawErasureDecoder {
    * The number of parity elements in the code.
    */
   public int paritySize();
+
+  /**
+   * Should be called when release this coder
+   */
+  public void clean();
 }

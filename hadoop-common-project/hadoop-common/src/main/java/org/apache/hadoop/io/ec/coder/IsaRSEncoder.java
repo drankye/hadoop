@@ -26,7 +26,7 @@ public class IsaRSEncoder extends RSEncoder {
   }
 
   @Override
-  protected void end() {
+  public void clean() {
     IsaRSRawEncoder rawEncoder = (IsaRSRawEncoder)getRawEncoder();
     rawEncoder.end();
   }

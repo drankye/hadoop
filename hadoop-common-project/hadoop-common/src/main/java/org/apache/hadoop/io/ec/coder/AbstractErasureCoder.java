@@ -97,4 +97,6 @@ public abstract class AbstractErasureCoder {
     }
     return outputBlocks;
   }
+
+  public void clean() {}
 }

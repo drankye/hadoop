@@ -26,4 +26,5 @@ public interface ErasureDecoder {
 
   public void setCallback(ErasureCoderCallback callback);
 
+  public void clean();
 }
