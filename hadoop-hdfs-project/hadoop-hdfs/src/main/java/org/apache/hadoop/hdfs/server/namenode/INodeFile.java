@@ -234,7 +234,6 @@ public class INodeFile extends INodeWithAdditionalFields
     BlockInfoUnderConstruction ucBlock =
       lastBlock.convertToBlockUnderConstruction(
           BlockUCState.UNDER_CONSTRUCTION, locations);
-    ucBlock.setBlockCollection(this);
     setBlock(numBlocks() - 1, ucBlock);
     return ucBlock;
   }
@@ -505,6 +504,9 @@ public class INodeFile extends INodeWithAdditionalFields
       }
     }
     setBlocks(null);
+    if (getAclFeature() != null) {
+      AclStorage.removeAclFeature(getAclFeature());
+    }
     clear();
     removedINodes.add(this);
     

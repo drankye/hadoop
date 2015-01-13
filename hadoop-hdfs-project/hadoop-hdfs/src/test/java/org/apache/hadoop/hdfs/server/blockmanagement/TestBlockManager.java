@@ -81,19 +81,17 @@ public class TestBlockManager {
   private static final int NUM_TEST_ITERS = 30;
   
   private static final int BLOCK_SIZE = 64*1024;
-  
-  private Configuration conf;
+
   private FSNamesystem fsn;
   private BlockManager bm;
 
   @Before
   public void setupMockCluster() throws IOException {
-    conf = new HdfsConfiguration();
-    conf.set(DFSConfigKeys.NET_TOPOLOGY_SCRIPT_FILE_NAME_KEY,
-        "need to set a dummy value here so it assumes a multi-rack cluster");
+    Configuration conf = new HdfsConfiguration();
+    conf.set(DFSConfigKeys.NET_TOPOLOGY_SCRIPT_FILE_NAME_KEY, "need to set a dummy value here so it assumes a multi-rack cluster");
     fsn = Mockito.mock(FSNamesystem.class);
     Mockito.doReturn(true).when(fsn).hasWriteLock();
-    bm = new BlockManager(fsn, fsn, conf);
+    bm = new BlockManager(fsn, conf);
     final String[] racks = {
         "/rackA",
         "/rackA",
@@ -573,11 +571,13 @@ public class TestBlockManager {
     reset(node);
     bm.getDatanodeManager().registerDatanode(nodeReg);
     verify(node).updateRegInfo(nodeReg);
-    assertEquals(0, ds.getBlockReportCount()); // ready for report again
     // send block report, should be processed after restart
     reset(node);
     bm.processReport(node, new DatanodeStorage(ds.getStorageID()),
-        new BlockListAsLongs(null, null));
+                     new BlockListAsLongs(null, null));
+    // Reinitialize as registration with empty storage list pruned
+    // node.storageMap.
+    ds = node.getStorageInfos()[0];
     assertEquals(1, ds.getBlockReportCount());
   }
   

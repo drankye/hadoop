@@ -23,7 +23,7 @@
 <!-- there.  If yarn-site.xml does not already exist, create it.      -->
 
 <configuration>
-  
+
   <!-- IPC Configs -->
   <property>
     <description>Factory to create client IPC classes.</description>
@@ -229,32 +229,32 @@
 
   <property>
     <description>The minimum allocation for every container request at the RM,
-    in MBs. Memory requests lower than this won't take effect,
-    and the specified value will get allocated at minimum.</description>
+    in MBs. Memory requests lower than this will throw a
+    InvalidResourceRequestException.</description>
     <name>yarn.scheduler.minimum-allocation-mb</name>
     <value>1024</value>
   </property>
 
   <property>
     <description>The maximum allocation for every container request at the RM,
-    in MBs. Memory requests higher than this won't take effect,
-    and will get capped to this value.</description>
+    in MBs. Memory requests higher than this will throw a
+    InvalidResourceRequestException.</description>
     <name>yarn.scheduler.maximum-allocation-mb</name>
     <value>8192</value>
   </property>
 
   <property>
     <description>The minimum allocation for every container request at the RM,
-    in terms of virtual CPU cores. Requests lower than this won't take effect,
-    and the specified value will get allocated the minimum.</description>
+    in terms of virtual CPU cores. Requests lower than this will throw a
+    InvalidResourceRequestException.</description>
     <name>yarn.scheduler.minimum-allocation-vcores</name>
     <value>1</value>
   </property>
 
   <property>
     <description>The maximum allocation for every container request at the RM,
-    in terms of virtual CPU cores. Requests higher than this won't take effect,
-    and will get capped to this value.</description>
+    in terms of virtual CPU cores. Requests higher than this will throw a
+    InvalidResourceRequestException.</description>
     <name>yarn.scheduler.maximum-allocation-vcores</name>
     <value>32</value>
   </property>
@@ -417,6 +417,14 @@
     </description>
     <name>yarn.resourcemanager.fs.state-store.retry-policy-spec</name>
     <value>2000, 500</value>
+  </property>
+
+  <property>
+    <description>Local path where the RM state will be stored when using
+    org.apache.hadoop.yarn.server.resourcemanager.recovery.LeveldbRMStateStore
+    as the value for yarn.resourcemanager.store.class</description>
+    <name>yarn.resourcemanager.leveldb-state-store.path</name>
+    <value>${hadoop.tmp.dir}/yarn/system/rmstore</value>
   </property>
 
   <property>
@@ -1146,6 +1154,16 @@
     <value>${hadoop.tmp.dir}/yarn-nm-recovery</value>
   </property>
 
+  <!--Docker configuration-->
+
+  <property>
+    <name>yarn.nodemanager.docker-container-executor.exec-name</name>
+    <value>/usr/bin/docker</value>
+    <description>
+      Name or path to the Docker client.
+    </description>
+  </property>
+
   <!--Map Reduce configuration-->
   <property>
     <name>yarn.nodemanager.aux-services.mapreduce_shuffle.class</name>
@@ -1345,7 +1363,8 @@
 
   <property>
     <description>
-    Default maximum number of retires for timeline servive client.
+    Default maximum number of retires for timeline servive client
+    and value -1 means no limit.
     </description>
     <name>yarn.timeline-service.client.max-retries</name>
     <value>30</value>
@@ -1357,6 +1376,26 @@
     </description>
     <name>yarn.timeline-service.client.retry-interval-ms</name>
     <value>1000</value>
+  </property>
+
+  <property>
+    <description>Enable timeline server to recover state after starting. If
+    true, then yarn.timeline-service.state-store-class must be specified.
+    </description>
+    <name>yarn.timeline-service.recovery.enabled</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <description>Store class name for timeline state store.</description>
+    <name>yarn.timeline-service.state-store-class</name>
+    <value>org.apache.hadoop.yarn.server.timeline.recovery.LeveldbTimelineStateStore</value>
+  </property>
+
+  <property>
+    <description>Store file name for leveldb state store.</description>
+    <name>yarn.timeline-service.leveldb-state-store.path</name>
+    <value>${hadoop.tmp.dir}/yarn/timeline</value>
   </property>
 
   <!--  Shared Cache Configuration -->
@@ -1412,6 +1451,24 @@
     <name>yarn.sharedcache.store.in-memory.check-period-mins</name>
     <value>720</value>
   </property>
+  
+  <property>
+    <description>The address of the admin interface in the SCM (shared cache manager)</description>
+    <name>yarn.sharedcache.admin.address</name>
+    <value>0.0.0.0:8047</value>
+  </property>
+
+  <property>
+    <description>The number of threads used to handle SCM admin interface (1 by default)</description>
+    <name>yarn.sharedcache.admin.thread-count</name>
+    <value>1</value>
+  </property>
+
+  <property>
+    <description>The address of the web application in the SCM (shared cache manager)</description>
+    <name>yarn.sharedcache.webapp.address</name>
+    <value>0.0.0.0:8788</value>
+  </property>
 
   <property>
     <description>The frequency at which a cleaner task runs.
@@ -1446,6 +1503,41 @@
     requests from the node manager (50 by default)</description>
     <name>yarn.sharedcache.uploader.server.thread-count</name>
     <value>50</value>
+  </property>
+
+  <property>
+    <description>The address of the client interface in the SCM
+    (shared cache manager)</description>
+    <name>yarn.sharedcache.client-server.address</name>
+    <value>0.0.0.0:8045</value>
+  </property>
+
+  <property>
+    <description>The number of threads used to handle shared cache manager
+    requests from clients (50 by default)</description>
+    <name>yarn.sharedcache.client-server.thread-count</name>
+    <value>50</value>
+  </property>
+
+  <property>
+    <description>The algorithm used to compute checksums of files (SHA-256 by
+    default)</description>
+    <name>yarn.sharedcache.checksum.algo.impl</name>
+    <value>org.apache.hadoop.yarn.sharedcache.ChecksumSHA256Impl</value>
+  </property>
+
+  <property>
+    <description>The replication factor for the node manager uploader for the
+    shared cache (10 by default)</description>
+    <name>yarn.sharedcache.nm.uploader.replication.factor</name>
+    <value>10</value>
+  </property>
+
+  <property>
+    <description>The number of threads used to upload files from a node manager
+    instance (20 by default)</description>
+    <name>yarn.sharedcache.nm.uploader.thread-count</name>
+    <value>20</value>
   </property>
 
   <!-- Other configuration -->

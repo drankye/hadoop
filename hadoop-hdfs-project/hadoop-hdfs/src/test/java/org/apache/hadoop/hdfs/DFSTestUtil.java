@@ -24,8 +24,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -62,6 +60,7 @@ import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.datanode.TestTransferRbw;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
+import org.apache.hadoop.hdfs.server.namenode.FSEditLog;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.namenode.ha
@@ -82,6 +81,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.VersionInfo;
 import org.junit.Assume;
+import org.mockito.internal.util.reflection.Whitebox;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -196,6 +196,10 @@ public class DFSTestUtil {
         logicalName, "nn2"), "127.0.0.1:12346");
   }
 
+  public static void setEditLogForTesting(FSNamesystem fsn, FSEditLog newLog) {
+    Whitebox.setInternalState(fsn.getFSImage(), "editLog", newLog);
+    Whitebox.setInternalState(fsn.getFSDirectory(), "editLog", newLog);
+  }
 
   /** class MyFile contains enough information to recreate the contents of
    * a single file.
@@ -680,11 +684,6 @@ public class DFSTestUtil {
   public static Token<BlockTokenIdentifier> getBlockToken(
       FSDataOutputStream out) {
     return ((DFSOutputStream) out.getWrappedStream()).getBlockToken();
-  }
-
-  static void setLogLevel2All(org.apache.commons.logging.Log log) {
-    ((org.apache.commons.logging.impl.Log4JLogger)log
-        ).getLogger().setLevel(org.apache.log4j.Level.ALL);
   }
 
   public static String readFile(File f) throws IOException {
@@ -1620,5 +1619,24 @@ public class DFSTestUtil {
     // Update the FEATURES map with the new layout version.
     LayoutVersion.updateMap(DataNodeLayoutVersion.FEATURES,
                             new LayoutVersion.LayoutFeature[] { feature });
+  }
+
+  /**
+   * Wait for datanode to reach alive or dead state for waitTime given in
+   * milliseconds.
+   */
+  public static void waitForDatanodeState(
+      final MiniDFSCluster cluster, final String nodeID,
+      final boolean alive, int waitTime)
+      throws TimeoutException, InterruptedException {
+    GenericTestUtils.waitFor(new Supplier<Boolean>() {
+      @Override
+      public Boolean get() {
+        FSNamesystem namesystem = cluster.getNamesystem();
+        final DatanodeDescriptor dd = BlockManagerTestUtil.getDatanode(
+            namesystem, nodeID);
+        return (dd.isAlive == alive);
+      }
+    }, 100, waitTime);
   }
 }

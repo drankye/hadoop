@@ -62,6 +62,7 @@ import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.api.records.timeline.TimelineEntity;
 import org.apache.hadoop.yarn.api.records.timeline.TimelineEvent;
 import org.apache.hadoop.yarn.client.api.TimelineClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
@@ -243,9 +244,15 @@ public class JobHistoryEventHandler extends AbstractService
 
     if (conf.getBoolean(MRJobConfig.MAPREDUCE_JOB_EMIT_TIMELINE_DATA,
         MRJobConfig.DEFAULT_MAPREDUCE_JOB_EMIT_TIMELINE_DATA)) {
-      timelineClient = TimelineClient.createTimelineClient();
-      timelineClient.init(conf);
-      LOG.info("Emitting job history data to the timeline server is enabled");
+      if (conf.getBoolean(YarnConfiguration.TIMELINE_SERVICE_ENABLED,
+            YarnConfiguration.DEFAULT_TIMELINE_SERVICE_ENABLED)) {
+        timelineClient = TimelineClient.createTimelineClient();
+        timelineClient.init(conf);
+        LOG.info("Timeline service is enabled");
+        LOG.info("Emitting job history data to the timeline server is enabled");
+      } else {
+        LOG.info("Timeline service is not enabled");
+      }
     } else {
       LOG.info("Emitting job history data to the timeline server is not enabled");
     }
@@ -863,8 +870,7 @@ public class JobHistoryEventHandler extends AbstractService
         TaskAttemptStartedEvent tase = (TaskAttemptStartedEvent) event;
         tEvent.addEventInfo("TASK_TYPE", tase.getTaskType().toString());
         tEvent.addEventInfo("TASK_ATTEMPT_ID",
-            tase.getTaskAttemptId().toString() == null ?
-            "" : tase.getTaskAttemptId().toString());
+            tase.getTaskAttemptId().toString());
         tEvent.addEventInfo("START_TIME", tase.getStartTime());
         tEvent.addEventInfo("HTTP_PORT", tase.getHttpPort());
         tEvent.addEventInfo("TRACKER_NAME", tase.getTrackerName());

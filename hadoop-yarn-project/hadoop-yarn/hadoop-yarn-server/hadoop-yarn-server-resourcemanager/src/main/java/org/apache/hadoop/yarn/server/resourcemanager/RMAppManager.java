@@ -40,13 +40,14 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.ipc.RPCUtil;
 import org.apache.hadoop.yarn.server.resourcemanager.RMAuditLogger.AuditConstants;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore;
-import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore.ApplicationState;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore.RMState;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.Recoverable;
+import org.apache.hadoop.yarn.server.resourcemanager.recovery.records.ApplicationStateData;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppEventType;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppImpl;
+import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppMetrics;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppRecoverEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppRejectedEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppState;
@@ -155,6 +156,7 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
         trackingUrl = attempt.getTrackingUrl();
         host = attempt.getHost();
       }
+      RMAppMetrics metrics = app.getRMAppMetrics();
       SummaryBuilder summary = new SummaryBuilder()
           .add("appId", app.getApplicationId())
           .add("name", app.getName())
@@ -165,7 +167,12 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
           .add("appMasterHost", host)
           .add("startTime", app.getStartTime())
           .add("finishTime", app.getFinishTime())
-          .add("finalStatus", app.getFinalApplicationStatus());
+          .add("finalStatus", app.getFinalApplicationStatus())
+          .add("memorySeconds", metrics.getMemorySeconds())
+          .add("vcoreSeconds", metrics.getVcoreSeconds())
+          .add("preemptedAMContainers", metrics.getNumAMContainersPreempted())
+          .add("preemptedNonAMContainers", metrics.getNumNonAMContainersPreempted())
+          .add("preemptedResources", metrics.getResourcePreempted());
       return summary;
     }
 
@@ -299,11 +306,11 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
     }
   }
 
-  protected void recoverApplication(ApplicationState appState, RMState rmState)
-      throws Exception {
+  protected void recoverApplication(ApplicationStateData appState,
+      RMState rmState) throws Exception {
     ApplicationSubmissionContext appContext =
         appState.getApplicationSubmissionContext();
-    ApplicationId appId = appState.getAppId();
+    ApplicationId appId = appContext.getApplicationId();
 
     // create and recover app.
     RMAppImpl application =
@@ -407,9 +414,10 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
     RMStateStore store = rmContext.getStateStore();
     assert store != null;
     // recover applications
-    Map<ApplicationId, ApplicationState> appStates = state.getApplicationState();
+    Map<ApplicationId, ApplicationStateData> appStates =
+        state.getApplicationState();
     LOG.info("Recovering " + appStates.size() + " applications");
-    for (ApplicationState appState : appStates.values()) {
+    for (ApplicationStateData appState : appStates.values()) {
       recoverApplication(appState, state);
     }
   }

@@ -155,6 +155,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final float   DFS_DATANODE_RAM_DISK_LOW_WATERMARK_PERCENT_DEFAULT = 10.0f;
   public static final String  DFS_DATANODE_RAM_DISK_LOW_WATERMARK_BYTES = "dfs.datanode.ram.disk.low.watermark.bytes";
   public static final long    DFS_DATANODE_RAM_DISK_LOW_WATERMARK_BYTES_DEFAULT = DFS_BLOCK_SIZE_DEFAULT;
+  public static final String  DFS_DATANODE_NETWORK_COUNTS_CACHE_MAX_SIZE_KEY = "dfs.datanode.network.counts.cache.max.size";
+  public static final int     DFS_DATANODE_NETWORK_COUNTS_CACHE_MAX_SIZE_DEFAULT = Integer.MAX_VALUE;
 
   // This setting is for testing/internal use only.
   public static final String  DFS_DATANODE_DUPLICATE_REPLICA_DELETION = "dfs.datanode.duplicate.replica.deletion";
@@ -322,6 +324,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   // allow writing to stale nodes to prevent hotspots.
   public static final String DFS_NAMENODE_USE_STALE_DATANODE_FOR_WRITE_RATIO_KEY = "dfs.namenode.write.stale.datanode.ratio";
   public static final float DFS_NAMENODE_USE_STALE_DATANODE_FOR_WRITE_RATIO_DEFAULT = 0.5f;
+
+  // Number of blocks to rescan for each iteration of postponedMisreplicatedBlocks.
+  public static final String DFS_NAMENODE_BLOCKS_PER_POSTPONEDBLOCKS_RESCAN_KEY = "dfs.namenode.blocks.per.postponedblocks.rescan";
+  public static final long DFS_NAMENODE_BLOCKS_PER_POSTPONEDBLOCKS_RESCAN_KEY_DEFAULT = 10000;
 
   // Replication monitoring related keys
   public static final String DFS_NAMENODE_INVALIDATE_WORK_PCT_PER_ITERATION =
@@ -721,17 +727,17 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
       "dfs.client.hedged.read.threadpool.size";
   public static final int     DEFAULT_DFSCLIENT_HEDGED_READ_THREADPOOL_SIZE = 0;
 
-   // Slow io warning log threshold settings for dfsclient and datanode.
-   public static final String DFS_CLIENT_SLOW_IO_WARNING_THRESHOLD_KEY =
-     "dfs.client.slow.io.warning.threshold.ms";
-   public static final long DFS_CLIENT_SLOW_IO_WARNING_THRESHOLD_DEFAULT = 30000;
-   public static final String DFS_DATANODE_SLOW_IO_WARNING_THRESHOLD_KEY =
-     "dfs.datanode.slow.io.warning.threshold.ms";
-   public static final long DFS_DATANODE_SLOW_IO_WARNING_THRESHOLD_DEFAULT = 300;
+  // Slow io warning log threshold settings for dfsclient and datanode.
+  public static final String DFS_CLIENT_SLOW_IO_WARNING_THRESHOLD_KEY =
+    "dfs.client.slow.io.warning.threshold.ms";
+  public static final long DFS_CLIENT_SLOW_IO_WARNING_THRESHOLD_DEFAULT = 30000;
+  public static final String DFS_DATANODE_SLOW_IO_WARNING_THRESHOLD_KEY =
+    "dfs.datanode.slow.io.warning.threshold.ms";
+  public static final long DFS_DATANODE_SLOW_IO_WARNING_THRESHOLD_DEFAULT = 300;
 
-   public static final String DFS_DATANODE_BLOCK_ID_LAYOUT_UPGRADE_THREADS_KEY =
-       "dfs.datanode.block.id.layout.upgrade.threads";
-   public static final int DFS_DATANODE_BLOCK_ID_LAYOUT_UPGRADE_THREADS = 12;
+  public static final String DFS_DATANODE_BLOCK_ID_LAYOUT_UPGRADE_THREADS_KEY =
+      "dfs.datanode.block.id.layout.upgrade.threads";
+  public static final int DFS_DATANODE_BLOCK_ID_LAYOUT_UPGRADE_THREADS = 12;
 
   public static final String DFS_NAMENODE_INOTIFY_MAX_EVENTS_PER_RPC_KEY =
       "dfs.namenode.inotify.max.events.per.rpc";
@@ -741,4 +747,19 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String IGNORE_SECURE_PORTS_FOR_TESTING_KEY =
       "ignore.secure.ports.for.testing";
   public static final boolean IGNORE_SECURE_PORTS_FOR_TESTING_DEFAULT = false;
+
+  // nntop Configurations
+  public static final String NNTOP_ENABLED_KEY =
+      "dfs.namenode.top.enabled";
+  public static final boolean NNTOP_ENABLED_DEFAULT = true;
+  public static final String NNTOP_BUCKETS_PER_WINDOW_KEY =
+      "dfs.namenode.top.window.num.buckets";
+  public static final int NNTOP_BUCKETS_PER_WINDOW_DEFAULT = 10;
+  public static final String NNTOP_NUM_USERS_KEY =
+      "dfs.namenode.top.num.users";
+  public static final int NNTOP_NUM_USERS_DEFAULT = 10;
+  // comma separated list of nntop reporting periods in minutes
+  public static final String NNTOP_WINDOWS_MINUTES_KEY =
+      "dfs.namenode.top.windows.minutes";
+  public static final String[] NNTOP_WINDOWS_MINUTES_DEFAULT = {"1","5","25"};
 }

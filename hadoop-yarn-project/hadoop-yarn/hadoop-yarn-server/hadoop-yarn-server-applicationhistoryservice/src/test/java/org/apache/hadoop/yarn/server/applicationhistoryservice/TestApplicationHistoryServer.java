@@ -31,8 +31,11 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.applicationhistoryservice.webapp.AHSWebApp;
 import org.apache.hadoop.yarn.server.timeline.MemoryTimelineStore;
 import org.apache.hadoop.yarn.server.timeline.TimelineStore;
+import org.apache.hadoop.yarn.server.timeline.recovery.MemoryTimelineStateStore;
+import org.apache.hadoop.yarn.server.timeline.recovery.TimelineStateStore;
 import org.apache.hadoop.yarn.server.timeline.security.TimelineAuthenticationFilterInitializer;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -47,8 +50,23 @@ public class TestApplicationHistoryServer {
     Configuration config = new YarnConfiguration();
     config.setClass(YarnConfiguration.TIMELINE_SERVICE_STORE,
         MemoryTimelineStore.class, TimelineStore.class);
+    config.setClass(YarnConfiguration.TIMELINE_SERVICE_STATE_STORE_CLASS,
+        MemoryTimelineStateStore.class, TimelineStateStore.class);
     config.set(YarnConfiguration.TIMELINE_SERVICE_WEBAPP_ADDRESS, "localhost:0");
     try {
+      try {
+        historyServer.init(config);
+        config.setInt(YarnConfiguration.TIMELINE_SERVICE_HANDLER_THREAD_COUNT,
+            0);
+        historyServer.start();
+        fail();
+      } catch (IllegalArgumentException e) {
+        Assert.assertTrue(e.getMessage().contains(
+            YarnConfiguration.TIMELINE_SERVICE_HANDLER_THREAD_COUNT));
+      }
+      config.setInt(YarnConfiguration.TIMELINE_SERVICE_HANDLER_THREAD_COUNT,
+          YarnConfiguration.DEFAULT_TIMELINE_SERVICE_CLIENT_THREAD_COUNT);
+      historyServer = new ApplicationHistoryServer();
       historyServer.init(config);
       assertEquals(STATE.INITED, historyServer.getServiceState());
       assertEquals(5, historyServer.getServices().size());
@@ -114,6 +132,8 @@ public class TestApplicationHistoryServer {
       Configuration config = new YarnConfiguration();
       config.setClass(YarnConfiguration.TIMELINE_SERVICE_STORE,
           MemoryTimelineStore.class, TimelineStore.class);
+      config.setClass(YarnConfiguration.TIMELINE_SERVICE_STATE_STORE_CLASS,
+          MemoryTimelineStateStore.class, TimelineStateStore.class);
       config.set(YarnConfiguration.TIMELINE_SERVICE_WEBAPP_ADDRESS, "localhost:0");
       try {
         config.set("hadoop.http.filter.initializers", filterInitializer);

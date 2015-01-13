@@ -1,4 +1,4 @@
-/**
+ /**
 * Licensed to the Apache Software Foundation (ASF) under one
 * or more contributor license agreements.  See the NOTICE file
 * distributed with this work for additional information
@@ -28,9 +28,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience.LimitedPrivate;
+import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.FileStatus;
@@ -133,8 +135,8 @@ public class FSDownload implements Callable<Path> {
    * @return true if the path in the current path is visible to all, false
    * otherwise
    */
-  @VisibleForTesting
-  static boolean isPublic(FileSystem fs, Path current, FileStatus sStat,
+  @Private
+  public static boolean isPublic(FileSystem fs, Path current, FileStatus sStat,
       LoadingCache<Path,Future<FileStatus>> statCache) throws IOException {
     current = fs.makeQualified(current);
     //the leaf level file should be readable by others
@@ -389,17 +391,22 @@ public class FSDownload implements Callable<Path> {
    */
   private void changePermissions(FileSystem fs, final Path path)
       throws IOException, InterruptedException {
-    FileStatus fStatus = fs.getFileStatus(path);
+    File f = new File(path.toUri());
+    if (FileUtils.isSymlink(f)) {
+      // avoid following symlinks when changing permissions
+      return;
+    }
+    boolean isDir = f.isDirectory();
     FsPermission perm = cachePerms;
     // set public perms as 755 or 555 based on dir or file
     if (resource.getVisibility() == LocalResourceVisibility.PUBLIC) {
-      perm = fStatus.isDirectory() ? PUBLIC_DIR_PERMS : PUBLIC_FILE_PERMS;
+      perm = isDir ? PUBLIC_DIR_PERMS : PUBLIC_FILE_PERMS;
     }
     // set private perms as 700 or 500
     else {
       // PRIVATE:
       // APPLICATION:
-      perm = fStatus.isDirectory() ? PRIVATE_DIR_PERMS : PRIVATE_FILE_PERMS;
+      perm = isDir ? PRIVATE_DIR_PERMS : PRIVATE_FILE_PERMS;
     }
     LOG.debug("Changing permissions for path " + path
         + " to perm " + perm);
@@ -415,8 +422,7 @@ public class FSDownload implements Callable<Path> {
         }
       });
     }
-    if (fStatus.isDirectory()
-        && !fStatus.isSymlink()) {
+    if (isDir) {
       FileStatus[] statuses = fs.listStatus(path);
       for (FileStatus status : statuses) {
         changePermissions(fs, status.getPath());

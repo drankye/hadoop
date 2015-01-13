@@ -506,6 +506,9 @@ public class YarnConfiguration extends Configuration {
   public static final String DEFAULT_FS_RM_STATE_STORE_RETRY_POLICY_SPEC =
       "2000, 500";
 
+  public static final String RM_LEVELDB_STORE_PATH = RM_PREFIX
+      + "leveldb-state-store.path";
+
   /** The maximum number of completed applications RM keeps. */ 
   public static final String RM_MAX_COMPLETED_APPLICATIONS =
     RM_PREFIX + "max-completed-applications";
@@ -816,7 +819,7 @@ public class YarnConfiguration extends Configuration {
   public static final String NM_CONTAINER_MON_PROCESS_TREE =
     NM_PREFIX + "container-monitor.process-tree.class";
   public static final String PROCFS_USE_SMAPS_BASED_RSS_ENABLED = NM_PREFIX +
-      ".container-monitor.procfs-tree.smaps-based-rss.enabled";
+      "container-monitor.procfs-tree.smaps-based-rss.enabled";
   public static final boolean DEFAULT_PROCFS_USE_SMAPS_BASED_RSS_ENABLED =
       false;
   
@@ -891,7 +894,19 @@ public class YarnConfiguration extends Configuration {
   /** The arguments to pass to the health check script.*/
   public static final String NM_HEALTH_CHECK_SCRIPT_OPTS = 
     NM_PREFIX + "health-checker.script.opts";
-  
+
+  /** The Docker image name(For DockerContainerExecutor).*/
+  public static final String NM_DOCKER_CONTAINER_EXECUTOR_IMAGE_NAME =
+    NM_PREFIX + "docker-container-executor.image-name";
+
+  /** The name of the docker executor (For DockerContainerExecutor).*/
+  public static final String NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME =
+    NM_PREFIX + "docker-container-executor.exec-name";
+
+  /** The default docker executor (For DockerContainerExecutor).*/
+  public static final String NM_DEFAULT_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME =
+          "/usr/bin/docker";
+
   /** The path to the Linux container executor.*/
   public static final String NM_LINUX_CONTAINER_EXECUTOR_PATH =
     NM_PREFIX + "linux-container-executor.path";
@@ -1122,7 +1137,7 @@ public class YarnConfiguration extends Configuration {
    * OS environment expansion syntax.
    * </p>
    * <p>
-   * Note: Use {@link DEFAULT_YARN_CROSS_PLATFORM_APPLICATION_CLASSPATH} for
+   * Note: Use {@link #DEFAULT_YARN_CROSS_PLATFORM_APPLICATION_CLASSPATH} for
    * cross-platform practice i.e. submit an application from a Windows client to
    * a Linux/Unix server or vice versa.
    * </p>
@@ -1351,6 +1366,22 @@ public class YarnConfiguration extends Configuration {
   public static final long
       DEFAULT_TIMELINE_SERVICE_CLIENT_RETRY_INTERVAL_MS = 1000;
 
+  /** Flag to enable recovery of timeline service */
+  public static final String TIMELINE_SERVICE_RECOVERY_ENABLED =
+      TIMELINE_SERVICE_PREFIX + "recovery.enabled";
+  public static final boolean DEFAULT_TIMELINE_SERVICE_RECOVERY_ENABLED = false;
+
+  /** Timeline service state store class */
+  public static final String TIMELINE_SERVICE_STATE_STORE_CLASS =
+      TIMELINE_SERVICE_PREFIX + "state-store-class";
+
+  public static final String TIMELINE_SERVICE_LEVELDB_STATE_STORE_PREFIX =
+      TIMELINE_SERVICE_PREFIX + "leveldb-state-store.";
+
+  /** Timeline service state store leveldb path */
+  public static final String TIMELINE_SERVICE_LEVELDB_STATE_STORE_PATH =
+      TIMELINE_SERVICE_LEVELDB_STATE_STORE_PREFIX + "path";
+
   // ///////////////////////////////
   // Shared Cache Configs
   // ///////////////////////////////
@@ -1386,10 +1417,29 @@ public class YarnConfiguration extends Configuration {
   public static final String DEFAULT_SCM_APP_CHECKER_CLASS =
       "org.apache.hadoop.yarn.server.sharedcachemanager.RemoteAppChecker";
 
+  /** The address of the SCM admin interface. */
+  public static final String SCM_ADMIN_ADDRESS =
+      SHARED_CACHE_PREFIX + "admin.address";
+  public static final int DEFAULT_SCM_ADMIN_PORT = 8047;
+  public static final String DEFAULT_SCM_ADMIN_ADDRESS =
+      "0.0.0.0:" + DEFAULT_SCM_ADMIN_PORT;
+
+  /** Number of threads used to handle SCM admin interface. */
+  public static final String SCM_ADMIN_CLIENT_THREAD_COUNT =
+      SHARED_CACHE_PREFIX + "admin.thread-count";
+  public static final int DEFAULT_SCM_ADMIN_CLIENT_THREAD_COUNT = 1;
+
+  /** The address of the SCM web application. */
+  public static final String SCM_WEBAPP_ADDRESS =
+      SHARED_CACHE_PREFIX + "webapp.address";
+  public static final int DEFAULT_SCM_WEBAPP_PORT = 8788;
+  public static final String DEFAULT_SCM_WEBAPP_ADDRESS =
+      "0.0.0.0:" + DEFAULT_SCM_WEBAPP_PORT;
+
   // In-memory SCM store configuration
   
   public static final String IN_MEMORY_STORE_PREFIX =
-      SHARED_CACHE_PREFIX + "in-memory.";
+      SCM_STORE_PREFIX + "in-memory.";
 
   /**
    * A resource in the InMemorySCMStore is considered stale if the time since
@@ -1459,6 +1509,37 @@ public class YarnConfiguration extends Configuration {
   public static final String SCM_UPLOADER_SERVER_THREAD_COUNT =
       SHARED_CACHE_PREFIX + "uploader.server.thread-count";
   public static final int DEFAULT_SCM_UPLOADER_SERVER_THREAD_COUNT = 50;
+
+  /** The address of the client interface in the SCM. */
+  public static final String SCM_CLIENT_SERVER_ADDRESS =
+      SHARED_CACHE_PREFIX + "client-server.address";
+  public static final int DEFAULT_SCM_CLIENT_SERVER_PORT = 8045;
+  public static final String DEFAULT_SCM_CLIENT_SERVER_ADDRESS = "0.0.0.0:"
+      + DEFAULT_SCM_CLIENT_SERVER_PORT;
+
+  /** The number of threads used to handle shared cache manager requests. */
+  public static final String SCM_CLIENT_SERVER_THREAD_COUNT =
+      SHARED_CACHE_PREFIX + "client-server.thread-count";
+  public static final int DEFAULT_SCM_CLIENT_SERVER_THREAD_COUNT = 50;
+
+  /** the checksum algorithm implementation **/
+  public static final String SHARED_CACHE_CHECKSUM_ALGO_IMPL =
+      SHARED_CACHE_PREFIX + "checksum.algo.impl";
+  public static final String DEFAULT_SHARED_CACHE_CHECKSUM_ALGO_IMPL =
+      "org.apache.hadoop.yarn.sharedcache.ChecksumSHA256Impl";
+
+  // node manager (uploader) configs
+  /**
+   * The replication factor for the node manager uploader for the shared cache.
+   */
+  public static final String SHARED_CACHE_NM_UPLOADER_REPLICATION_FACTOR =
+      SHARED_CACHE_PREFIX + "nm.uploader.replication.factor";
+  public static final int DEFAULT_SHARED_CACHE_NM_UPLOADER_REPLICATION_FACTOR =
+      10;
+
+  public static final String SHARED_CACHE_NM_UPLOADER_THREAD_COUNT =
+      SHARED_CACHE_PREFIX + "nm.uploader.thread-count";
+  public static final int DEFAULT_SHARED_CACHE_NM_UPLOADER_THREAD_COUNT = 20;
 
   ////////////////////////////////
   // Other Configs

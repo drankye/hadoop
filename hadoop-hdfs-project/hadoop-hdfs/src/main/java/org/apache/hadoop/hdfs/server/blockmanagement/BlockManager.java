@@ -54,7 +54,6 @@ import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.fs.FileEncryptionInfo;
-
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
@@ -63,10 +62,10 @@ import org.apache.hadoop.hdfs.security.token.block.BlockTokenSecretManager.Acces
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.blockmanagement.CorruptReplicasMap.Reason;
+import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo.AddBlockResult;
 import org.apache.hadoop.hdfs.server.blockmanagement.PendingDataNodeMessages.ReportedBlockInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.ReplicaState;
-import org.apache.hadoop.hdfs.server.namenode.FSClusterStats;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNode.OperationCategory;
 import org.apache.hadoop.hdfs.server.namenode.Namesystem;
@@ -111,7 +110,7 @@ public class BlockManager {
   private final DatanodeManager datanodeManager;
   private final HeartbeatManager heartbeatManager;
   private final BlockTokenSecretManager blockTokenSecretManager;
-  
+
   private final PendingDataNodeMessages pendingDNMessages =
     new PendingDataNodeMessages();
 
@@ -264,9 +263,9 @@ public class BlockManager {
 
   /** Check whether name system is running before terminating */
   private boolean checkNSRunning = true;
-  
-  public BlockManager(final Namesystem namesystem, final FSClusterStats stats,
-      final Configuration conf) throws IOException {
+
+  public BlockManager(final Namesystem namesystem, final Configuration conf)
+    throws IOException {
     this.namesystem = namesystem;
     datanodeManager = new DatanodeManager(this, namesystem, conf);
     heartbeatManager = datanodeManager.getHeartbeatManager();
@@ -281,8 +280,9 @@ public class BlockManager {
     blocksMap = new BlocksMap(
         LightWeightGSet.computeCapacity(2.0, "BlocksMap"));
     blockplacement = BlockPlacementPolicy.getInstance(
-        conf, stats, datanodeManager.getNetworkTopology(), 
-        datanodeManager.getHost2DatanodeMap());
+      conf, datanodeManager.getFSClusterStats(),
+      datanodeManager.getNetworkTopology(),
+      datanodeManager.getHost2DatanodeMap());
     storagePolicySuite = BlockStoragePolicySuite.createDefaultSuite();
     pendingReplications = new PendingReplicationBlocks(conf.getInt(
       DFSConfigKeys.DFS_NAMENODE_REPLICATION_PENDING_TIMEOUT_SEC_KEY,
@@ -1050,21 +1050,6 @@ public class BlockManager {
 
     node.resetBlocks();
     invalidateBlocks.remove(node);
-    
-    // If the DN hasn't block-reported since the most recent
-    // failover, then we may have been holding up on processing
-    // over-replicated blocks because of it. But we can now
-    // process those blocks.
-    boolean stale = false;
-    for(DatanodeStorageInfo storage : node.getStorageInfos()) {
-      if (storage.areBlockContentsStale()) {
-        stale = true;
-        break;
-      }
-    }
-    if (stale) {
-      rescanPostponedMisreplicatedBlocks();
-    }
   }
 
   /** Remove the blocks associated to the given DatanodeStorageInfo. */
@@ -1109,6 +1094,18 @@ public class BlockManager {
       blockLog.info("BLOCK* addToInvalidates: " + b + " "
           + datanodes);
     }
+  }
+
+  /**
+   * Remove all block invalidation tasks under this datanode UUID;
+   * used when a datanode registers with a new UUID and the old one
+   * is wiped.
+   */
+  void removeFromInvalidates(final DatanodeInfo datanode) {
+    if (!namesystem.isPopulatingReplQueues()) {
+      return;
+    }
+    invalidateBlocks.remove(datanode);
   }
 
   /**
@@ -1773,6 +1770,8 @@ public class BlockManager {
     final long startTime = Time.now(); //after acquiring write lock
     final long endTime;
     DatanodeDescriptor node;
+    Collection<Block> invalidatedBlocks = null;
+
     try {
       node = datanodeManager.getDatanode(nodeID);
       if (node == null || !node.isAlive) {
@@ -1801,23 +1800,21 @@ public class BlockManager {
         // ordinary block reports.  This shortens restart times.
         processFirstBlockReport(storageInfo, newReport);
       } else {
-        processReport(storageInfo, newReport);
+        invalidatedBlocks = processReport(storageInfo, newReport);
       }
       
-      // Now that we have an up-to-date block report, we know that any
-      // deletions from a previous NN iteration have been accounted for.
-      boolean staleBefore = storageInfo.areBlockContentsStale();
       storageInfo.receivedBlockReport();
-      if (staleBefore && !storageInfo.areBlockContentsStale()) {
-        LOG.info("BLOCK* processReport: Received first block report from "
-            + storage + " after starting up or becoming active. Its block "
-            + "contents are no longer considered stale");
-        rescanPostponedMisreplicatedBlocks();
-      }
-      
     } finally {
       endTime = Time.now();
       namesystem.writeUnlock();
+    }
+
+    if (invalidatedBlocks != null) {
+      for (Block b : invalidatedBlocks) {
+        blockLog.info("BLOCK* processReport: " + b + " on " + node
+                          + " size " + b.getNumBytes()
+                          + " does not belong to any file");
+      }
     }
 
     // Log the block report processing stats from Namenode perspective
@@ -1835,36 +1832,80 @@ public class BlockManager {
   /**
    * Rescan the list of blocks which were previously postponed.
    */
-  private void rescanPostponedMisreplicatedBlocks() {
-    for (Iterator<Block> it = postponedMisreplicatedBlocks.iterator();
-         it.hasNext();) {
-      Block b = it.next();
-      
-      BlockInfo bi = blocksMap.getStoredBlock(b);
-      if (bi == null) {
+  void rescanPostponedMisreplicatedBlocks() {
+    if (getPostponedMisreplicatedBlocksCount() == 0) {
+      return;
+    }
+    long startTimeRescanPostponedMisReplicatedBlocks = Time.now();
+    long startPostponedMisReplicatedBlocksCount =
+        getPostponedMisreplicatedBlocksCount();
+    namesystem.writeLock();
+    try {
+      // blocksPerRescan is the configured number of blocks per rescan.
+      // Randomly select blocksPerRescan consecutive blocks from the HashSet
+      // when the number of blocks remaining is larger than blocksPerRescan.
+      // The reason we don't always pick the first blocksPerRescan blocks is to
+      // handle the case if for some reason some datanodes remain in
+      // content stale state for a long time and only impact the first
+      // blocksPerRescan blocks.
+      int i = 0;
+      long startIndex = 0;
+      long blocksPerRescan =
+          datanodeManager.getBlocksPerPostponedMisreplicatedBlocksRescan();
+      long base = getPostponedMisreplicatedBlocksCount() - blocksPerRescan;
+      if (base > 0) {
+        startIndex = DFSUtil.getRandom().nextLong() % (base+1);
+        if (startIndex < 0) {
+          startIndex += (base+1);
+        }
+      }
+      Iterator<Block> it = postponedMisreplicatedBlocks.iterator();
+      for (int tmp = 0; tmp < startIndex; tmp++) {
+        it.next();
+      }
+
+      for (;it.hasNext(); i++) {
+        Block b = it.next();
+        if (i >= blocksPerRescan) {
+          break;
+        }
+
+        BlockInfo bi = blocksMap.getStoredBlock(b);
+        if (bi == null) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
+                "Postponed mis-replicated block " + b + " no longer found " +
+                "in block map.");
+          }
+          it.remove();
+          postponedMisreplicatedBlocksCount.decrementAndGet();
+          continue;
+        }
+        MisReplicationResult res = processMisReplicatedBlock(bi);
         if (LOG.isDebugEnabled()) {
           LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
-              "Postponed mis-replicated block " + b + " no longer found " +
-              "in block map.");
+              "Re-scanned block " + b + ", result is " + res);
         }
-        it.remove();
-        postponedMisreplicatedBlocksCount.decrementAndGet();
-        continue;
+        if (res != MisReplicationResult.POSTPONE) {
+          it.remove();
+          postponedMisreplicatedBlocksCount.decrementAndGet();
+        }
       }
-      MisReplicationResult res = processMisReplicatedBlock(bi);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
-            "Re-scanned block " + b + ", result is " + res);
-      }
-      if (res != MisReplicationResult.POSTPONE) {
-        it.remove();
-        postponedMisreplicatedBlocksCount.decrementAndGet();
-      }
+    } finally {
+      namesystem.writeUnlock();
+      long endPostponedMisReplicatedBlocksCount =
+          getPostponedMisreplicatedBlocksCount();
+      LOG.info("Rescan of postponedMisreplicatedBlocks completed in " +
+          (Time.now() - startTimeRescanPostponedMisReplicatedBlocks) +
+          " msecs. " + endPostponedMisReplicatedBlocksCount +
+          " blocks are left. " + (startPostponedMisReplicatedBlocksCount -
+          endPostponedMisReplicatedBlocksCount) + " blocks are removed.");
     }
   }
   
-  private void processReport(final DatanodeStorageInfo storageInfo,
-                             final BlockListAsLongs report) throws IOException {
+  private Collection<Block> processReport(
+      final DatanodeStorageInfo storageInfo,
+      final BlockListAsLongs report) throws IOException {
     // Normal case:
     // Modify the (block-->datanode) map, according to the difference
     // between the old and new block report.
@@ -1895,14 +1936,13 @@ public class BlockManager {
           + " of " + numBlocksLogged + " reported.");
     }
     for (Block b : toInvalidate) {
-      blockLog.info("BLOCK* processReport: "
-          + b + " on " + node + " size " + b.getNumBytes()
-          + " does not belong to any file");
       addToInvalidates(b, node);
     }
     for (BlockToMarkCorrupt b : toCorrupt) {
       markBlockAsCorrupt(b, storageInfo, node);
     }
+
+    return toInvalidate;
   }
 
   /**
@@ -1988,8 +2028,9 @@ public class BlockManager {
     // place a delimiter in the list which separates blocks 
     // that have been reported from those that have not
     BlockInfo delimiter = new BlockInfo(new Block(), (short) 1);
-    boolean added = storageInfo.addBlock(delimiter);
-    assert added : "Delimiting block cannot be present in the node";
+    AddBlockResult result = storageInfo.addBlock(delimiter);
+    assert result == AddBlockResult.ADDED 
+        : "Delimiting block cannot be present in the node";
     int headIndex = 0; //currently the delimiter is in the head of the list
     int curIndex;
 
@@ -2382,14 +2423,19 @@ public class BlockManager {
     assert bc != null : "Block must belong to a file";
 
     // add block to the datanode
-    boolean added = storageInfo.addBlock(storedBlock);
+    AddBlockResult result = storageInfo.addBlock(storedBlock);
 
     int curReplicaDelta;
-    if (added) {
+    if (result == AddBlockResult.ADDED) {
       curReplicaDelta = 1;
       if (logEveryBlock) {
         logAddStoredBlock(storedBlock, node);
       }
+    } else if (result == AddBlockResult.REPLACED) {
+      curReplicaDelta = 0;
+      blockLog.warn("BLOCK* addStoredBlock: " + "block " + storedBlock
+          + " moved to storageType " + storageInfo.getStorageType()
+          + " on node " + node);
     } else {
       // if the same block is added again and the replica was corrupt
       // previously because of a wrong gen stamp, remove it from the
@@ -2411,7 +2457,7 @@ public class BlockManager {
     if(storedBlock.getBlockUCState() == BlockUCState.COMMITTED &&
         numLiveReplicas >= minReplication) {
       storedBlock = completeBlock(bc, storedBlock, false);
-    } else if (storedBlock.isComplete() && added) {
+    } else if (storedBlock.isComplete() && result == AddBlockResult.ADDED) {
       // check whether safe replication is reached for the block
       // only complete blocks are counted towards that
       // Is no-op if not in safe mode.
@@ -3260,11 +3306,19 @@ public class BlockManager {
     }
 
     if (!status && !srcNode.isAlive) {
-      LOG.warn("srcNode " + srcNode + " is dead " +
-          "when decommission is in progress. Continue to mark " +
-          "it as decommission in progress. In that way, when it rejoins the " +
-          "cluster it can continue the decommission process.");
-      status = true;
+      updateState();
+      if (pendingReplicationBlocksCount == 0 &&
+          underReplicatedBlocksCount == 0) {
+        LOG.info("srcNode {} is dead and there are no under-replicated" +
+            " blocks or blocks pending replication. Marking as " +
+            "decommissioned.");
+      } else {
+        LOG.warn("srcNode " + srcNode + " is dead " +
+            "while decommission is in progress. Continuing to mark " +
+            "it as decommission in progress so when it rejoins the " +
+            "cluster it can continue the decommission process.");
+        status = true;
+      }
     }
 
     srcNode.decommissioningStatus.set(underReplicatedBlocks,
@@ -3382,7 +3436,14 @@ public class BlockManager {
         return 0;
       }
       try {
-        toInvalidate = invalidateBlocks.invalidateWork(datanodeManager.getDatanode(dn));
+        DatanodeDescriptor dnDescriptor = datanodeManager.getDatanode(dn);
+        if (dnDescriptor == null) {
+          LOG.warn("DataNode " + dn + " cannot be found with UUID " +
+              dn.getDatanodeUuid() + ", removing block invalidation work.");
+          invalidateBlocks.remove(dn);
+          return 0;
+        }
+        toInvalidate = invalidateBlocks.invalidateWork(dnDescriptor);
         
         if (toInvalidate == null) {
           return 0;
@@ -3537,6 +3598,7 @@ public class BlockManager {
           if (namesystem.isPopulatingReplQueues()) {
             computeDatanodeWork();
             processPendingReplications();
+            rescanPostponedMisreplicatedBlocks();
           }
           Thread.sleep(replicationRecheckInterval);
         } catch (Throwable t) {
@@ -3605,6 +3667,8 @@ public class BlockManager {
     excessReplicateMap.clear();
     invalidateBlocks.clear();
     datanodeManager.clearPendingQueues();
+    postponedMisreplicatedBlocks.clear();
+    postponedMisreplicatedBlocksCount.set(0);
   };
   
 

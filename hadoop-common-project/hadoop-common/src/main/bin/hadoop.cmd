@@ -88,6 +88,10 @@ call :updatepath %HADOOP_BIN_PATH%
     shift
     shift
   )
+  if "%1" == "--loglevel" (
+    shift
+    shift
+  )
 
   set hadoop-command=%1
   if not defined hadoop-command (
@@ -177,6 +181,11 @@ call :updatepath %HADOOP_BIN_PATH%
   goto :eof
 
 :jar
+  if defined YARN_OPTS (
+    @echo WARNING: Use "yarn jar" to launch YARN applications.
+  ) else if defined YARN_CLIENT_OPTS (
+    @echo WARNING: Use "yarn jar" to launch YARN applications.
+  )
   set CLASS=org.apache.hadoop.util.RunJar
   goto :eof
 
@@ -238,6 +247,10 @@ call :updatepath %HADOOP_BIN_PATH%
     shift
     shift
   )
+  if "%1" == "--loglevel" (
+    shift
+    shift
+  )
   if [%2] == [] goto :eof
   shift
   set _arguments=
@@ -256,11 +269,13 @@ call :updatepath %HADOOP_BIN_PATH%
   goto :eof
 
 :print_usage
-  @echo Usage: hadoop [--config confdir] COMMAND
+  @echo Usage: hadoop [--config confdir] [--loglevel loglevel] COMMAND
   @echo where COMMAND is one of:
   @echo   fs                   run a generic filesystem user client
   @echo   version              print the version
   @echo   jar ^<jar^>            run a jar file
+  @echo                        note: please use "yarn jar" to launch
+  @echo                              YARN applications, not this command.
   @echo   checknative [-a^|-h]  check native hadoop and compression libraries availability
   @echo   distcp ^<srcurl^> ^<desturl^> copy file or directories recursively
   @echo   archive -archiveName NAME -p ^<parent path^> ^<src^>* ^<dest^> create a hadoop archive

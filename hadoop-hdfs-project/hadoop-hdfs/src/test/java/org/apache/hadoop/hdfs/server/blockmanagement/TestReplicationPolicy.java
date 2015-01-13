@@ -56,7 +56,6 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.ReplicaState;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.FSClusterStats;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.namenode.Namesystem;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
@@ -1145,9 +1144,7 @@ public class TestReplicationPolicy {
     Namesystem mockNS = mock(Namesystem.class);
     when(mockNS.isPopulatingReplQueues()).thenReturn(true);
     when(mockNS.hasWriteLock()).thenReturn(true);
-    FSClusterStats mockStats = mock(FSClusterStats.class);
-    BlockManager bm =
-        new BlockManager(mockNS, mockStats, new HdfsConfiguration());
+    BlockManager bm = new BlockManager(mockNS, new HdfsConfiguration());
     UnderReplicatedBlocks underReplicatedBlocks = bm.neededReplications;
 
     Block block1 = new Block(random.nextLong());
@@ -1193,9 +1190,7 @@ public class TestReplicationPolicy {
           throws IOException {
     Namesystem mockNS = mock(Namesystem.class);
     when(mockNS.isPopulatingReplQueues()).thenReturn(true);
-    FSClusterStats mockStats = mock(FSClusterStats.class);
-    BlockManager bm =
-        new BlockManager(mockNS, mockStats, new HdfsConfiguration());
+    BlockManager bm = new BlockManager(mockNS, new HdfsConfiguration());
     UnderReplicatedBlocks underReplicatedBlocks = bm.neededReplications;
 
     Block block1 = new Block(random.nextLong());
@@ -1231,6 +1226,16 @@ public class TestReplicationPolicy {
     final BlockInfoUnderConstruction ucBlock =
         info.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION,
             storageAry);
+    DatanodeStorageInfo storage = mock(DatanodeStorageInfo.class);
+    DatanodeDescriptor dn = mock(DatanodeDescriptor.class);
+    when(dn.isDecommissioned()).thenReturn(true);
+    when(storage.getState()).thenReturn(DatanodeStorage.State.NORMAL);
+    when(storage.getDatanodeDescriptor()).thenReturn(dn);
+    when(storage.removeBlock(any(BlockInfo.class))).thenReturn(true);
+    when(storage.addBlock(any(BlockInfo.class))).thenReturn
+        (DatanodeStorageInfo.AddBlockResult.ADDED);
+    ucBlock.addStorage(storage);
+
     when(mbc.setLastBlock((BlockInfo) any(), (DatanodeStorageInfo[]) any()))
     .thenReturn(ucBlock);
 
@@ -1248,9 +1253,7 @@ public class TestReplicationPolicy {
       throws IOException {
     Namesystem mockNS = mock(Namesystem.class);
     when(mockNS.isPopulatingReplQueues()).thenReturn(true);
-    FSClusterStats mockStats = mock(FSClusterStats.class);
-    BlockManager bm =
-        new BlockManager(mockNS, mockStats, new HdfsConfiguration());
+    BlockManager bm = new BlockManager(mockNS, new HdfsConfiguration());
     UnderReplicatedBlocks underReplicatedBlocks = bm.neededReplications;
 
     Block block1 = new Block(random.nextLong());
