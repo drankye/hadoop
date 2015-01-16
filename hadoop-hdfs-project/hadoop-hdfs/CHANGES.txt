@@ -18,6 +18,10 @@ Trunk (Unreleased)
 
     HDFS-3125. Add JournalService to enable Journal Daemon. (suresh)
 
+    HDFS-3107. Introduce truncate. (Plamen Jeliazkov via shv)
+
+    HDFS-7056. Snapshot support for truncate. (Plamen Jeliazkov and shv)
+
   IMPROVEMENTS
 
     HDFS-4665. Move TestNetworkTopologyWithNodeGroup to common.
@@ -490,6 +494,14 @@ Release 2.7.0 - UNRELEASED
     HDFS-7323. Move the get/setStoragePolicy commands out from dfsadmin.
     (jing9 via yliu)
 
+    HDFS-7326: Add documentation for hdfs debug commands (Vijay Bhat via Colin
+    P. McCabe)
+
+    HDFS-7598. Remove dependency on old version of guava in
+    TestDFSClientCache#testEviction. (Sangjin Lee via Colin P. McCabe)
+
+    HDFS-7600. Refine hdfs admin classes to reuse common code. (jing9)
+
   OPTIMIZATIONS
 
     HDFS-7454. Reduce memory footprint for AclEntries in NameNode.
@@ -669,6 +681,12 @@ Release 2.7.0 - UNRELEASED
 
     HDFS-7596. NameNode should prune dead storages from storageMap.
     (Arpit Agarwal via cnauroth)
+
+    HDFS-7533. Datanode sometimes does not shutdown on receiving upgrade
+    shutdown command (Eric Payne via kihwal)
+
+    HDFS-5445. PacketReceiver populates the packetLen field in PacketHeader
+    incorrectly (Jonathan Mace via Colin P. McCabe)
 
 Release 2.6.1 - UNRELEASED
 

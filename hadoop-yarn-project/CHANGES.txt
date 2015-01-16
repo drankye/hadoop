@@ -177,6 +177,12 @@ Release 2.7.0 - UNRELEASED
     YARN-2956. Added missing links in YARN documentation. (Masatake Iwasaki via
     jianhe)
 
+    YARN-2957. Create unit test to automatically compare YarnConfiguration
+    and yarn-default.xml. (rchiang via rkanter)
+
+    YARN-2643. Don't create a new DominantResourceCalculator on every
+    FairScheduler.allocate call. (kasha via rkanter)
+
   OPTIMIZATIONS
 
   BUG FIXES
@@ -346,6 +352,9 @@ Release 2.7.0 - UNRELEASED
 
     YARN-3014. Replaces labels on a host should update all NM's labels on that
     host. (Wangda Tan via jianhe)
+
+    YARN-3027. Scheduler should use totalAvailable resource from node instead of
+    availableResource for maxAllocation. (adhoot via rkanter)
 
 Release 2.6.0 - 2014-11-18
 
