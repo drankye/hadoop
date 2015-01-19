@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 public interface RawErasureEncoder {
 
   /**
-   * encode with inputs and generates outputs
+   * Encode with inputs and generates outputs
    */
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 

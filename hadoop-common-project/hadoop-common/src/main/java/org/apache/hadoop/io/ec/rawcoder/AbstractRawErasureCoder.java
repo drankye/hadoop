@@ -47,8 +47,6 @@ public abstract class AbstractRawErasureCoder {
 
   /**
    * Chunk buffer size for an encode()/decode() call
-   *
-   * @return
    */
   public int chunkSize() {
     return chunkSize;

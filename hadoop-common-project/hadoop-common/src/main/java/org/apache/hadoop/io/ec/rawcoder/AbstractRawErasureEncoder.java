@@ -17,15 +17,10 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
-import java.nio.ByteBuffer;
-
 public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder implements RawErasureEncoder {
 
   public AbstractRawErasureEncoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
   }
-
-  @Override
-  public abstract void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 
 }

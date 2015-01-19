@@ -54,6 +54,7 @@ public class TestXorRawEncoder {
     xorEncoder.encode(messageBuffForEncode, parityBuff);
     long encodeEnd = System.currentTimeMillis();
     float encodeMSecs = encodeEnd - encodeStart;
+
     System.out.println("Time to encode xor = " + encodeMSecs +
         " msec (" + message[0].length / (1000 * encodeMSecs) + "MB/s)");
 
@@ -75,6 +76,7 @@ public class TestXorRawEncoder {
     xorDecoder.decode(messageBuffForDecode, recoveryBuff, new int[]{0});
     long decodeEnd = System.currentTimeMillis();
     float decodeMSecs = decodeEnd - decodeStart;
+
     System.out.println("Time to decode xor = " + decodeMSecs +
         " msec (" + message[0].length / (1000 * decodeMSecs) + "MB/s)");
 

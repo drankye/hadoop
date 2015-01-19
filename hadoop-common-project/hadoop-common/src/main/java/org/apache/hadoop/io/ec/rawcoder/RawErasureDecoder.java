@@ -25,10 +25,7 @@ import java.nio.ByteBuffer;
 public interface RawErasureDecoder {
 
   /**
-   * decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
-   * @param erasedIndexes
+   * Decode with inputs and erasedIndexes, generates outputs
    */
   public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
 
