@@ -15,50 +15,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
-
-import org.apache.hadoop.io.ec.ECChunk;
+package org.apache.hadoop.io.ec;
 
 import java.nio.ByteBuffer;
 
 /**
- * Raw Erasure Encoder that corresponds to an erasure code algorithm
+ * A wrapper for ByteBuffer or bytes array
  */
-public interface RawErasureEncoder {
+public class ECChunk {
+
+	private ByteBuffer chunkBuffer;
 
   /**
-   * Encode with inputs and generates outputs
-   * @param inputs
-   * @param outputs
+   * Wrapping a ByteBuffer
+   * @param buffer
    */
-  public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
+	public ECChunk(ByteBuffer buffer) {
+		this.chunkBuffer = buffer;
+	}
 
   /**
-   * Encode with inputs and generates outputs
-   * @param inputs
-   * @param outputs
+   * Wrapping a bytes array
+   * @param buffer
    */
-  public void encode(byte[][] inputs, byte[][] outputs);
+  public ECChunk(byte[] buffer) {
+    this.chunkBuffer = ByteBuffer.wrap(buffer);
+  }
 
   /**
-   * Encode with inputs and generates outputs
-   * @param inputs
-   * @param outputs
+   * Convert to ByteBuffer
+   * @return ByteBuffer
    */
-  public void encode(ECChunk[] inputs, ECChunk[] outputs);
-
-  /**
-   * The number of data elements in the code.
-   */
-  public int dataSize();
-
-  /**
-   * The number of parity elements in the code.
-   */
-  public int paritySize();
-
-  /**
-   * Should be called when release this coder
-   */
-  public void clean();
+	public ByteBuffer getBuffer() {
+		return chunkBuffer;
+	}
 }

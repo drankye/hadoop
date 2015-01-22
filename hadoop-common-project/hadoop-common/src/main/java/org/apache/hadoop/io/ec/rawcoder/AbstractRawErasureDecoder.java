@@ -17,10 +17,37 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
+import org.apache.hadoop.io.ec.ECChunk;
+
+import java.nio.ByteBuffer;
+
+/**
+ * An abstract raw erasure decoder class
+ */
 public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder implements RawErasureDecoder {
 
   public AbstractRawErasureDecoder(int dataSize, int paritySize, int chunkSize) {
     super(dataSize, paritySize, chunkSize);
   }
 
+  @Override
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
+    doDecode(inputs, erasedIndexes, outputs);
+  }
+
+  protected abstract void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs);
+
+  @Override
+  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    doDecode(inputs, erasedIndexes, outputs);
+  }
+
+  protected abstract void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
+
+  @Override
+  public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
+    doDecode(inputs, erasedIndexes, outputs);
+  }
+
+  protected abstract void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
 }

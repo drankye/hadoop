@@ -17,8 +17,13 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
+import org.apache.hadoop.io.ec.ECChunk;
+
 import java.nio.ByteBuffer;
 
+/**
+ * A common class to be shared by encoder and decoder
+ */
 public abstract class AbstractRawErasureCoder {
 
   private int dataSize;
@@ -59,6 +64,26 @@ public abstract class AbstractRawErasureCoder {
       byteBuffers[i].get(data[i]);
     }
     return data;
+  }
+
+  protected static ByteBuffer[] toBuffers(ECChunk[] chunks) {
+    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
+
+    for (int i = 0; i < chunks.length; i++) {
+      buffers[i] = chunks[i].getBuffer();
+    }
+
+    return buffers;
+  }
+
+  protected static byte[][] toArray(ECChunk[] chunks) {
+    byte[][] bytesArr = new byte[chunks.length][];
+
+    for (int i = 0; i < chunks.length; i++) {
+      bytesArr[i] = chunks[i].getBuffer().array();
+    }
+
+    return bytesArr;
   }
 
   protected void writeBuffer(ByteBuffer[] byteBuffers, byte[][] data) {

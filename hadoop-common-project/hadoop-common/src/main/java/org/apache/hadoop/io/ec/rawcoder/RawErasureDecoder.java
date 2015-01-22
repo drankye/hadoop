@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
+import org.apache.hadoop.io.ec.ECChunk;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -26,8 +28,24 @@ public interface RawErasureDecoder {
 
   /**
    * Decode with inputs and erasedIndexes, generates outputs
+   * @param inputs
+   * @param outputs
    */
-  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes);
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs);
+
+  /**
+   * Decode with inputs and erasedIndexes, generates outputs
+   * @param inputs
+   * @param outputs
+   */
+  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
+
+  /**
+   * Decode with inputs and erasedIndexes, generates outputs
+   * @param inputs
+   * @param outputs
+   */
+  public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
 
   /**
    * The number of data elements in the code.

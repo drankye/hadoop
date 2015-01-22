@@ -19,69 +19,48 @@ package org.apache.hadoop.io.ec.rawcoder;
 
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Ported from HDFS-RAID
+ * Test XOR encoding and decoding, adapted from HDFS-RAID.
  */
 public class TestXorRawEncoder {
 
   @Test
-  public void testPerformance() {
+  public void testXorCoding() {
     java.util.Random RAND = new java.util.Random();
     int dataSize = 10;
-    final int CHUNK_SIZE = 16 * 1024;
+    int chunkSize = 16 * 1024;
 
-    byte[][] message = new byte[dataSize][];
-    ByteBuffer[] messageBuffForEncode = new ByteBuffer[dataSize];
-    int bufsize = 1024 * 1024 * 10;
+    /**
+     * Generate data and encode
+     */
+    byte[][] encodingData = new byte[dataSize][];
     for (int i = 0; i < dataSize; i++) {
-      message[i] = new byte[bufsize];
-      for (int j = 0; j < bufsize; j++) {
-        message[i][j] = (byte)RAND.nextInt(256);
+      encodingData[i] = new byte[chunkSize];
+      for (int j = 0; j < chunkSize; j++) {
+        encodingData[i][j] = (byte)RAND.nextInt(256);
       }
-      messageBuffForEncode[i] = ByteBuffer.wrap(message[i]);
     }
 
-    ByteBuffer[] parityBuff = {ByteBuffer.allocate(bufsize)};
+    byte[][] parityData = new byte[][] {new byte[chunkSize]};
 
-    RawErasureEncoder xorEncoder = new XorRawEncoder(dataSize, CHUNK_SIZE);
-    RawErasureDecoder xorDecoder = new XorRawDecoder(dataSize, CHUNK_SIZE);
+    RawErasureEncoder encoder = new XorRawEncoder(dataSize, chunkSize);
+    encoder.encode(encodingData, parityData);
 
-    long encodeStart = System.currentTimeMillis();
-    xorEncoder.encode(messageBuffForEncode, parityBuff);
-    long encodeEnd = System.currentTimeMillis();
-    float encodeMSecs = encodeEnd - encodeStart;
-
-    System.out.println("Time to encode xor = " + encodeMSecs +
-        " msec (" + message[0].length / (1000 * encodeMSecs) + "MB/s)");
-
-    byte[] copy = new byte[bufsize];
-    for (int j = 0; j < bufsize; j++) {
-      copy[j] = message[0][j];
-      message[0][j] = 0;
+    // Make a copy of a strip for later comparing then erase it
+    byte[] erasedData = new byte[chunkSize];
+    for (int j = 0; j < chunkSize; j++) {
+      erasedData[j] = encodingData[0][j];
+      encodingData[0][j] = 0;
     }
 
-    //decode
-    ByteBuffer[] messageBuffForDecode = new ByteBuffer[dataSize + 1];
-    for (int i = 0; i < dataSize; i++) {
-      messageBuffForDecode[i] = ByteBuffer.wrap(message[i]);
-    }
-    messageBuffForDecode[dataSize] = parityBuff[0];
-
-    ByteBuffer[] recoveryBuff = {ByteBuffer.allocate(bufsize)};
-    long decodeStart = System.currentTimeMillis();
-    xorDecoder.decode(messageBuffForDecode, recoveryBuff, new int[]{0});
-    long decodeEnd = System.currentTimeMillis();
-    float decodeMSecs = decodeEnd - decodeStart;
-
-    System.out.println("Time to decode xor = " + decodeMSecs +
-        " msec (" + message[0].length / (1000 * decodeMSecs) + "MB/s)");
-
-    byte[] recoveryData = new byte[bufsize];
-    recoveryBuff[0].get(recoveryData);
-    assertTrue("Decode failed", java.util.Arrays.equals(copy, recoveryData));
+    /**
+     * Decode and compare
+     */
+    byte[][] recoveredData = new byte[][] {new byte[chunkSize]};
+    RawErasureDecoder decoder = new XorRawDecoder(dataSize, chunkSize);
+    decoder.decode(encodingData, new int[] {0}, recoveredData);
+    assertArrayEquals("Decoding and comparing failed", erasedData, recoveredData[0]);
   }
 }

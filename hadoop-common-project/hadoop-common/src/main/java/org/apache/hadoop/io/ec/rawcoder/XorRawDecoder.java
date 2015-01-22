@@ -17,10 +17,12 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
+import org.apache.hadoop.io.ec.ECChunk;
+
 import java.nio.ByteBuffer;
 
 /**
- * Ported from HDFS-RAID
+ * A decoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
  */
 public class XorRawDecoder extends AbstractRawErasureDecoder{
 
@@ -28,32 +30,68 @@ public class XorRawDecoder extends AbstractRawErasureDecoder{
     super(dataSize, 1, chunkSize);
   }
 
-  //inputs = data + parity
   @Override
-  public void decode(ByteBuffer[] inputs, ByteBuffer[] outputs, int[] erasedIndexes) {
+  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
     assert(erasedIndexes.length == outputs.length);
     assert(erasedIndexes.length <= 1);
 
-    byte[][] inputData = getData(inputs);
-    assert(inputData.length > 0);
-    byte[][] outputData = new byte[outputs.length][];
-    outputData[0] = new byte[inputData[0].length];
+    int bufSize = inputs[0].remaining();
     int erasedIdx = erasedIndexes[0];
+
     // Set the output to zeros.
-    for (int j = 0; j < outputData[0].length; j++) {
-      outputData[0][j] = 0;
+    for (int j = 0; j < bufSize; j++) {
+      outputs[0].put(j, (byte) 0);
     }
+
     // Process the inputs.
-    for (int i = 0; i < inputData.length; i++) {
+    for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
       if (i == erasedIdx) {
         continue;
       }
-      byte[] input = inputData[i];
-      for (int j = 0; j < input.length; j++) {
-        outputData[0][j] ^= input[j];
+
+      for (int j = 0; j < bufSize; j++) {
+        outputs[0].put(j, (byte) (outputs[0].get(j) ^ inputs[i].get(j)));
       }
     }
-    writeBuffer(outputs, outputData);
+  }
+
+  @Override
+  protected void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    assert(erasedIndexes.length == outputs.length);
+    assert(erasedIndexes.length <= 1);
+
+    int bufSize = inputs[0].length;
+    int erasedIdx = erasedIndexes[0];
+
+    // Set the output to zeros.
+    for (int j = 0; j < bufSize; j++) {
+      outputs[0][j] = 0;
+    }
+
+    // Process the inputs.
+    for (int i = 0; i < inputs.length; i++) {
+      // Skip the erased location.
+      if (i == erasedIdx) {
+        continue;
+      }
+
+      for (int j = 0; j < bufSize; j++) {
+        outputs[0][j] ^= inputs[i][j];
+      }
+    }
+  }
+
+  @Override
+  protected void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
+    if (inputs[0].getBuffer().hasArray()) {
+      byte[][] inputBytesArr = toArray(inputs);
+      byte[][] outputBytesArr = toArray(outputs);
+      doDecode(inputBytesArr, erasedIndexes, outputBytesArr);
+    } else {
+      ByteBuffer[] inputBuffers = toBuffers(inputs);
+      ByteBuffer[] outputBuffers = toBuffers(outputs);
+      doDecode(inputBuffers, erasedIndexes, outputBuffers);
+    }
   }
 }
