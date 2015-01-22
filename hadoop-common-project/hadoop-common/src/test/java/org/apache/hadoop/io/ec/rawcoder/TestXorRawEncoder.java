@@ -55,12 +55,18 @@ public class TestXorRawEncoder {
       encodingData[0][j] = 0;
     }
 
+    byte[][] decodingData = new byte[dataSize + 1][];
+    for (int i = 0; i < dataSize; i++) {
+      decodingData[i] = encodingData[i];
+    }
+    decodingData[dataSize] = parityData[0];
+
     /**
      * Decode and compare
      */
     byte[][] recoveredData = new byte[][] {new byte[chunkSize]};
     RawErasureDecoder decoder = new XorRawDecoder(dataSize, chunkSize);
-    decoder.decode(encodingData, new int[] {0}, recoveredData);
+    decoder.decode(decodingData, new int[] {0}, recoveredData);
     assertArrayEquals("Decoding and comparing failed", erasedData, recoveredData[0]);
   }
 }
