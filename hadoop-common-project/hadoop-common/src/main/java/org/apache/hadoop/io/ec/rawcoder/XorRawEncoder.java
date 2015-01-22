@@ -64,16 +64,4 @@ public class XorRawEncoder extends AbstractRawErasureEncoder {
     }
   }
 
-  @Override
-  protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
-    if (inputs[0].getBuffer().hasArray()) {
-      byte[][] inputBytesArr = toArray(inputs);
-      byte[][] outputBytesArr = toArray(outputs);
-      doEncode(inputBytesArr, outputBytesArr);
-    } else {
-      ByteBuffer[] inputBuffers = toBuffers(inputs);
-      ByteBuffer[] outputBuffers = toBuffers(outputs);
-      doEncode(inputBuffers, outputBuffers);
-    }
-  }
 }

@@ -32,6 +32,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
 
   @Override
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
+    if (erasedIndexes.length == 0) {
+      return;
+    }
+
     doDecode(inputs, erasedIndexes, outputs);
   }
 
@@ -39,6 +43,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
 
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    if (erasedIndexes.length == 0) {
+      return;
+    }
+
     doDecode(inputs, erasedIndexes, outputs);
   }
 
@@ -49,5 +57,15 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
     doDecode(inputs, erasedIndexes, outputs);
   }
 
-  protected abstract void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
+  protected void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
+    if (inputs[0].getBuffer().hasArray()) {
+      byte[][] inputBytesArr = toArray(inputs);
+      byte[][] outputBytesArr = toArray(outputs);
+      doDecode(inputBytesArr, erasedIndexes, outputBytesArr);
+    } else {
+      ByteBuffer[] inputBuffers = toBuffers(inputs);
+      ByteBuffer[] outputBuffers = toBuffers(outputs);
+      doDecode(inputBuffers, erasedIndexes, outputBuffers);
+    }
+  }
 }

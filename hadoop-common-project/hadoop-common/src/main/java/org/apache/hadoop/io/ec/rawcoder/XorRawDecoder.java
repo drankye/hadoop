@@ -82,16 +82,4 @@ public class XorRawDecoder extends AbstractRawErasureDecoder{
     }
   }
 
-  @Override
-  protected void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
-    if (inputs[0].getBuffer().hasArray()) {
-      byte[][] inputBytesArr = toArray(inputs);
-      byte[][] outputBytesArr = toArray(outputs);
-      doDecode(inputBytesArr, erasedIndexes, outputBytesArr);
-    } else {
-      ByteBuffer[] inputBuffers = toBuffers(inputs);
-      ByteBuffer[] outputBuffers = toBuffers(outputs);
-      doDecode(inputBuffers, erasedIndexes, outputBuffers);
-    }
-  }
 }
