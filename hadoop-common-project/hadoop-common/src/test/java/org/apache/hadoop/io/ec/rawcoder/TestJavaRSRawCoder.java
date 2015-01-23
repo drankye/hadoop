@@ -51,31 +51,39 @@ public class TestJavaRSRawCoder {
 
 	@Test
 	public void testCoding() {
-    testBytesCoding(10, 4);
-		// verify the production size.
+      // verify the production size.
+      testBytesCoding(10, 4);
+      testECChunksCoding(10, 4);
 
-    // verify a test size
-    testBytesCoding(3, 3);
+      // verify a test size
+      testBytesCoding(3, 3);
+      testECChunksCoding(3, 3);
 	}
 
   private void testBytesCoding(int dataSize, int paritySize) {
     /**
      * Generate data and encode
      */
-    byte[][] encodingData = generateEncodingData(dataSize);
+    final byte[][] message = generateEncodingData(dataSize);
+    byte[][] encodingData = new byte[dataSize][CHUNK_SIZE];
+    for (int i = 0;i < dataSize; i++) {
+      for (int j = 0;j < CHUNK_SIZE; j++) {
+        encodingData[i][j] = message[i][j];
+      }
+    }
     byte[][] parityData = new byte[paritySize][CHUNK_SIZE];
 
     RawErasureEncoder encoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
     encoder.encode(encodingData, parityData);
 
     // Make a copy of a strip for later comparing then erase it
-    int erasedLocation = RAND.nextInt(encodingData.length);
-    byte[] erasedData = eraseData(encodingData, erasedLocation);
+    int erasedLocation = RAND.nextInt(dataSize);
+    byte[] erasedData = eraseData(message, erasedLocation);
 
     /**
      * Decode and compare
      */
-    byte[][] decodingData = generateDecodingData(encodingData, parityData);
+    byte[][] decodingData = generateDecodingData(message, parityData);
     byte[][] recoveredData = new byte[][] {new byte[CHUNK_SIZE]};
     RawErasureDecoder decoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
     decoder.decode(decodingData, new int[] {erasedLocation + paritySize}, recoveredData);
