@@ -60,5 +60,5 @@ public interface RawErasureDecoder {
   /**
    * Should be called when release this coder
    */
-  public void clean();
+  public void release();
 }

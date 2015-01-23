@@ -30,6 +30,12 @@ public abstract class AbstractRawErasureCoder {
   private int paritySize;
   private int chunkSize;
 
+  /**
+   * The constructor
+   * @param dataSize
+   * @param paritySize
+   * @param chunkSize
+   */
   public AbstractRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
     this.dataSize = dataSize;
     this.paritySize = paritySize;
@@ -57,15 +63,6 @@ public abstract class AbstractRawErasureCoder {
     return chunkSize;
   }
 
-  protected byte[][] getData(ByteBuffer[] byteBuffers) {
-    byte[][] data = new byte[byteBuffers.length][];
-    for (int i = 0; i < byteBuffers.length; i++) {
-      data[i] = new byte[byteBuffers[i].limit()];
-      byteBuffers[i].get(data[i]);
-    }
-    return data;
-  }
-
   protected static ByteBuffer[] toBuffers(ECChunk[] chunks) {
     ByteBuffer[] buffers = new ByteBuffer[chunks.length];
 
@@ -86,13 +83,7 @@ public abstract class AbstractRawErasureCoder {
     return bytesArr;
   }
 
-  protected void writeBuffer(ByteBuffer[] byteBuffers, byte[][] data) {
-    for (int i = 0;i < byteBuffers.length; i++) {
-      byteBuffers[i].clear();
-      byteBuffers[i].put(data[i]);
-      byteBuffers[i].flip();
-    }
+  public void release() {
+    // Nothing to do by default
   }
-
-  public void clean() {}
 }
