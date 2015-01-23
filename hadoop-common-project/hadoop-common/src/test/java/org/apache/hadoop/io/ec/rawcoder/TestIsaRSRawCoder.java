@@ -30,8 +30,8 @@ import java.util.Random;
 /**
  * Ported from HDFS-RAID
  */
-public class TestJavaRSRawCoder {
-	public static final Log LOG = LogFactory.getLog(TestJavaRSRawCoder.class.getName());
+public class TestIsaRSRawCoder {
+	public static final Log LOG = LogFactory.getLog(IsaRSRawEncoder.class.getName());
 	final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
   private static int symbolSize = 0;
@@ -42,11 +42,11 @@ public class TestJavaRSRawCoder {
   }
 
 	@Test
-	public void testJavaRSPerformance() {
+	public void testIsaRSPerformance() {
 		int dataSize = 10;
 		int paritySize = 4;
-		RawErasureEncoder encoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
-		RawErasureDecoder decoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureEncoder encoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+		RawErasureDecoder decoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
 		testRSPerformance(encoder, decoder);
 	}
 
@@ -116,16 +116,23 @@ public class TestJavaRSRawCoder {
 	@Test
 	public void testEncodeDecode() {
 		// verify the production size.
-		verifyJavaRSRawEncodeDecode(10, 4);
+		verifyIsaRSRawEncodeDecode(10, 4);
 
 		// verify a test size
-		verifyJavaRSRawEncodeDecode(3, 3);
+		verifyIsaRSRawEncodeDecode(3, 3);
 	}
 
-	private void verifyJavaRSRawEncodeDecode(int dataSize, int paritySize) {
-		RawErasureEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
-		RawErasureDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
-		verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
+	private void verifyIsaRSRawEncodeDecode(final int dataSize, final int paritySize) {
+		Thread encodeDecodeThread = new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				RawErasureEncoder rawEncoder = new IsaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+				RawErasureDecoder rawDecoder = new IsaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+					verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
+			}
+		});
+		encodeDecodeThread.start();
 	}
 
 	private void verifyRSEncodeDecode(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder, int dataSize, int paritySize) {
