@@ -148,7 +148,7 @@ public class TestXorRawEncoder {
   private ByteBuffer[] toBuffers(byte[][] bytes) {
     ByteBuffer[] buffers = new ByteBuffer[bytes.length];
     for (int i = 0; i < buffers.length; i++) {
-      buffers[i] = ByteBuffer.allocateDirect(CHUNK_SIZE);
+      buffers[i] = ByteBuffer.allocateDirect(bytes[i].length);
       buffers[i].put(bytes[i]);
       buffers[i].flip();
     }
