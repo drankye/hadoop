@@ -23,6 +23,9 @@ import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
+/**
+ * A raw erasure encoder in pure Java for test usage and also in case native one isn't available in some environment.
+ */
 public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
   private GaloisField GF = GaloisField.getInstance();
   private int[] generatingPolynomial;

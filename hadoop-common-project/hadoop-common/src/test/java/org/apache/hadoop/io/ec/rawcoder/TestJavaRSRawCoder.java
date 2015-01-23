@@ -17,25 +17,20 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Ported from HDFS-RAID
+ * Test the raw erasure encoder and decoder in pure Java
  */
 public class TestJavaRSRawCoder {
-  public static final Log LOG = LogFactory.getLog(TestJavaRSRawCoder.class.getName());
   private final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
 
@@ -50,15 +45,24 @@ public class TestJavaRSRawCoder {
   }
 
 	@Test
-	public void testCoding() {
-      // verify the production size.
+	public void testBytesCodingWith_10_4() {
       testBytesCoding(10, 4);
-      testECChunksCoding(10, 4);
-
-      // verify a test size
-      testBytesCoding(3, 3);
-      testECChunksCoding(3, 3);
 	}
+
+  @Test
+  public void testChunksCodingWith_10_4() {
+    testChunksCoding(10, 4);
+  }
+
+  @Test
+  public void testBytesCodingWith_3_3() {
+    testBytesCoding(3, 3);
+  }
+
+  @Test
+  public void testChunksCodingWith_3_3() {
+    testChunksCoding(3, 3);
+  }
 
   private void testBytesCoding(int dataSize, int paritySize) {
     /**
@@ -90,7 +94,7 @@ public class TestJavaRSRawCoder {
     assertArrayEquals("Decoding and comparing failed.", erasedData, recoveredData[0]);
   }
 
-  private void testECChunksCoding(int dataSize, int paritySize) {
+  private void testChunksCoding(int dataSize, int paritySize) {
     /**
      * Generate data and encode
      */

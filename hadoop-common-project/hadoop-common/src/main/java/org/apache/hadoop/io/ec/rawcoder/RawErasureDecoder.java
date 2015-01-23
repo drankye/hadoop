@@ -22,7 +22,7 @@ import org.apache.hadoop.io.ec.ECChunk;
 import java.nio.ByteBuffer;
 
 /**
- * Raw Erasure Decoder that corresponds to an erasure code algorithm
+ * A raw erasure decoder in pure Java for test usage and also in case native one isn't available in some environment.
  */
 public interface RawErasureDecoder {
 
