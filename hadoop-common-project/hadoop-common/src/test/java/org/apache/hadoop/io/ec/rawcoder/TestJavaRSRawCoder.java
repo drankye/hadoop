@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -34,156 +35,134 @@ import static org.junit.Assert.assertArrayEquals;
  * Ported from HDFS-RAID
  */
 public class TestJavaRSRawCoder {
-  private static final int DATA_SIZE = 10;
-  private static final int ERASED_INDEX = 0;
-
-	public static final Log LOG = LogFactory.getLog(TestJavaRSRawCoder.class.getName());
-	final Random RAND = new Random();
+  public static final Log LOG = LogFactory.getLog(TestJavaRSRawCoder.class.getName());
+  private final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
-  private static int symbolSize = 0;
-	private static int CHUNK_SIZE = 1024 * 1024;
 
-  static {
-    symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
+  private static final int CHUNK_SIZE = 16 * 1024;
+
+  private int symbolMax;
+
+  @Before
+  public void init() {
+    int symbolSize = (int) Math.round(Math.log(GF.getFieldSize()) / Math.log(2));
+    symbolMax = (int) Math.pow(2, symbolSize);
   }
 
 	@Test
-	public void testEncodeDecode() {
+	public void testCoding() {
+    testBytesCoding(10, 4);
 		// verify the production size.
-		verifyJavaRSRawEncodeDecode(10, 4);
 
-		// verify a test size
-		verifyJavaRSRawEncodeDecode(3, 3);
+    // verify a test size
+    testBytesCoding(3, 3);
 	}
 
-	private void verifyJavaRSRawEncodeDecode(int dataSize, int paritySize) {
-		RawErasureEncoder rawEncoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
-		RawErasureDecoder rawDecoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
-		verifyRSEncodeDecode(rawEncoder, rawDecoder, dataSize, paritySize);
-	}
-
-	private void verifyRSEncodeDecode(RawErasureEncoder rawEncoder, RawErasureDecoder rawDecoder, int dataSize, int paritySize) {
-		int bufsize = CHUNK_SIZE;
-		int symbolMax = (int) Math.pow(2, symbolSize);
-		byte[][] message = new byte[dataSize][];
-		ByteBuffer[] dataForEncode = new ByteBuffer[dataSize];
-		for (int i = 0; i < dataSize; i++) {
-			byte[] byteArray = new byte[bufsize];
-			for (int j = 0; j < bufsize; j++) {
-				byteArray[j] = (byte) RAND.nextInt(symbolMax);
-			}
-			message[i] = byteArray;
-			dataForEncode[i] = ByteBuffer.allocateDirect(bufsize);
-			dataForEncode[i].put(byteArray);
-			dataForEncode[i].flip();
-		}
-		
-		ByteBuffer[] parity = new ByteBuffer[paritySize];
-		for (int i = 0; i < paritySize; i++) {
-			parity[i] = ByteBuffer.allocateDirect(bufsize);
-		}
-
-		// encode.
-		rawEncoder.encode(dataForEncode, parity);
-
-		int erasedLocation = RAND.nextInt(dataSize);
-		
-		byte[] rightDateInErasedLocation = Arrays.copyOfRange(message[erasedLocation], 0, message[erasedLocation].length);
-
-		ByteBuffer[] dataForDecode = new ByteBuffer[dataSize + paritySize];
-		for (int i = 0; i < paritySize; i++) {
-			dataForDecode[i] = parity[i];
-		}
-		for (int i = 0; i < dataSize; i++) {
-			dataForDecode[i + paritySize] = ByteBuffer.allocateDirect(bufsize);
-			if (i == erasedLocation) {
-				dataForDecode[i + paritySize].put(new byte[bufsize]);
-			} else {
-				dataForDecode[i + paritySize].put(message[i]);
-			}
-			dataForDecode[i + paritySize].flip();
-		}
-		ByteBuffer[] writeBufs = new ByteBuffer[1];
-		writeBufs[0] = ByteBuffer.allocateDirect(bufsize);
-		rawDecoder.decode(dataForDecode, new int[] {erasedLocation + paritySize }, writeBufs);
-
-		byte[] outputDataArray = new byte[bufsize];
-		writeBufs[0].get(outputDataArray);
-		Assert.assertTrue("Decode failed", Arrays.equals(rightDateInErasedLocation, outputDataArray));
-	}
-
-  @Test
-  public void testECChunkCoding() {
+  private void testBytesCoding(int dataSize, int paritySize) {
     /**
      * Generate data and encode
      */
-    byte[][] encodingData = generateEncodingData();
-    ECChunk[] encodingChunks = toECChunks(encodingData);
-    ECChunk[] parityChunks = new ECChunk[]{new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]))};
+    byte[][] encodingData = generateEncodingData(dataSize);
+    byte[][] parityData = new byte[paritySize][CHUNK_SIZE];
 
-    RawErasureEncoder encoder = new JavaRSRawEncoder(DATA_SIZE, CHUNK_SIZE);
+    RawErasureEncoder encoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
+    encoder.encode(encodingData, parityData);
+
+    // Make a copy of a strip for later comparing then erase it
+    int erasedLocation = RAND.nextInt(encodingData.length);
+    byte[] erasedData = eraseData(encodingData, erasedLocation);
+
+    /**
+     * Decode and compare
+     */
+    byte[][] decodingData = generateDecodingData(encodingData, parityData);
+    byte[][] recoveredData = new byte[][] {new byte[CHUNK_SIZE]};
+    RawErasureDecoder decoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+    decoder.decode(decodingData, new int[] {erasedLocation + paritySize}, recoveredData);
+    assertArrayEquals("Decoding and comparing failed.", erasedData, recoveredData[0]);
+  }
+
+  private void testECChunksCoding(int dataSize, int paritySize) {
+    /**
+     * Generate data and encode
+     */
+    byte[][] encodingData = generateEncodingData(dataSize);
+    ECChunk[] encodingChunks = toECChunks(encodingData);
+    ECChunk[] parityChunks = new ECChunk[paritySize];
+    for (int i = 0;i < paritySize; i++) {
+      parityChunks[i] = new ECChunk(ByteBuffer.allocateDirect(CHUNK_SIZE));
+    }
+
+    RawErasureEncoder encoder = new JavaRSRawEncoder(dataSize, paritySize, CHUNK_SIZE);
     encoder.encode(encodingChunks, parityChunks);
 
     // Make a copy of a strip for later comparing then erase it
-    byte[] erasedData = eraseData(encodingData);
+    int erasedLocation = RAND.nextInt(encodingData.length);
+    byte[] erasedData = eraseData(encodingData, erasedLocation);
 
     //Decode
-    byte[] parityData = parityChunks[0].getBuffer().array();
+    byte[][] parityData = toArrays(parityChunks);
     byte[][] decodingData = generateDecodingData(encodingData, parityData);
     ECChunk[] decodingChunks = toECChunks(decodingData);
-    ECChunk[] recoveredChunks = new ECChunk[]{new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]))};
-    RawErasureDecoder decoder = new JavaRSRawDecoder(DATA_SIZE, CHUNK_SIZE);
-    decoder.decode(decodingChunks, new int[] {ERASED_INDEX}, recoveredChunks);
+    ECChunk[] recoveredChunks = new ECChunk[]{new ECChunk(ByteBuffer.allocateDirect(CHUNK_SIZE))};
+    RawErasureDecoder decoder = new JavaRSRawDecoder(dataSize, paritySize, CHUNK_SIZE);
+    decoder.decode(decodingChunks, new int[] {erasedLocation + paritySize}, recoveredChunks);
 
     //Compare
-    byte[] recoveredData = recoveredChunks[0].getBuffer().array();
+    byte[] recoveredData = new byte[CHUNK_SIZE];
+    recoveredChunks[0].getBuffer().get(recoveredData);
     assertArrayEquals("Decoding and comparing failed.", erasedData, recoveredData);
   }
 
-  private byte[][] generateEncodingData() {
-    byte[][] encodingData = new byte[DATA_SIZE][];
-    for (int i = 0; i < DATA_SIZE; i++) {
+
+  private byte[][] generateEncodingData(int dataSize) {
+    byte[][] encodingData = new byte[dataSize][];
+    for (int i = 0; i < dataSize; i++) {
       encodingData[i] = new byte[CHUNK_SIZE];
       for (int j = 0; j < CHUNK_SIZE; j++) {
-        encodingData[i][j] = (byte)RAND.nextInt(256);
+        encodingData[i][j] = (byte) RAND.nextInt(symbolMax);
       }
     }
     return encodingData;
   }
 
-  private byte[][] generateDecodingData(byte[][] encodingData, byte[] parityData) {
-    byte[][] decodingData = new byte[DATA_SIZE + 1][];
-    for (int i = 0; i < DATA_SIZE; i++) {
-      decodingData[i] = encodingData[i];
+  private byte[][] generateDecodingData(byte[][] encodingData, byte[][] parityData) {
+    byte[][] decodingData = new byte[encodingData.length + parityData.length][];
+    for (int i = 0; i < parityData.length; i++) {
+      decodingData[i] = parityData[i];
     }
-    decodingData[DATA_SIZE] = parityData;
+    for (int i = 0; i < encodingData.length; i++) {
+      decodingData[i + parityData.length] = encodingData[i];
+    }
     return decodingData;
   }
 
-  private byte[] eraseData(byte[][] encodingData) {
+  private byte[] eraseData(byte[][] encodingData, int erasedLocation) {
     byte[] erasedData = new byte[CHUNK_SIZE];
     for (int j = 0; j < CHUNK_SIZE; j++) {
-      erasedData[j] = encodingData[ERASED_INDEX][j];
-      encodingData[ERASED_INDEX][j] = 0;
+      erasedData[j] = encodingData[erasedLocation][j];
+      encodingData[erasedLocation][j] = 0;
     }
     return erasedData;
-  }
-
-  private ByteBuffer[] toBuffers(byte[][] bytes) {
-    ByteBuffer[] buffers = new ByteBuffer[bytes.length];
-    for (int i = 0; i < buffers.length; i++) {
-      buffers[i] = ByteBuffer.allocateDirect(bytes[i].length);
-      buffers[i].put(bytes[i]);
-      buffers[i].flip();
-    }
-    return buffers;
   }
 
   private ECChunk[] toECChunks(byte[][] bytes) {
     ECChunk[] ecChunks = new ECChunk[bytes.length];
     for (int i = 0; i < ecChunks.length; i++) {
-      ecChunks[i] = new ECChunk(ByteBuffer.wrap(bytes[i]));
+      ByteBuffer buffer = ByteBuffer.allocateDirect(bytes[i].length);
+      buffer.put(bytes[i]);
+      buffer.flip();
+      ecChunks[i] = new ECChunk(buffer);
     }
     return ecChunks;
+  }
+
+  private byte[][] toArrays(ECChunk[] chunks) {
+    byte[][] bytes = new byte[chunks.length][CHUNK_SIZE];
+    for (int i = 0; i < chunks.length; i++) {
+      ByteBuffer buffer = chunks[i].getBuffer();
+      buffer.get(bytes[i]);
+    }
+    return bytes;
   }
 }
