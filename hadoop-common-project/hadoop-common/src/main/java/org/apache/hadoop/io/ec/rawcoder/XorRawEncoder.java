@@ -42,7 +42,7 @@ public class XorRawEncoder extends AbstractRawErasureEncoder {
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
       for (int j = 0; j < bufSize; j++) {
-        outputs[0].put(j, (byte) (outputs[0].get(j) ^ inputs[0].get(j)));
+        outputs[0].put(j, (byte) (outputs[0].get(j) ^ inputs[i].get(j)));
       }
     }
   }
