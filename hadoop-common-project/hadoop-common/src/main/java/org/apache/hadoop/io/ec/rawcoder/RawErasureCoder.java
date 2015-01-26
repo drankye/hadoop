@@ -42,13 +42,21 @@ public interface RawErasureCoder {
 
   /**
    * The number of data inputs for the coding.
+   * @return
    */
   public int dataSize();
 
   /**
    * The number of parity outputs for the coding.
+   * @return
    */
   public int paritySize();
+
+  /**
+   * Chunk buffer size for the input/output
+   * @return
+   */
+  public int chunkSize();
 
   /**
    * Should be called when release this coder

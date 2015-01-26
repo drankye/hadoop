@@ -44,6 +44,7 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
 
   /**
    * The number of data inputs for the coding.
+   * @return
    */
   public int dataSize() {
     return dataSize;
@@ -51,13 +52,15 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
 
   /**
    * The number of parity outputs for the coding.
+   * @return
    */
   public int paritySize() {
     return paritySize;
   }
 
   /**
-   * Chunk buffer size for an encode()/decode() call
+   * Chunk buffer size for the input/output
+   * @return
    */
   public int chunkSize() {
     return chunkSize;
