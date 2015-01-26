@@ -26,10 +26,9 @@ import java.nio.ByteBuffer;
  */
 public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder implements RawErasureEncoder {
 
-  public AbstractRawErasureEncoder(int dataSize, int paritySize, int chunkSize) {
-    super(dataSize, paritySize, chunkSize);
-  }
-
+  /**
+   * @inheritDoc
+   */
   @Override
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
     assert (inputs.length == dataSize());
@@ -38,8 +37,16 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
     doEncode(inputs, outputs);
   }
 
+  /**
+   * Perform the real encoding work using ByteBuffer
+   * @param inputs
+   * @param outputs
+   */
   protected abstract void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 
+  /**
+   * @inheritDoc
+   */
   @Override
   public void encode(byte[][] inputs, byte[][] outputs) {
     assert (inputs.length == dataSize());
@@ -48,8 +55,16 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
     doEncode(inputs, outputs);
   }
 
+  /**
+   * Perform the real encoding work using bytes array
+   * @param inputs
+   * @param outputs
+   */
   protected abstract void doEncode(byte[][] inputs, byte[][] outputs);
 
+  /**
+   * @inheritDoc
+   */
   @Override
   public void encode(ECChunk[] inputs, ECChunk[] outputs) {
     assert (inputs.length == dataSize());
@@ -58,6 +73,11 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
     doEncode(inputs, outputs);
   }
 
+  /**
+   * Perform the real encoding work using chunks
+   * @param inputs
+   * @param outputs
+   */
   protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
     if (inputs[0].getBuffer().hasArray()) {
       byte[][] inputBytesArr = toArray(inputs);

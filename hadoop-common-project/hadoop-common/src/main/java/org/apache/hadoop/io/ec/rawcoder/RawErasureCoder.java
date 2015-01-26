@@ -17,12 +17,8 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
-import org.apache.hadoop.io.ec.ECChunk;
-
-import java.nio.ByteBuffer;
-
 /**
- * RawErasureDecoder performs decoding given chunks of input data and generates missing data that
+ * RawErasureCoder performs encoding/decoding given chunks of input data and generates chunks of outputs that
  * corresponds to an erasure code scheme, like XOR and Reed-Solomon.
  *
  * RawErasureCoder is part of ErasureCodec framework, where ErasureCoder is used to encode/decode
@@ -34,27 +30,28 @@ import java.nio.ByteBuffer;
  * To distinguish from ErasureCoder, here RawErasureCoder is used to mean the low level constructs,
  * since it only takes care of the math calculation with a group of byte buffers.
  */
-public interface RawErasureDecoder extends RawErasureCoder {
+public interface RawErasureCoder {
 
   /**
-   * Decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
+   * Initialize with the important parameters for the code.
+   * @param dataSize, how many data inputs for the coding
+   * @param paritySize, how many parity outputs the coding generates
+   * @param chunkSize, the size of the input/output buffer
    */
-  public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs);
+  public void initialize(int dataSize, int paritySize, int chunkSize);
 
   /**
-   * Decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
+   * The number of data inputs for the coding.
    */
-  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
+  public int dataSize();
 
   /**
-   * Decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
+   * The number of parity outputs for the coding.
    */
-  public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
+  public int paritySize();
 
+  /**
+   * Should be called when release this coder
+   */
+  public void release();
 }
