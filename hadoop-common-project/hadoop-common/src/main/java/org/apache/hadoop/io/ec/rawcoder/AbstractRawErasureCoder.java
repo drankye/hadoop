@@ -22,35 +22,35 @@ import org.apache.hadoop.io.ec.ECChunk;
 import java.nio.ByteBuffer;
 
 /**
- * A common class to be shared by encoder and decoder
+ * A common class of basic facilities to be shared by encoder and decoder
  */
-public abstract class AbstractRawErasureCoder {
+public abstract class AbstractRawErasureCoder implements RawErasureCoder {
 
   private int dataSize;
   private int paritySize;
   private int chunkSize;
 
   /**
-   * The constructor
-   * @param dataSize
-   * @param paritySize
-   * @param chunkSize
+   * Initialize with the important parameters for the code.
+   * @param dataSize, how many data inputs for the coding
+   * @param paritySize, how many parity outputs the coding generates
+   * @param chunkSize, the size of the input/output buffer
    */
-  public AbstractRawErasureCoder(int dataSize, int paritySize, int chunkSize) {
+  public void initialize(int dataSize, int paritySize, int chunkSize) {
     this.dataSize = dataSize;
     this.paritySize = paritySize;
     this.chunkSize = chunkSize;
   }
 
   /**
-   * The number of elements in the message.
+   * The number of data inputs for the coding.
    */
   public int dataSize() {
     return dataSize;
   }
 
   /**
-   * The number of elements in the code.
+   * The number of parity outputs for the coding.
    */
   public int paritySize() {
     return paritySize;

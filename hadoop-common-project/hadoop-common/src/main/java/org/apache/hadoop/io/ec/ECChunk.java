@@ -24,15 +24,15 @@ import java.nio.ByteBuffer;
  */
 public class ECChunk {
 
-	private ByteBuffer chunkBuffer;
+  private ByteBuffer chunkBuffer;
 
   /**
    * Wrapping a ByteBuffer
    * @param buffer
    */
-	public ECChunk(ByteBuffer buffer) {
-		this.chunkBuffer = buffer;
-	}
+  public ECChunk(ByteBuffer buffer) {
+    this.chunkBuffer = buffer;
+  }
 
   /**
    * Wrapping a bytes array
@@ -46,7 +46,7 @@ public class ECChunk {
    * Convert to ByteBuffer
    * @return ByteBuffer
    */
-	public ByteBuffer getBuffer() {
-		return chunkBuffer;
-	}
+  public ByteBuffer getBuffer() {
+    return chunkBuffer;
+  }
 }

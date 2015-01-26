@@ -26,10 +26,6 @@ import java.nio.ByteBuffer;
  */
 public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder implements RawErasureDecoder {
 
-  public AbstractRawErasureDecoder(int dataSize, int paritySize, int chunkSize) {
-    super(dataSize, paritySize, chunkSize);
-  }
-
   @Override
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
     if (erasedIndexes.length == 0) {
@@ -39,6 +35,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
     doDecode(inputs, erasedIndexes, outputs);
   }
 
+  /**
+   * Perform the real decoding using ByteBuffer
+   * @param inputs
+   * @param erasedIndexes
+   * @param outputs
+   */
   protected abstract void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs);
 
   @Override
@@ -50,6 +52,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
     doDecode(inputs, erasedIndexes, outputs);
   }
 
+  /**
+   * Perform the real decoding using bytes array
+   * @param inputs
+   * @param erasedIndexes
+   * @param outputs
+   */
   protected abstract void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
 
   @Override
@@ -57,6 +65,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
     doDecode(inputs, erasedIndexes, outputs);
   }
 
+  /**
+   * Perform the real decoding using chunks
+   * @param inputs
+   * @param erasedIndexes
+   * @param outputs
+   */
   protected void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
     if (inputs[0].getBuffer().hasArray()) {
       byte[][] inputBytesArr = toArray(inputs);
