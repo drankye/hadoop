@@ -29,20 +29,20 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
   private int chunkSize;
 
   @Override
-  public void initialize(int dataUnitsCount, int parityUnitsCount,
+  public void initialize(int numDataUnits, int numParityUnits,
                          int chunkSize) {
-    this.dataSize = dataUnitsCount;
-    this.paritySize = parityUnitsCount;
+    this.dataSize = numDataUnits;
+    this.paritySize = numParityUnits;
     this.chunkSize = chunkSize;
   }
 
   @Override
-  public int getDataUnitsCount() {
+  public int getNumDataUnits() {
     return dataSize;
   }
 
   @Override
-  public int getParityUnitsCount() {
+  public int getNumParityUnits() {
     return paritySize;
   }
 

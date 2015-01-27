@@ -38,25 +38,25 @@ public interface RawErasureCoder {
 
   /**
    * Initialize with the important parameters for the code.
-   * @param dataUnitsCount, how many data inputs for the coding
-   * @param parityUnitsCount, how many parity outputs the coding generates
-   * @param chunkSize, the size of the input/output buffer
+   * @param numDataUnits how many data inputs for the coding
+   * @param numParityUnits how many parity outputs the coding generates
+   * @param chunkSize the size of the input/output buffer
    */
-  public void initialize(int dataUnitsCount, int parityUnitsCount, int chunkSize);
+  public void initialize(int numDataUnits, int numParityUnits, int chunkSize);
 
   /**
    * The number of data input units for the coding. A unit can be a byte,
    * chunk or buffer or even a block.
    * @return count of data input units
    */
-  public int getDataUnitsCount();
+  public int getNumDataUnits();
 
   /**
    * The number of parity output units for the coding. A unit can be a byte,
    * chunk, buffer or even a block.
    * @return count of parity output units
    */
-  public int getParityUnitsCount();
+  public int getNumParityUnits();
 
   /**
    * Chunk buffer size for the input/output
