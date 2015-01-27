@@ -17,29 +17,60 @@
  */
 package org.apache.hadoop.io.ec;
 
+/**
+ * A wrapper of block level data source/output that {@link ECChunk}s can be
+ * extracted from. For HDFS, it can be an HDFS block (250MB).
+ */
 public class ECBlock {
 
-  private ECBlockId blockId;
   private boolean isParity;
   private boolean isMissing;
 
-  public ECBlock(ECBlockId blockId, boolean isParity) {
-    this.blockId = blockId;
-    this.isParity = isParity;
-  }
-  
-  public ECBlockId getBlockId() {
-	  return blockId;
+  /**
+   * A default constructor. isParity and isMissing are false by default.
+   */
+  public ECBlock() {
+    this(false, false);
   }
 
+  /**
+   * A constructor specifying isParity and isMissing.
+   * @param isParity
+   * @param isMissing
+   */
+  public ECBlock(boolean isParity, boolean isMissing) {
+    this.isParity = isParity;
+    this.isMissing = isMissing;
+  }
+
+  /**
+   * Set true if it's for a parity block.
+   * @param isParity
+   */
+  public void setParity(boolean isParity) {
+    this.isParity = isParity;
+  }
+
+  /**
+   * Set true if the block is missing.
+   * @param isMissing
+   */
   public void setMissing(boolean isMissing) {
     this.isMissing = isMissing;
   }
 
+  /**
+   *
+   * @return true if it's parity block, otherwise false
+   */
   public boolean isParity() {
     return isParity;
   }
 
+  /**
+   *
+   * @return true if it's missing, otherwise false
+   */
   public boolean isMissing() {
     return isMissing;
   }

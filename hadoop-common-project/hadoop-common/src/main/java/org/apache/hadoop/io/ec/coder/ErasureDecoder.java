@@ -18,11 +18,11 @@
 package org.apache.hadoop.io.ec.coder;
 
 
-import org.apache.hadoop.io.ec.BlockGroup;
+import org.apache.hadoop.io.ec.ECGroup;
 
 public interface ErasureDecoder {
 
-  public void decode(BlockGroup blockGroup);
+  public void decode(ECGroup ECGroup);
 
   public void setCallback(ErasureCoderCallback callback);
 

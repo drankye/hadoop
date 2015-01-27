@@ -17,21 +17,41 @@
  */
 package org.apache.hadoop.io.ec;
 
-public class SubBlockGroup {
+/**
+ * To perform internal steps incurred in encoding/decoding of an {@link ECGroup},
+ * the group can be divided into sub-groups, and the sub-groups can be passed to
+ * invoke {@link org.apache.hadoop.io.ec.rawcoder.RawErasureCoder}. In RS code,
+ * there is only one sub-group; in other code scheme like LRC there maybe more.
+ */
+public class ECSubGroup {
 
   private ECBlock[] dataBlocks;
   private ECBlock[] parityBlocks;
 
-  public SubBlockGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
+  /**
+   * A constructor specifying data blocks and parity blocks.
+   * @param dataBlocks
+   * @param parityBlocks
+   */
+  public ECSubGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
     this.dataBlocks = dataBlocks;
     this.parityBlocks = parityBlocks;
   }
 
+  /**
+   *
+   * @return data blocks
+   */
+  public ECBlock[] getDataBlocks() {
+    return dataBlocks;
+  }
+
+  /**
+   *
+   * @return parity blocks
+   */
   public ECBlock[] getParityBlocks() {
     return parityBlocks;
   }
 
-  public ECBlock[] getDataBlocks() {
-    return dataBlocks;
-  }
 }

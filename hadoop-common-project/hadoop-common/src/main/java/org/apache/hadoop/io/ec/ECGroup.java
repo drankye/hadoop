@@ -15,15 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.ec;
 
-import org.apache.hadoop.io.ec.ECGroup;
+import java.util.List;
 
-public interface ErasureEncoder {
+/**
+ * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
+ * {@link org.apache.hadoop.io.ec.coder.ErasureCoder}. It contains one or more
+ * {@link ECSubGroup}s organized according to erasure codec logic.
+ *
+ * Also see {@link ECSubGroup}.
+ */
+public abstract class ECGroup extends ECSubGroup {
 
-  public void encode(ECGroup ECGroup);
+  /**
+   * A constructor specifying data blocks and parity blocks.
+   *
+   * @param dataBlocks
+   * @param parityBlocks
+   */
+  public ECGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
+    super(dataBlocks, parityBlocks);
+  }
 
-  public void setCallback(ErasureCoderCallback callback);
+  /**
+   * Return sub-groups organized by codec specific logic. It's only for erasure
+   * coder handling.
+   * @return sub-groups
+   */
+  public abstract List<ECSubGroup> getSubGroups();
 
-  public void clean();
 }

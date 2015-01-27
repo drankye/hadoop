@@ -57,16 +57,6 @@ public abstract class AbstractErasureCoder {
     callback.postCoding(inputBlocks, outputBlocks);
   }
 
-  protected ByteBuffer[] convert(ECChunk[] chunks) {
-    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
-
-    for (int i = 0; i < chunks.length; i++) {
-      buffers[i] = chunks[i].getChunkBuffer();
-    }
-
-    return buffers;
-  }
-
   /**
    * Find out which blocks are missing in order to get erased locations
    * @param inputBlocks all decode input blocks

@@ -15,7 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.ec.coder;
 
-public interface ECBlockId {
+import org.apache.hadoop.io.ec.ECGroup;
+
+public interface ErasureCoder {
+
+  public void encode(ECGroup ECGroup);
+
+  public void setCallback(ErasureCoderCallback callback);
+
+  public void release();
 }
