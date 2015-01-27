@@ -31,8 +31,8 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
 
   @Override
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    assert (inputs.length == getDataUnitsCount());
-    assert (outputs.length == getParityUnitsCount());
+    assert (inputs.length == getNumDataUnits());
+    assert (outputs.length == getNumParityUnits());
 
     doEncode(inputs, outputs);
   }
@@ -46,8 +46,8 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
 
   @Override
   public void encode(byte[][] inputs, byte[][] outputs) {
-    assert (inputs.length == getDataUnitsCount());
-    assert (outputs.length == getParityUnitsCount());
+    assert (inputs.length == getNumDataUnits());
+    assert (outputs.length == getNumParityUnits());
 
     doEncode(inputs, outputs);
   }
@@ -61,8 +61,8 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
 
   @Override
   public void encode(ECChunk[] inputs, ECChunk[] outputs) {
-    assert (inputs.length == getDataUnitsCount());
-    assert (outputs.length == getParityUnitsCount());
+    assert (inputs.length == getNumDataUnits());
+    assert (outputs.length == getNumParityUnits());
 
     doEncode(inputs, outputs);
   }
