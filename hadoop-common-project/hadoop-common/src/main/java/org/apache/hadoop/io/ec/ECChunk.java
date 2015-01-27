@@ -20,7 +20,7 @@ package org.apache.hadoop.io.ec;
 import java.nio.ByteBuffer;
 
 /**
- * A wrapper for ByteBuffer or bytes array
+ * A wrapper for ByteBuffer or bytes array for an erasure code chunk.
  */
 public class ECChunk {
 
@@ -48,5 +48,35 @@ public class ECChunk {
    */
   public ByteBuffer getBuffer() {
     return chunkBuffer;
+  }
+
+  /**
+   * Convert an array of this chunks to an array of ByteBuffers
+   * @param chunks
+   * @return an array of ByteBuffers
+   */
+  public static ByteBuffer[] toBuffers(ECChunk[] chunks) {
+    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
+
+    for (int i = 0; i < chunks.length; i++) {
+      buffers[i] = chunks[i].getBuffer();
+    }
+
+    return buffers;
+  }
+
+  /**
+   * Convert an array of this chunks to an array of byte array
+   * @param chunks
+   * @return an array of byte array
+   */
+  public static byte[][] toArray(ECChunk[] chunks) {
+    byte[][] bytesArr = new byte[chunks.length][];
+
+    for (int i = 0; i < chunks.length; i++) {
+      bytesArr[i] = chunks[i].getBuffer().array();
+    }
+
+    return bytesArr;
   }
 }

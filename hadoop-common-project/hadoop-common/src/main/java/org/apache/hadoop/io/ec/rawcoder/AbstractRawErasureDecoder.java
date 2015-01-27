@@ -22,12 +22,16 @@ import org.apache.hadoop.io.ec.ECChunk;
 import java.nio.ByteBuffer;
 
 /**
- * An abstract raw erasure decoder class
+ * An abstract raw erasure decoder that's to be inherited by new decoders.
+ *
+ * It implements the {@link RawErasureDecoder} interface.
  */
-public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder implements RawErasureDecoder {
+public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
+    implements RawErasureDecoder {
 
   @Override
-  public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
+                     ByteBuffer[] outputs) {
     if (erasedIndexes.length == 0) {
       return;
     }
@@ -41,7 +45,8 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
    * @param erasedIndexes
    * @param outputs
    */
-  protected abstract void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs);
+  protected abstract void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
+                                   ByteBuffer[] outputs);
 
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
@@ -58,7 +63,8 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
    * @param erasedIndexes
    * @param outputs
    */
-  protected abstract void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
+  protected abstract void doDecode(byte[][] inputs, int[] erasedIndexes,
+                                   byte[][] outputs);
 
   @Override
   public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
@@ -71,14 +77,15 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder 
    * @param erasedIndexes
    * @param outputs
    */
-  protected void doDecode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
+  protected void doDecode(ECChunk[] inputs, int[] erasedIndexes,
+                          ECChunk[] outputs) {
     if (inputs[0].getBuffer().hasArray()) {
-      byte[][] inputBytesArr = toArray(inputs);
-      byte[][] outputBytesArr = toArray(outputs);
+      byte[][] inputBytesArr = ECChunk.toArray(inputs);
+      byte[][] outputBytesArr = ECChunk.toArray(outputs);
       doDecode(inputBytesArr, erasedIndexes, outputBytesArr);
     } else {
-      ByteBuffer[] inputBuffers = toBuffers(inputs);
-      ByteBuffer[] outputBuffers = toBuffers(outputs);
+      ByteBuffer[] inputBuffers = ECChunk.toBuffers(inputs);
+      ByteBuffer[] outputBuffers = ECChunk.toBuffers(outputs);
       doDecode(inputBuffers, erasedIndexes, outputBuffers);
     }
   }

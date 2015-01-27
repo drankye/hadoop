@@ -22,17 +22,17 @@ import org.apache.hadoop.io.ec.ECChunk;
 import java.nio.ByteBuffer;
 
 /**
- * An abstract raw erasure encoder class
+ * An abstract raw erasure encoder that's to be inherited by new encoders.
+ *
+ * It implements the {@link RawErasureEncoder} interface.
  */
-public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder implements RawErasureEncoder {
+public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
+    implements RawErasureEncoder {
 
-  /**
-   * @inheritDoc
-   */
   @Override
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    assert (inputs.length == dataSize());
-    assert (outputs.length == paritySize());
+    assert (inputs.length == getDataUnitsCount());
+    assert (outputs.length == getParityUnitsCount());
 
     doEncode(inputs, outputs);
   }
@@ -44,13 +44,10 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
    */
   protected abstract void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs);
 
-  /**
-   * @inheritDoc
-   */
   @Override
   public void encode(byte[][] inputs, byte[][] outputs) {
-    assert (inputs.length == dataSize());
-    assert (outputs.length == paritySize());
+    assert (inputs.length == getDataUnitsCount());
+    assert (outputs.length == getParityUnitsCount());
 
     doEncode(inputs, outputs);
   }
@@ -62,13 +59,10 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
    */
   protected abstract void doEncode(byte[][] inputs, byte[][] outputs);
 
-  /**
-   * @inheritDoc
-   */
   @Override
   public void encode(ECChunk[] inputs, ECChunk[] outputs) {
-    assert (inputs.length == dataSize());
-    assert (outputs.length == paritySize());
+    assert (inputs.length == getDataUnitsCount());
+    assert (outputs.length == getParityUnitsCount());
 
     doEncode(inputs, outputs);
   }
@@ -80,12 +74,12 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder 
    */
   protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
     if (inputs[0].getBuffer().hasArray()) {
-      byte[][] inputBytesArr = toArray(inputs);
-      byte[][] outputBytesArr = toArray(outputs);
+      byte[][] inputBytesArr = ECChunk.toArray(inputs);
+      byte[][] outputBytesArr = ECChunk.toArray(outputs);
       doEncode(inputBytesArr, outputBytesArr);
     } else {
-      ByteBuffer[] inputBuffers = toBuffers(inputs);
-      ByteBuffer[] outputBuffers = toBuffers(outputs);
+      ByteBuffer[] inputBuffers = ECChunk.toBuffers(inputs);
+      ByteBuffer[] outputBuffers = ECChunk.toBuffers(outputs);
       doEncode(inputBuffers, outputBuffers);
     }
   }

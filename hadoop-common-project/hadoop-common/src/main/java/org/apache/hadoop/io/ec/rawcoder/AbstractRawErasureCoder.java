@@ -17,12 +17,10 @@
  */
 package org.apache.hadoop.io.ec.rawcoder;
 
-import org.apache.hadoop.io.ec.ECChunk;
-
-import java.nio.ByteBuffer;
-
 /**
  * A common class of basic facilities to be shared by encoder and decoder
+ *
+ * It implements the {@link RawErasureCoder} interface.
  */
 public abstract class AbstractRawErasureCoder implements RawErasureCoder {
 
@@ -30,59 +28,30 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
   private int paritySize;
   private int chunkSize;
 
-  /**
-   * Initialize with the important parameters for the code.
-   * @param dataSize, how many data inputs for the coding
-   * @param paritySize, how many parity outputs the coding generates
-   * @param chunkSize, the size of the input/output buffer
-   */
-  public void initialize(int dataSize, int paritySize, int chunkSize) {
-    this.dataSize = dataSize;
-    this.paritySize = paritySize;
+  @Override
+  public void initialize(int dataUnitsCount, int parityUnitsCount,
+                         int chunkSize) {
+    this.dataSize = dataUnitsCount;
+    this.paritySize = parityUnitsCount;
     this.chunkSize = chunkSize;
   }
 
-  /**
-   * The number of data inputs for the coding.
-   */
-  public int dataSize() {
+  @Override
+  public int getDataUnitsCount() {
     return dataSize;
   }
 
-  /**
-   * The number of parity outputs for the coding.
-   */
-  public int paritySize() {
+  @Override
+  public int getParityUnitsCount() {
     return paritySize;
   }
 
-  /**
-   * Chunk buffer size for an encode()/decode() call
-   */
-  public int chunkSize() {
+  @Override
+  public int getChunkSize() {
     return chunkSize;
   }
 
-  protected static ByteBuffer[] toBuffers(ECChunk[] chunks) {
-    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
-
-    for (int i = 0; i < chunks.length; i++) {
-      buffers[i] = chunks[i].getBuffer();
-    }
-
-    return buffers;
-  }
-
-  protected static byte[][] toArray(ECChunk[] chunks) {
-    byte[][] bytesArr = new byte[chunks.length][];
-
-    for (int i = 0; i < chunks.length; i++) {
-      bytesArr[i] = chunks[i].getBuffer().array();
-    }
-
-    return bytesArr;
-  }
-
+  @Override
   public void release() {
     // Nothing to do by default
   }
