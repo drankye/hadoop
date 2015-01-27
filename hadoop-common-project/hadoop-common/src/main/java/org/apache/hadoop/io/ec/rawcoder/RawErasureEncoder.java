@@ -22,17 +22,11 @@ import org.apache.hadoop.io.ec.ECChunk;
 import java.nio.ByteBuffer;
 
 /**
- * RawErasureEncoder performs encoding given chunks of input data and generates parity outputs that
- * corresponds to an erasure code scheme, like XOR and Reed-Solomon.
+ * RawErasureEncoder performs encoding given chunks of input data and generates
+ * parity outputs that corresponds to an erasure code scheme, like XOR and
+ * Reed-Solomon.
  *
- * RawErasureCoder is part of ErasureCodec framework, where ErasureCoder is used to encode/decode
- * a group of blocks (BlockGroup) according to the codec specific BlockGroup layout and logic.
- *
- * An ErasureCoder extracts chunks of data from the blocks and can employ various low level
- * RawErasureCoders to perform encoding/decoding against the chunks.
- *
- * To distinguish from ErasureCoder, here RawErasureCoder is used to mean the low level constructs,
- * since it only takes care of the math calculation with a group of byte buffers.
+ * It extends the {@link RawErasureCoder} interface.
  */
 public interface RawErasureEncoder extends RawErasureCoder {
 

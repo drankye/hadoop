@@ -18,48 +18,55 @@
 package org.apache.hadoop.io.ec.rawcoder;
 
 /**
- * RawErasureCoder performs encoding/decoding given chunks of input data and generates chunks of outputs that
- * corresponds to an erasure code scheme, like XOR and Reed-Solomon.
+ * RawErasureCoder performs encoding/decoding given chunks of input data and
+ * generates chunks of outputs that corresponds to an erasure code scheme,
+ * like XOR and Reed-Solomon.
  *
- * RawErasureCoder is part of ErasureCodec framework, where ErasureCoder is used to encode/decode
- * a group of blocks (BlockGroup) according to the codec specific BlockGroup layout and logic.
+ * RawErasureCoder is part of ErasureCodec framework, where ErasureCoder is used
+ * to encode/decode a group of blocks (BlockGroup) according to the codec
+ * specific BlockGroup layout and logic.
  *
- * An ErasureCoder extracts chunks of data from the blocks and can employ various low level
- * RawErasureCoders to perform encoding/decoding against the chunks.
+ * An ErasureCoder extracts chunks of data from the blocks and can employ
+ * various low level RawErasureCoders to perform encoding/decoding against
+ * the chunks.
  *
- * To distinguish from ErasureCoder, here RawErasureCoder is used to mean the low level constructs,
- * since it only takes care of the math calculation with a group of byte buffers.
+ * To distinguish from ErasureCoder, here RawErasureCoder is used to mean the
+ * low level constructs, since it only takes care of the math calculation with
+ * a group of byte buffers.
  */
 public interface RawErasureCoder {
 
   /**
    * Initialize with the important parameters for the code.
-   * @param dataSize, how many data inputs for the coding
-   * @param paritySize, how many parity outputs the coding generates
+   * @param dataUnitsCount, how many data inputs for the coding
+   * @param parityUnitsCount, how many parity outputs the coding generates
    * @param chunkSize, the size of the input/output buffer
    */
-  public void initialize(int dataSize, int paritySize, int chunkSize);
+  public void initialize(int dataUnitsCount, int parityUnitsCount, int chunkSize);
 
   /**
-   * The number of data inputs for the coding.
-   * @return
+   * The number of data input units for the coding. A unit can be a byte,
+   * chunk or buffer or even a block.
+   * @return count of data input units
    */
-  public int dataSize();
+  public int getDataUnitsCount();
 
   /**
-   * The number of parity outputs for the coding.
-   * @return
+   * The number of parity output units for the coding. A unit can be a byte,
+   * chunk, buffer or even a block.
+   * @return count of parity output units
    */
-  public int paritySize();
+  public int getParityUnitsCount();
 
   /**
    * Chunk buffer size for the input/output
-   * @return
+   * @return chunk buffer size
    */
-  public int chunkSize();
+  public int getChunkSize();
 
   /**
-   * Should be called when release this coder
+   * Should be called when release this coder. Good chance to release encoding
+   * or decoding buffers
    */
   public void release();
 }
