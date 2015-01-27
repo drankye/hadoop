@@ -19,15 +19,30 @@ package org.apache.hadoop.io.ec.coder;
 
 import org.apache.hadoop.io.ec.rawcoder.RawErasureEncoder;
 
-public abstract class AbstractErasureEncoder extends AbstractErasureCoder implements ErasureEncoder {
+/**
+ * An abstract erasure encoder that's to be inherited by new encoders.
+ *
+ * It implements the {@link ErasureEncoder} interface.
+ */
+public abstract class AbstractErasureEncoder extends AbstractErasureCoder
+    implements ErasureEncoder {
 
-  private RawErasureEncoder rawEncoder;
-
+  /**
+   * Constructor providing with a rawEncoder. The raw encoder can be determined by
+   * configuration or by default for a codec.
+   *
+   * @param rawEncoder
+   */
   public AbstractErasureEncoder(RawErasureEncoder rawEncoder) {
-    this.rawEncoder = rawEncoder;
+    super(rawEncoder);
   }
 
+  /**
+   * Get the underlying raw encoder.
+   * @return the underlying raw encoder
+   */
   protected RawErasureEncoder getRawEncoder() {
-    return rawEncoder;
+    return (RawErasureEncoder) getRawCoder();
   }
+
 }

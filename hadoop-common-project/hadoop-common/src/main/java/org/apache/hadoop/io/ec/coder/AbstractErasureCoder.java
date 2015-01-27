@@ -20,73 +20,158 @@ package org.apache.hadoop.io.ec.coder;
 
 import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.ec.rawcoder.RawErasureCoder;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AbstractErasureCoder {
+/**
+ * A common class of basic facilities to be shared by encoder and decoder
+ *
+ * It implements the {@link ErasureCoder} interface.
+ */
+public abstract class AbstractErasureCoder implements ErasureCoder {
 
+  private RawErasureCoder rawCoder;
   private ErasureCoderCallback callback;
 
+  /**
+   * Constructor providing with a rawCoder. The raw coder can be determined by
+   * configuration or by default for a codec.
+   *
+   * @param rawCoder
+   */
+  public AbstractErasureCoder(RawErasureCoder rawCoder) {
+    this.rawCoder = rawCoder;
+  }
+
+  @Override
   public void setCallback(ErasureCoderCallback callback) {
     this.callback = callback;
   }
 
+  /**
+   * Get the underlying raw coder.
+   * @return the underlying raw coder
+   */
+  protected RawErasureCoder getRawCoder() {
+    return rawCoder;
+  }
+
+  /**
+   * Notify the caller to prepare for reading the input blocks and writing to the
+   * output blocks via the callback.
+   * @param inputBlocks
+   * @param outputBlocks
+   */
   protected void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
     callback.beforeCoding(inputBlocks, outputBlocks);
   }
 
+  /**
+   * Any next input chunk for coding via the callback
+   * @return true if any left input chunks to code, otherwise false
+   */
   protected boolean hasNextInputs() {
     return callback.hasNextInputs();
   }
 
+  /**
+   * Get next input chunks from the input blocks for coding via the callback.
+   * @param inputBlocks
+   * @return
+   */
   protected ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
     return callback.getNextInputChunks(inputBlocks);
   }
 
+  /**
+   * Get next output chunks for from output blocks for coding via the callback.
+   * @param outputBlocks
+   * @return
+   */
   protected ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
     return callback.getNextOutputChunks(outputBlocks);
   }
 
+  /**
+   * Notify the caller it's done coding the chunks via the callback.
+   * @param inputChunks
+   * @param outputChunks
+   */
   protected void withCoded(ECChunk[] inputChunks, ECChunk[] outputChunks) {
     callback.withCoded(inputChunks, outputChunks);
   }
 
+  /**
+   * Notify the caller it's done coding the group via the callback, good chances
+   * to close input blocks and flush output blocks.
+   */
   protected void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
     callback.postCoding(inputBlocks, outputBlocks);
   }
 
   /**
-   * Find out which blocks are missing in order to get erased locations
-   * @param inputBlocks all decode input blocks
-   * @return erased location list
+   * Find out how many blocks are erased.
+   * @param inputBlocks all the input blocks
+   * @return number of erased blocks
    */
-  protected int[] getErasedLocations(ECBlock[] inputBlocks) {
-    List<Integer> erasedLocationList = new ArrayList<Integer>();
+  protected static int getNumErasedBlocks(ECBlock[] inputBlocks) {
+    int numErased = 0;
     for (int i = 0; i < inputBlocks.length; i++) {
-      ECBlock readBlock = inputBlocks[i];
-      if (readBlock.isMissing()) {
-        erasedLocationList.add(i);
+      if (inputBlocks[i].isMissing()) {
+        numErased ++;
       }
     }
 
-    //change to arrays
-    int[] erasedLocations = new int[erasedLocationList.size()];
-    for (int i = 0; i < erasedLocationList.size(); i++) {
-      erasedLocations[i] = erasedLocationList.get(i);
-    }
-    return erasedLocations;
+    return numErased;
   }
 
-  protected ECBlock[] getErasedBlocks(ECBlock[] inputBlocks, int[] erasedLocations) {
-    ECBlock[] outputBlocks = new ECBlock[erasedLocations.length];
-    for (int i = 0; i < erasedLocations.length; i++) {
-      ECBlock readBlock = inputBlocks[erasedLocations[i]];
-      outputBlocks[i] = new ECBlock(readBlock.getBlockId(), readBlock.isParity());
+  /**
+   * Get indexes of erased blocks from inputBlocks
+   * @param inputBlocks
+   * @return indexes of erased blocks from inputBlocks
+   */
+  protected int[] getErasedIndexes(ECBlock[] inputBlocks) {
+    int numErased = getNumErasedBlocks(inputBlocks);
+    if (numErased == 0) {
+      return new int[0];
     }
-    return outputBlocks;
+
+    int[] erasedIndexes = new int[numErased];
+    for (int i = 0; i < inputBlocks.length; i++) {
+      if (inputBlocks[i].isMissing()) {
+        erasedIndexes[i] = i;
+      }
+    }
+
+    return erasedIndexes;
   }
 
-  public void clean() {}
+  /**
+   * Get erased input blocks from inputBlocks
+   * @param inputBlocks
+   * @return an array of erased blocks from inputBlocks
+   */
+  protected ECBlock[] getErasedBlocks(ECBlock[] inputBlocks) {
+    int numErased = getNumErasedBlocks(inputBlocks);
+    if (numErased == 0) {
+      return new ECBlock[0];
+    }
+
+    ECBlock[] erasedBlocks = new ECBlock[numErased];
+    for (int i = 0; i < inputBlocks.length; i++) {
+      if (inputBlocks[i].isMissing()) {
+        erasedBlocks[i] = inputBlocks[i];
+      }
+    }
+
+    return erasedBlocks;
+  }
+
+  @Override
+  public void release() {
+    rawCoder.release();
+  }
 }

@@ -20,11 +20,19 @@ package org.apache.hadoop.io.ec.coder;
 
 import org.apache.hadoop.io.ec.ECGroup;
 
+/**
+ * An erasure decoder to perform decoding given a group.
+ *
+ * It extends {@link ErasureCoder}.
+ */
 public interface ErasureDecoder {
 
-  public void decode(ECGroup ECGroup);
+  /**
+   * Perform the decoding given a group. By default it will try the best to
+   * attempt to recover all the missing blocks according to the codec logic.
+   *
+   * @param group
+   */
+  public void decode(ECGroup group);
 
-  public void setCallback(ErasureCoderCallback callback);
-
-  public void clean();
 }

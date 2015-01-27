@@ -19,11 +19,19 @@ package org.apache.hadoop.io.ec.coder;
 
 import org.apache.hadoop.io.ec.ECGroup;
 
-public interface ErasureEncoder {
+/**
+ * An erasure encoder to perform encoding given a group.
+ *
+ * It extends {@link ErasureCoder}.
+ */
+public interface ErasureEncoder extends ErasureCoder {
 
-  public void encode(ECGroup ECGroup);
+  /**
+   * Perform the encoding given a group. It will generate all the necessary
+   * parity blocks according to the codec logic.
+   *
+   * @param group
+   */
+  public void encode(ECGroup group);
 
-  public void setCallback(ErasureCoderCallback callback);
-
-  public void clean();
 }

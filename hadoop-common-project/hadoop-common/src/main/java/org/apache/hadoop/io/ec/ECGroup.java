@@ -40,7 +40,8 @@ public abstract class ECGroup extends ECSubGroup {
 
   /**
    * Return sub-groups organized by codec specific logic. It's only for erasure
-   * coder handling.
+   * coder handling. A codec should know about how to layout, form a group and
+   * divide a group into sub-groups, but codec caller won't.
    * @return sub-groups
    */
   public abstract List<ECSubGroup> getSubGroups();

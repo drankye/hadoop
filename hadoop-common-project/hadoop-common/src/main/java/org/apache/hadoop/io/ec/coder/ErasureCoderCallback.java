@@ -21,13 +21,16 @@ import org.apache.hadoop.io.ec.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 
 /**
- * Callback to be called by ECWorker to get input/output ECChunks for an ECBlock
+ * An erasure coder callback to get input/output {@link ECChunk}s from
+ * {@link ECBlock}. To ease the encoding or decoding process and management
+ * of blocks and chunks for the caller, it also calls back in the beginning,
+ * the coding and the end.
  */
 public interface ErasureCoderCallback {
 
   /**
-   * Prepare for reading input blocks and writing output blocks.
-   * Will be called before any coding work with the input and output blocks
+   * Notify the caller to prepare for reading the input blocks and writing to the
+   * output blocks.
    * @param inputBlocks
    * @param outputBlocks
    */
@@ -35,35 +38,34 @@ public interface ErasureCoderCallback {
 
   /**
    * Any next input chunk for coding?
-   * Will be called to see if any left input chunks to code
-   * @return
+   * @return true if any left input chunks to code, otherwise false
    */
   public boolean hasNextInputs();
 
   /**
-   * Get next input chunks for the blocks for coding
+   * Get next input chunks from the input blocks for coding.
    * @param inputBlocks
-   * @return
+   * @return an array of input chunks
    */
   public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks);
 
   /**
-   * Get next chunks to output for the blocks for coding
+   * Get next chunks to output from the output blocks for coding.
    * @param outputBlocks
-   * @return
+   * @return an array of output chunks
    */
   public ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks);
 
   /**
-   * Notify the coding finished event for the group of chunks
+   * Notify the caller it's done coding the chunks.
    * @param inputChunks
    * @param outputChunks
    */
   public void withCoded(ECChunk[] inputChunks, ECChunk[] outputChunks);
 
-
   /**
-   * Done with coding of group, chances to close input blocks and flush output blocks
+   * Notify the caller it's done coding the group, good chances to close input
+   * blocks and flush output blocks
    */
   public void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks);
 }
