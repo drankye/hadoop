@@ -1,10 +1,10 @@
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 
 /**
- * An abstract erasure coder callback to help the implementing.
+ * An abstract erasure blockcoder callback to help the implementing.
  */
 public abstract class AbstractErasureCoderCallback implements ErasureCoderCallback {
 

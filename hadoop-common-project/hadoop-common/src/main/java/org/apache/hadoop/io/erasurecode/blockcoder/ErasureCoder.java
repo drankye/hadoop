@@ -15,10 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
 /**
- * An erasure coder to perform encoding or decoding given a group. Generally it
+ * An erasure blockcoder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
  * each step,it calculates necessary input blocks to read chunks from and output
  * parity blocks to write parity chunks into from the group; then extracts chunks
@@ -47,7 +47,7 @@ public interface ErasureCoder {
   /**
    * Set the callback or {@link ErasureCoderCallback} for the ErasureCoder. The
    * callback will be mainly used to extract input chunks and output chunk buffers
-   * from blocks as the coder itself doesn't know how to do it.
+   * from blocks as the blockcoder itself doesn't know how to do it.
    *
    * @param callback
    */

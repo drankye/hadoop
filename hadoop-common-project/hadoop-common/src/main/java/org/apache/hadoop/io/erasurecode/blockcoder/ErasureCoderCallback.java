@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 
 /**
- * An erasure coder callback to get input/output {@link ECChunk}s from
+ * An erasure blockcoder callback to get input/output {@link ECChunk}s from
  * {@link ECBlock}. To ease the encoding or decoding process and management
  * of blocks and chunks for the caller, it also calls back in the beginning,
  * the coding and the end.

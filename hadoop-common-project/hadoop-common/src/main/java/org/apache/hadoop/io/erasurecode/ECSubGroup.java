@@ -15,35 +15,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
-
-import java.util.List;
+package org.apache.hadoop.io.erasurecode;
 
 /**
- * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
- * {@link org.apache.hadoop.io.ec.coder.ErasureCoder}. It contains one or more
- * {@link ECSubGroup}s organized according to erasure codec logic.
- *
- * Also see {@link ECSubGroup}.
+ * To perform internal steps incurred in encoding/decoding of an {@link ECGroup},
+ * the group can be divided into sub-groups, and the sub-groups can be passed to
+ * invoke {@link org.apache.hadoop.io.ec.rawcoder.RawErasureCoder}. In RS code,
+ * there is only one sub-group; in other code scheme like LRC there maybe more.
  */
-public abstract class ECGroup extends ECSubGroup {
+public class ECSubGroup {
+
+  private ECBlock[] dataBlocks;
+  private ECBlock[] parityBlocks;
 
   /**
    * A constructor specifying data blocks and parity blocks.
-   *
    * @param dataBlocks
    * @param parityBlocks
    */
-  public ECGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    super(dataBlocks, parityBlocks);
+  public ECSubGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
+    this.dataBlocks = dataBlocks;
+    this.parityBlocks = parityBlocks;
   }
 
   /**
-   * Return sub-groups organized by codec specific logic. It's only for erasure
-   * coder handling. A codec should know about how to layout, form a group and
-   * divide a group into sub-groups, but codec caller won't.
-   * @return sub-groups
+   *
+   * @return data blocks
    */
-  public abstract List<ECSubGroup> getSubGroups();
+  public ECBlock[] getDataBlocks() {
+    return dataBlocks;
+  }
+
+  /**
+   *
+   * @return parity blocks
+   */
+  public ECBlock[] getParityBlocks() {
+    return parityBlocks;
+  }
 
 }

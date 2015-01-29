@@ -15,16 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
 
-import org.apache.hadoop.io.ec.ECBlock;
+import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.ec.ECChunk;
 import org.apache.hadoop.io.ec.rawcoder.RawErasureCoder;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -37,7 +33,7 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   private ErasureCoderCallback callback;
 
   /**
-   * Constructor providing with a rawCoder. The raw coder can be determined by
+   * Constructor providing with a rawCoder. The raw blockcoder can be determined by
    * configuration or by default for a codec.
    *
    * @param rawCoder
@@ -52,8 +48,8 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   }
 
   /**
-   * Get the underlying raw coder.
-   * @return the underlying raw coder
+   * Get the underlying raw blockcoder.
+   * @return the underlying raw blockcoder
    */
   protected RawErasureCoder getRawCoder() {
     return rawCoder;

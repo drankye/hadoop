@@ -15,23 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.ec.ECGroup;
+import org.apache.hadoop.io.ec.rawcoder.RawErasureEncoder;
 
 /**
- * An erasure encoder to perform encoding given a group.
+ * An abstract erasure encoder that's to be inherited by new encoders.
  *
- * It extends {@link ErasureCoder}.
+ * It implements the {@link ErasureEncoder} interface.
  */
-public interface ErasureEncoder extends ErasureCoder {
+public abstract class AbstractErasureEncoder extends AbstractErasureCoder
+    implements ErasureEncoder {
 
   /**
-   * Perform the encoding given a group. It will generate all the necessary
-   * parity blocks according to the codec logic.
+   * Constructor providing with a rawEncoder. The raw encoder can be determined by
+   * configuration or by default for a codec.
    *
-   * @param group
+   * @param rawEncoder
    */
-  public void encode(ECGroup group);
+  public AbstractErasureEncoder(RawErasureEncoder rawEncoder) {
+    super(rawEncoder);
+  }
+
+  /**
+   * Get the underlying raw encoder.
+   * @return the underlying raw encoder
+   */
+  protected RawErasureEncoder getRawEncoder() {
+    return (RawErasureEncoder) getRawCoder();
+  }
 
 }
