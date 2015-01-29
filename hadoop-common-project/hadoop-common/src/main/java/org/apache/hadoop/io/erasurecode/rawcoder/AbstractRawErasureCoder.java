@@ -52,6 +52,11 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
   }
 
   @Override
+  public boolean preferNativeBuffer() {
+    return false;
+  }
+
+  @Override
   public void release() {
     // Nothing to do by default
   }
