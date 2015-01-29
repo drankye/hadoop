@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
 
@@ -67,7 +67,8 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                                    byte[][] outputs);
 
   @Override
-  public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs) {
+  public void decode(ECChunk[] inputs, int[] erasedIndexes,
+                     ECChunk[] outputs) {
     doDecode(inputs, erasedIndexes, outputs);
   }
 
