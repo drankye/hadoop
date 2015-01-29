@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -49,6 +49,11 @@ public abstract class AbstractRawErasureCoder implements RawErasureCoder {
   @Override
   public int getChunkSize() {
     return chunkSize;
+  }
+
+  @Override
+  public boolean preferNativeBuffer() {
+    return false;
   }
 
   @Override

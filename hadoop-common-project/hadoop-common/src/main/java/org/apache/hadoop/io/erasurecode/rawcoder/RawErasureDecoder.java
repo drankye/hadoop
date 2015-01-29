@@ -15,40 +15,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
 
 /**
- * RawErasureEncoder performs encoding given chunks of input data and generates
- * parity outputs that corresponds to an erasure code scheme, like XOR and
+ * RawErasureDecoder performs decoding given chunks of input data and generates
+ * missing data that corresponds to an erasure code scheme, like XOR and
  * Reed-Solomon.
  *
  * It extends the {@link RawErasureCoder} interface.
  */
-public interface RawErasureEncoder extends RawErasureCoder {
+public interface RawErasureDecoder extends RawErasureCoder {
 
   /**
-   * Encode with inputs and generates outputs
+   * Decode with inputs and erasedIndexes, generates outputs
    * @param inputs
    * @param outputs
    */
-  public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
+                     ByteBuffer[] outputs);
 
   /**
-   * Encode with inputs and generates outputs
+   * Decode with inputs and erasedIndexes, generates outputs
    * @param inputs
    * @param outputs
    */
-  public void encode(byte[][] inputs, byte[][] outputs);
+  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
 
   /**
-   * Encode with inputs and generates outputs
+   * Decode with inputs and erasedIndexes, generates outputs
    * @param inputs
    * @param outputs
    */
-  public void encode(ECChunk[] inputs, ECChunk[] outputs);
+  public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
 
 }
