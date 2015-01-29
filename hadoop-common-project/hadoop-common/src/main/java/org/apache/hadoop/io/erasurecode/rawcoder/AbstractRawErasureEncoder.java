@@ -68,11 +68,17 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   }
 
   /**
-   * Perform the real encoding work using chunks
+   * Perform the real encoding work using chunks.
    * @param inputs
    * @param outputs
    */
   protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
+    /**
+     * Note callers may pass byte array, or ByteBuffer via ECChunk according
+     * to how ECChunk is created. Some implementations of coder use byte array
+     * (ex: pure Java), some use native ByteBuffer (ex: ISA-L), all for the
+     * better performance.
+     */
     if (inputs[0].getBuffer().hasArray()) {
       byte[][] inputBytesArr = ECChunk.toArray(inputs);
       byte[][] outputBytesArr = ECChunk.toArray(outputs);
