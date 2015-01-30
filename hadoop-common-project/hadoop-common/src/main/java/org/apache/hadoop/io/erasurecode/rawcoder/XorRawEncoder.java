@@ -15,9 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
-
-import org.apache.hadoop.io.ec.ECChunk;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import java.nio.ByteBuffer;
 
@@ -25,10 +23,6 @@ import java.nio.ByteBuffer;
  * An encoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
  */
 public class XorRawEncoder extends AbstractRawErasureEncoder {
-
-  public XorRawEncoder(int dataSize, int chunkSize) {
-    super(dataSize, 1, chunkSize);
-  }
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {

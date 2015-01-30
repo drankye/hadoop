@@ -15,9 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.XorRawEncoder;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -30,6 +32,7 @@ import static org.junit.Assert.assertArrayEquals;
  */
 public class TestXorRawEncoder {
   private Random RAND = new Random();
+  private static final int DATA_SIZE = 10;
   private static final int DATA_SIZE = 10;
   private static final int CHUNK_SIZE = 16 * 1024;
   private static final int ERASED_INDEX = 0;
@@ -155,11 +158,4 @@ public class TestXorRawEncoder {
     return buffers;
   }
 
-  private ECChunk[] toECChunks(byte[][] bytes) {
-    ECChunk[] ecChunks = new ECChunk[bytes.length];
-    for (int i = 0; i < ecChunks.length; i++) {
-      ecChunks[i] = new ECChunk(ByteBuffer.wrap(bytes[i]));
-    }
-    return ecChunks;
-  }
 }

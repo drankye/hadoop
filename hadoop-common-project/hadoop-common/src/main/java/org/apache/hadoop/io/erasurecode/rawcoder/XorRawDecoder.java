@@ -15,23 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
-
-import org.apache.hadoop.io.ec.ECChunk;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import java.nio.ByteBuffer;
 
 /**
  * A decoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
  */
-public class XorRawDecoder extends AbstractRawErasureDecoder{
-
-  public XorRawDecoder(int dataSize, int chunkSize) {
-    super(dataSize, 1, chunkSize);
-  }
+public class XorRawDecoder extends AbstractRawErasureDecoder {
 
   @Override
-  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
+  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
+                          ByteBuffer[] outputs) {
     assert(erasedIndexes.length == outputs.length);
     assert(erasedIndexes.length <= 1);
 
@@ -57,7 +52,8 @@ public class XorRawDecoder extends AbstractRawErasureDecoder{
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+  protected void doDecode(byte[][] inputs, int[] erasedIndexes,
+                          byte[][] outputs) {
     assert(erasedIndexes.length == outputs.length);
     assert(erasedIndexes.length <= 1);
 
