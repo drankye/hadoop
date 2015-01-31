@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder.util;
+package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;

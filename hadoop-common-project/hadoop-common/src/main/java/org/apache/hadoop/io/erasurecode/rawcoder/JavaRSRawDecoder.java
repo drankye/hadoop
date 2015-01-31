@@ -15,11 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 
-import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
-import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
+import org.apache.hadoop.io.ec.rawcoder.*;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
@@ -29,19 +30,18 @@ public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
   private int[] errSignature;
   private int[] primitivePower;
 
-  public JavaRSRawDecoder(int dataSize, int paritySize, int chunkSize) {
-    super(dataSize, paritySize, chunkSize);
-    init();
-  }
-
-  private void init() {
-    assert (dataSize() + paritySize() < GF.getFieldSize());
-    this.errSignature = new int[paritySize()];
-    this.primitivePower = RSUtil.getPrimitivePower(dataSize(), paritySize());
+  @Override
+  public void initialize(int numDataUnits, int numParityUnits,
+                         int chunkSize) {
+    assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
+    this.errSignature = new int[getNumParityUnits()];
+    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
+        getNumParityUnits());
   }
 
   @Override
-  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
+  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
+                          ByteBuffer[] outputs) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
       GF.substitute(inputs, outputs[i], primitivePower[i]);

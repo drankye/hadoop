@@ -15,10 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.JavaRSRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.JavaRSRawEncoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,9 +30,9 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Test the raw erasure encoder and decoder in pure Java
+ * Test the RS raw erasure encoder and decoder in pure Java
  */
-public class TestJavaRSRawCoder {
+public class TestJavaRSRawCoder extends TestRawCoderBase {
   private final Random RAND = new Random();
   private static GaloisField GF = GaloisField.getInstance();
 
@@ -176,5 +178,15 @@ public class TestJavaRSRawCoder {
       buffer.get(bytes[i]);
     }
     return bytes;
+  }
+
+  @Override
+  protected RawErasureEncoder createEncoder() {
+    return null;
+  }
+
+  @Override
+  protected RawErasureDecoder createDecoder() {
+    return null;
   }
 }
