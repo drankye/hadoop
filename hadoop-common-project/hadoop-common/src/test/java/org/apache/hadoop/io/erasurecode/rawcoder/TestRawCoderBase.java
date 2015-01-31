@@ -29,10 +29,13 @@ import static org.junit.Assert.assertArrayEquals;
  */
 public abstract class TestRawCoderBase {
   protected static Random RAND = new Random();
-  protected static int NUM_DATA_UNITS;
-  protected static int NUM_PARITY_UNITS;
-  protected static int CHUNK_SIZE = 16 * 1024;
-  protected static int[] ERASED_INDEXES = new int[] {0};
+  protected Class<? extends RawErasureEncoder> encoderClass;
+  protected Class<? extends RawErasureDecoder> decoderClass;
+
+  protected int numDataUnits;
+  protected int numParityUnits;
+  protected int chunkSize = 16 * 1024;
+  protected int[] erasedIndexes = new int[] {0};
 
   protected void testCoding(boolean usingDirectBuffer) {
     // Generate data and encode
@@ -48,45 +51,45 @@ public abstract class TestRawCoderBase {
     ECChunk[] inputChunks = prepareInputChunks(sourceChunks, parityChunks);
     ECChunk[] recoveredChunks = prepareOutputChunks(usingDirectBuffer);
     RawErasureDecoder decoder = createDecoder();
-    decoder.decode(inputChunks, ERASED_INDEXES, recoveredChunks);
+    decoder.decode(inputChunks, erasedIndexes, recoveredChunks);
 
     //Compare
     compareAndVerify(erasedSources, recoveredChunks);
   }
 
-  private static void compareAndVerify(byte[][] erasedSources, ECChunk[] recoveredChunks) {
+  private void compareAndVerify(byte[][] erasedSources, ECChunk[] recoveredChunks) {
     byte[][] recoveredSources = ECChunk.toArray(recoveredChunks);
     for (int i = 0; i < erasedSources.length; ++i) {
       assertArrayEquals("Decoding and comparing failed.", erasedSources[i], recoveredSources[i]);
     }
   }
 
-  private static ECChunk[] prepareInputChunks(ECChunk[] sourceChunks, ECChunk[] parityChunks) {
-    ECChunk[] inputChunks = new ECChunk[NUM_DATA_UNITS + NUM_PARITY_UNITS];
+  private ECChunk[] prepareInputChunks(ECChunk[] sourceChunks, ECChunk[] parityChunks) {
+    ECChunk[] inputChunks = new ECChunk[numDataUnits + numParityUnits];
     
     int idx = 0;
-    for (int i = 0; i < NUM_DATA_UNITS; i++) {
+    for (int i = 0; i < numDataUnits; i++) {
       inputChunks[idx ++] = sourceChunks[i];
     }
-    for (int i = 0; i < NUM_PARITY_UNITS; i++) {
+    for (int i = 0; i < numParityUnits; i++) {
       inputChunks[idx ++] = parityChunks[i];
     }
     
     return inputChunks;
   }
 
-  private static byte[][] copyAndEraseSources(ECChunk[] sourceChunks) {
-    byte[][] erasedSources = new byte[ERASED_INDEXES.length][];
+  private byte[][] copyAndEraseSources(ECChunk[] sourceChunks) {
+    byte[][] erasedSources = new byte[erasedIndexes.length][];
 
-    for (int i = 0; i < ERASED_INDEXES.length; ++i) {
-      erasedSources[i] = copyAndEraseSource(sourceChunks, ERASED_INDEXES[i]);
+    for (int i = 0; i < erasedIndexes.length; ++i) {
+      erasedSources[i] = copyAndEraseSource(sourceChunks, erasedIndexes[i]);
     }
 
     return erasedSources;
   }
 
-  private static byte[] copyAndEraseSource(ECChunk[] sourceChunks, int erasedIndex) {
-    byte[] erasedData = new byte[CHUNK_SIZE];
+  private byte[] copyAndEraseSource(ECChunk[] sourceChunks, int erasedIndex) {
+    byte[] erasedData = new byte[chunkSize];
     ByteBuffer chunkBuffer = sourceChunks[erasedIndex].getBuffer();
     // copy data out
     chunkBuffer.position(0);
@@ -94,7 +97,7 @@ public abstract class TestRawCoderBase {
 
     // erase the data
     chunkBuffer.clear();
-    for (int i = 0; i < CHUNK_SIZE; ++i) {
+    for (int i = 0; i < chunkSize; ++i) {
       chunkBuffer.put((byte) 0);
     }
     chunkBuffer.flip();
@@ -102,43 +105,63 @@ public abstract class TestRawCoderBase {
     return erasedData;
   }
 
-  protected abstract RawErasureEncoder createEncoder();
+  private RawErasureEncoder createEncoder() {
+    RawErasureEncoder encoder;
+    try {
+      encoder = encoderClass.newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create encoder", e);
+    }
 
-  protected abstract RawErasureDecoder createDecoder();
+    encoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    return encoder;
+  }
 
-  private static ECChunk allocateChunk(int length, boolean usingDirectBuffer) {
+  private RawErasureDecoder createDecoder() {
+    RawErasureDecoder decoder;
+    try {
+      decoder = decoderClass.newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create decoder", e);
+    }
+
+    decoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    return decoder;
+  }
+
+  private ECChunk allocateChunk(int length, boolean usingDirectBuffer) {
     ByteBuffer buffer = allocateBuffer(length, usingDirectBuffer);
 
     return new ECChunk(buffer);
   }
 
-  private static ByteBuffer allocateBuffer(int length, boolean usingDirectBuffer) {
+  private ByteBuffer allocateBuffer(int length, boolean usingDirectBuffer) {
     ByteBuffer buffer = usingDirectBuffer ? ByteBuffer.allocateDirect(length) :
         ByteBuffer.allocate(length);
 
     return buffer;
   }
 
-  private static ECChunk[] prepareOutputChunks(boolean usingDirectBuffer) {
-    ECChunk[] chunks = new ECChunk[ERASED_INDEXES.length];
+  private ECChunk[] prepareOutputChunks(boolean usingDirectBuffer) {
+    ECChunk[] chunks = new ECChunk[erasedIndexes.length];
     for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateChunk(CHUNK_SIZE, usingDirectBuffer);
+      chunks[i] = allocateChunk(chunkSize, usingDirectBuffer);
     }
 
     return chunks;
   }
 
-  private static ECChunk[] prepareParityChunks(boolean usingDirectBuffer) {
-    ECChunk[] chunks = new ECChunk[NUM_PARITY_UNITS];
+  private ECChunk[] prepareParityChunks(boolean usingDirectBuffer) {
+    ECChunk[] chunks = new ECChunk[numParityUnits];
     for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateChunk(CHUNK_SIZE, usingDirectBuffer);
+      chunks[i] = allocateChunk(chunkSize, usingDirectBuffer);
     }
 
     return chunks;
   }
 
-  private static ECChunk[] prepareSourceChunks(boolean usingDirectBuffer) {
-    ECChunk[] chunks = new ECChunk[NUM_DATA_UNITS];
+  private ECChunk[] prepareSourceChunks(boolean usingDirectBuffer) {
+    ECChunk[] chunks = new ECChunk[numDataUnits];
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = generateSourceChunk(usingDirectBuffer);
     }
@@ -146,9 +169,9 @@ public abstract class TestRawCoderBase {
     return chunks;
   }
 
-  private static ECChunk generateSourceChunk(boolean usingDirectBuffer) {
-    ByteBuffer buffer = allocateBuffer(CHUNK_SIZE, usingDirectBuffer);
-    for (int i = 0; i < CHUNK_SIZE; i++) {
+  private ECChunk generateSourceChunk(boolean usingDirectBuffer) {
+    ByteBuffer buffer = allocateBuffer(chunkSize, usingDirectBuffer);
+    for (int i = 0; i < chunkSize; i++) {
       buffer.put((byte) RAND.nextInt(256));
     }
     buffer.flip();
