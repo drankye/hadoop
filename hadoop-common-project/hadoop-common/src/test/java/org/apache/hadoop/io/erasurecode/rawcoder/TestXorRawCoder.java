@@ -30,31 +30,22 @@ public class TestXorRawCoder extends TestRawCoderBase {
 
   @Before
   public void setup() {
-    NUM_DATA_UNITS = 10;
-    NUM_PARITY_UNITS = 1;
-    ERASED_INDEXES = new int[] {0};
+    this.encoderClass = XorRawEncoder.class;
+    this.decoderClass = XorRawDecoder.class;
+
+    this.numDataUnits = 10;
+    this.numParityUnits = 1;
+    this.erasedIndexes = new int[] {0};
   }
-  
+
   @Test
-  public void testCodingWithoutDirectBuffer() {
+  public void testCodingNoDirectBuffer() {
     testCoding(false);
   }
 
   @Test
-  public void testCodingWithDirectBuffer() {
+  public void testCodingDirectBuffer() {
     testCoding(true);
-  }
-
-  protected RawErasureEncoder createEncoder() {
-    RawErasureEncoder encoder = new XorRawEncoder();
-    encoder.initialize(NUM_DATA_UNITS, NUM_PARITY_UNITS, CHUNK_SIZE);
-    return encoder;
-  }
-
-  protected RawErasureDecoder createDecoder() {
-    RawErasureDecoder decoder = new XorRawDecoder();
-    decoder.initialize(NUM_DATA_UNITS, NUM_PARITY_UNITS, CHUNK_SIZE);
-    return decoder;
   }
 
 }
