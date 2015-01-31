@@ -17,9 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
-import org.apache.hadoop.io.erasurecode.rawcoder.XorRawEncoder;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -28,12 +26,12 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Test XOR encoding and decoding, adapted from HDFS-RAID.
+ * Test XOR encoding and decoding.
  */
-public class TestXorRawEncoder {
+public class TestXorRawCoder {
   private Random RAND = new Random();
-  private static final int DATA_SIZE = 10;
-  private static final int DATA_SIZE = 10;
+  private static final int NUM_DATA_UNITS = 10;
+  private static final int NUM_PARITY_UNITS = 1;
   private static final int CHUNK_SIZE = 16 * 1024;
   private static final int ERASED_INDEX = 0;
 
@@ -42,21 +40,21 @@ public class TestXorRawEncoder {
     /**
      * Generate data and encode
      */
-    byte[][] encodingData = generateEncodingData();
+    byte[][] sourceData = generateSourceData();
     byte[][] parityData = new byte[][]{new byte[CHUNK_SIZE]};
 
-    RawErasureEncoder encoder = new XorRawEncoder(DATA_SIZE, CHUNK_SIZE);
-    encoder.encode(encodingData, parityData);
+    RawErasureEncoder encoder = createEncoder();
+    encoder.encode(sourceData, parityData);
 
     // Make a copy of a strip for later comparing then erase it
-    byte[] erasedData = eraseData(encodingData);
+    byte[] erasedData = eraseData(sourceData);
 
     /**
      * Decode and compare
      */
-    byte[][] decodingData = generateDecodingData(encodingData, parityData[0]);
+    byte[][] decodingData = makeDecodingData(sourceData, parityData);
     byte[][] recoveredData = new byte[][] {new byte[CHUNK_SIZE]};
-    RawErasureDecoder decoder = new XorRawDecoder(DATA_SIZE, CHUNK_SIZE);
+    RawErasureDecoder decoder = createDecoder();
     decoder.decode(decodingData, new int[] {ERASED_INDEX}, recoveredData);
     assertArrayEquals("Decoding and comparing failed.", erasedData, recoveredData[0]);
   }
@@ -66,23 +64,23 @@ public class TestXorRawEncoder {
     /**
      * Generate data and encode
      */
-    byte[][] encodingData = generateEncodingData();
-    ByteBuffer[] encodingBuffers = toBuffers(encodingData);
+    byte[][] sourceData = generateSourceData();
+    ByteBuffer[] sourceBuffers = toBuffers(sourceData);
     ByteBuffer[] parityBuffers = new ByteBuffer[]{ByteBuffer.allocateDirect(CHUNK_SIZE)};
 
-    RawErasureEncoder encoder = new XorRawEncoder(DATA_SIZE, CHUNK_SIZE);
-    encoder.encode(encodingBuffers, parityBuffers);
+    RawErasureEncoder encoder = createEncoder();
+    encoder.encode(sourceBuffers, parityBuffers);
 
     // Make a copy of a strip for later comparing then erase it
-    byte[] erasedData = eraseData(encodingData);
+    byte[] erasedData = eraseData(sourceData);
 
     //Decode
-    byte[] parityData = new byte[CHUNK_SIZE];
-    parityBuffers[0].get(parityData);
-    byte[][] decodingData = generateDecodingData(encodingData, parityData);
+    byte[][] parityData = new byte[][]{new byte[CHUNK_SIZE]};
+    parityBuffers[0].get(parityData[0]);
+    byte[][] decodingData = makeDecodingData(sourceData, parityData);
     ByteBuffer[] decodingBuffers = toBuffers(decodingData);
     ByteBuffer[] recoveredBuffers = new ByteBuffer[]{ByteBuffer.allocateDirect(CHUNK_SIZE)};
-    RawErasureDecoder decoder = new XorRawDecoder(DATA_SIZE, CHUNK_SIZE);
+    RawErasureDecoder decoder = createDecoder();
     decoder.decode(decodingBuffers, new int[] {ERASED_INDEX}, recoveredBuffers);
 
     //Compare
@@ -92,26 +90,26 @@ public class TestXorRawEncoder {
   }
 
   @Test
-  public void testECChunkCoding() {
+  public void testChunkCoding() {
     /**
      * Generate data and encode
      */
-    byte[][] encodingData = generateEncodingData();
-    ECChunk[] encodingChunks = toECChunks(encodingData);
+    byte[][] sourceData = generateSourceData();
+    ECChunk[] sourceChunks = toChunks(sourceData);
     ECChunk[] parityChunks = new ECChunk[]{new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]))};
 
-    RawErasureEncoder encoder = new XorRawEncoder(DATA_SIZE, CHUNK_SIZE);
-    encoder.encode(encodingChunks, parityChunks);
+    RawErasureEncoder encoder = createEncoder();
+    encoder.encode(sourceChunks, parityChunks);
 
     // Make a copy of a strip for later comparing then erase it
-    byte[] erasedData = eraseData(encodingData);
+    byte[] erasedData = eraseData(sourceData);
 
     //Decode
     byte[] parityData = parityChunks[0].getBuffer().array();
-    byte[][] decodingData = generateDecodingData(encodingData, parityData);
-    ECChunk[] decodingChunks = toECChunks(decodingData);
+    byte[][] decodingData = makeDecodingData(sourceData, parityData);
+    ECChunk[] decodingChunks = toChunks(decodingData);
     ECChunk[] recoveredChunks = new ECChunk[]{new ECChunk(ByteBuffer.wrap(new byte[CHUNK_SIZE]))};
-    RawErasureDecoder decoder = new XorRawDecoder(DATA_SIZE, CHUNK_SIZE);
+    RawErasureDecoder decoder = createDecoder();
     decoder.decode(decodingChunks, new int[] {ERASED_INDEX}, recoveredChunks);
 
     //Compare
@@ -119,33 +117,50 @@ public class TestXorRawEncoder {
     assertArrayEquals("Decoding and comparing failed.", erasedData, recoveredData);
   }
 
-  private byte[][] generateEncodingData() {
-    byte[][] encodingData = new byte[DATA_SIZE][];
-    for (int i = 0; i < DATA_SIZE; i++) {
-      encodingData[i] = new byte[CHUNK_SIZE];
+  private byte[][] generateSourceData() {
+    byte[][] sourceData = new byte[NUM_DATA_UNITS][];
+    for (int i = 0; i < NUM_DATA_UNITS; i++) {
+      sourceData[i] = new byte[CHUNK_SIZE];
       for (int j = 0; j < CHUNK_SIZE; j++) {
-        encodingData[i][j] = (byte)RAND.nextInt(256);
+        sourceData[i][j] = (byte)RAND.nextInt(256);
       }
     }
-    return encodingData;
+    return sourceData;
   }
 
-  private byte[][] generateDecodingData(byte[][] encodingData, byte[] parityData) {
-    byte[][] decodingData = new byte[DATA_SIZE + 1][];
-    for (int i = 0; i < DATA_SIZE; i++) {
-      decodingData[i] = encodingData[i];
+  private byte[][] makeDecodingData(byte[][] sourceData, byte[][] parityData) {
+    byte[][] decodingData = new byte[NUM_DATA_UNITS + NUM_PARITY_UNITS][];
+    
+    int idx = 0;
+    for (int i = 0; i < NUM_DATA_UNITS; i++) {
+      decodingData[idx ++] = sourceData[i];
     }
-    decodingData[DATA_SIZE] = parityData;
+    for (int i = 0; i < NUM_PARITY_UNITS; i++) {
+      decodingData[idx ++] = parityData[i];
+    }
+    
     return decodingData;
   }
 
-  private byte[] eraseData(byte[][] encodingData) {
+  private byte[] eraseData(byte[][] sourceData) {
     byte[] erasedData = new byte[CHUNK_SIZE];
     for (int j = 0; j < CHUNK_SIZE; j++) {
-      erasedData[j] = encodingData[ERASED_INDEX][j];
-      encodingData[ERASED_INDEX][j] = 0;
+      erasedData[j] = sourceData[ERASED_INDEX][j];
+      sourceData[ERASED_INDEX][j] = 0;
     }
     return erasedData;
+  }
+
+  private RawErasureEncoder createEncoder() {
+    RawErasureEncoder encoder = new XorRawEncoder();
+    encoder.initialize(NUM_DATA_UNITS, NUM_PARITY_UNITS, CHUNK_SIZE);
+    return encoder;
+  }
+
+  private RawErasureDecoder createDecoder() {
+    RawErasureDecoder decoder = new XorRawDecoder();
+    decoder.initialize(NUM_DATA_UNITS, NUM_PARITY_UNITS, CHUNK_SIZE);
+    return decoder;
   }
 
   private ByteBuffer[] toBuffers(byte[][] bytes) {
@@ -156,6 +171,17 @@ public class TestXorRawEncoder {
       buffers[i].flip();
     }
     return buffers;
+  }
+
+  private ECChunk[] toChunks(byte[][] bytes) {
+    ECChunk[] ecChunks = new ECChunk[bytes.length];
+    for (int i = 0; i < ecChunks.length; i++) {
+      ByteBuffer buffer = ByteBuffer.allocateDirect(bytes[i].length);
+      buffer.put(bytes[i]);
+      buffer.flip();
+      ecChunks[i] = new ECChunk(buffer);
+    }
+    return ecChunks;
   }
 
 }
