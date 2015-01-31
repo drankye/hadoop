@@ -516,6 +516,9 @@ Release 2.7.0 - UNRELEASED
     HADOOP-10574. Bump the maven plugin versions too -moving the numbers into
     properties. (aajisaka)
 
+    HADOOP-11441. Hadoop-azure: Change few methods scope to public.
+    (Shashank Khandelwal via cnauroth)
+
   OPTIMIZATIONS
 
     HADOOP-11323. WritableComparator#compare keeps reference to byte array.
@@ -790,6 +793,12 @@ Release 2.7.0 - UNRELEASED
 
     HADOOP-9907. Webapp http://hostname:port/metrics link is not working.
     (aajisaka)
+
+    HADOOP-11403. Avoid using sys_errlist on Solaris, which lacks support for it
+    (Malcolm Kavalsky via Colin P. McCabe)
+
+    HADOOP-11523. StorageException complaining " no lease ID" when updating
+    FolderLastModifiedTime in WASB. (Duo Xu via cnauroth)
 
 Release 2.6.1 - UNRELEASED
 
