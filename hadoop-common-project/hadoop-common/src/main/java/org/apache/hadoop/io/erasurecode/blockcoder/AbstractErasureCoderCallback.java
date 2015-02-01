@@ -1,7 +1,7 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 /**
  * An abstract erasure blockcoder callback to help the implementing.

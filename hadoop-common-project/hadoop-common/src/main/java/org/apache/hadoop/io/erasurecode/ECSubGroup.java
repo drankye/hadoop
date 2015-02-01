@@ -20,7 +20,7 @@ package org.apache.hadoop.io.erasurecode;
 /**
  * To perform internal steps incurred in encoding/decoding of an {@link ECGroup},
  * the group can be divided into sub-groups, and the sub-groups can be passed to
- * invoke {@link org.apache.hadoop.io.ec.rawcoder.RawErasureCoder}. In RS code,
+ * invoke {@link org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder}. In RS code,
  * there is only one sub-group; in other code scheme like LRC there maybe more.
  */
 public class ECSubGroup {

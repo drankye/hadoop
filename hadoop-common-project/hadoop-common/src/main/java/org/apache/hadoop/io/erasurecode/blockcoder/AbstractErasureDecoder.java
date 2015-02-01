@@ -17,8 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
-
-import org.apache.hadoop.io.ec.rawcoder.RawErasureDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 
 /**
  * An abstract erasure decoder that's to be inherited by new decoders.

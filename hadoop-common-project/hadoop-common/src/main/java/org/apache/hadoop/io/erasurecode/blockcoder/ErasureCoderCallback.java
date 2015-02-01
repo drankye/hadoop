@@ -18,10 +18,10 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 /**
- * An erasure blockcoder callback to get input/output {@link ECChunk}s from
+ * An erasure coder callback to get input/output {@link ECChunk}s from
  * {@link ECBlock}. To ease the encoding or decoding process and management
  * of blocks and chunks for the caller, it also calls back in the beginning,
  * the coding and the end.

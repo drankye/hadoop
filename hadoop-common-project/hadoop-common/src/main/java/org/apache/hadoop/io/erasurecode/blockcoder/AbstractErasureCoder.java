@@ -17,10 +17,9 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
-
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.ec.ECChunk;
-import org.apache.hadoop.io.ec.rawcoder.RawErasureCoder;
+import org.apache.hadoop.io.erasurecode.ECChunk;
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -33,12 +32,24 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   private ErasureCoderCallback callback;
 
   /**
-   * Constructor providing with a rawCoder. The raw blockcoder can be determined by
+   * Constructor providing with a rawCoder. The raw coder can be determined by
    * configuration or by default for a codec.
    *
    * @param rawCoder
    */
   public AbstractErasureCoder(RawErasureCoder rawCoder) {
+    setRawCoder(rawCoder);
+  }
+
+  /**
+   * Default constructor.
+   */
+  public AbstractErasureCoder() {
+    // Nothing to do
+  }
+
+  @Override
+  public void setRawCoder(RawErasureCoder rawCoder) {
     this.rawCoder = rawCoder;
   }
 

@@ -17,26 +17,28 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
+
 /**
- * An erasure blockcoder to perform encoding or decoding given a group. Generally it
+ * An erasure coder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
  * each step,it calculates necessary input blocks to read chunks from and output
  * parity blocks to write parity chunks into from the group; then extracts chunks
  * from inputs and invokes underlying RawErasureCoder to encode or decode until
- * exhausted.
+ * the input blocks are exhausted.
  *
  * As to how to extract input chunks from input blocks and output chunk buffers
- * from output blocks, it leverages an {@link ErasureCoderCallback}, as itself
- * doesn't know to do it. It depends on the context in which it's called. In HDFS,
- * it can be HDFS client (in stripping case) or DataNode (in offline transforming
- * case).
+ * from output blocks, it leverages an {@link ErasureCoderCallback} for decoupling,
+ * as itself doesn't know to do it since it depends on the context in which it's
+ * called. In HDFS, it can be HDFS client (in stripping case) or DataNode (in
+ * offline transforming case).
  */
 public interface ErasureCoder {
 
   /**
    * Initialize with the important parameters for the code. These parameters will
-   * be used to initialize the underlying
-   * {@link org.apache.hadoop.io.ec.rawcoder.RawErasureCoder}.
+   * be used to initialize the underlying raw erasure coder
+   * {@link org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder}.
    *
    * @param numDataUnits how many data inputs for the coding
    * @param numParityUnits how many parity outputs the coding generates
@@ -45,9 +47,17 @@ public interface ErasureCoder {
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize);
 
   /**
+   * Set the underlying raw erasure coder or
+   * {@link org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder}
+   *
+   * @param rawCoder
+   */
+  public void setRawCoder(RawErasureCoder rawCoder);
+
+  /**
    * Set the callback or {@link ErasureCoderCallback} for the ErasureCoder. The
    * callback will be mainly used to extract input chunks and output chunk buffers
-   * from blocks as the blockcoder itself doesn't know how to do it.
+   * from blocks as the coder itself doesn't know how to do it.
    *
    * @param callback
    */
