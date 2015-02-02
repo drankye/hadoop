@@ -82,7 +82,9 @@ public class ECChunk {
       } else {
         bytesArr[i] = new byte[buffer.remaining()];
         // Avoid affecting the original one
-        buffer.duplicate().get(bytesArr[i]);
+        buffer.mark();
+        buffer.get(bytesArr[i]);
+        buffer.reset();
       }
     }
 
