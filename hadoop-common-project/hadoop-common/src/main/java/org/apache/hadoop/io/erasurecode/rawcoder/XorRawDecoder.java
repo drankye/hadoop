@@ -20,7 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import java.nio.ByteBuffer;
 
 /**
- * A decoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
+ * A raw decoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
  */
 public class XorRawDecoder extends AbstractRawErasureDecoder {
 
