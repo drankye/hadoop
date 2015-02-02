@@ -24,7 +24,7 @@ import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import java.nio.ByteBuffer;
 
 /**
- * A raw erasure encoder in pure Java for test usage and also
+ * A raw erasure encoder in RS code scheme in pure Java for test usage and also
  * in case native one isn't available in some environment.
  */
 public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
@@ -32,10 +32,12 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
   private int[] generatingPolynomial;
 
   @Override
-  public void initialize(int numDataUnits, int numParityUnits,
-                         int chunkSize) {
+  public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
+    super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
-    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(), getNumParityUnits());
+
+    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
+        getNumParityUnits());
     // compute generating polynomial
     int[] gen = {1};
     int[] poly = new int[2];

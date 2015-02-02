@@ -18,12 +18,15 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 
-import org.apache.hadoop.io.ec.rawcoder.*;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
+/**
+ * A raw erasure decoder in RS code scheme in pure Java for test usage and also
+ * in case native one isn't available in some environment.
+ */
 public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
   private GaloisField GF = GaloisField.getInstance();
 
@@ -31,9 +34,10 @@ public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
   private int[] primitivePower;
 
   @Override
-  public void initialize(int numDataUnits, int numParityUnits,
-                         int chunkSize) {
+  public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
+    super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
+
     this.errSignature = new int[getNumParityUnits()];
     this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());

@@ -105,7 +105,7 @@ public abstract class TestRawCoderBase {
     return erasedData;
   }
 
-  private RawErasureEncoder createEncoder() {
+  protected RawErasureEncoder createEncoder() {
     RawErasureEncoder encoder;
     try {
       encoder = encoderClass.newInstance();
@@ -117,7 +117,7 @@ public abstract class TestRawCoderBase {
     return encoder;
   }
 
-  private RawErasureDecoder createDecoder() {
+  protected RawErasureDecoder createDecoder() {
     RawErasureDecoder decoder;
     try {
       decoder = decoderClass.newInstance();
