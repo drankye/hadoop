@@ -15,33 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.rawcoder;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 
-import org.apache.hadoop.io.ec.rawcoder.util.GaloisField;
-import org.apache.hadoop.io.ec.rawcoder.util.RSUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
 /**
- * A raw erasure encoder in pure Java for test usage and also in case native one isn't available in some environment.
+ * A raw erasure encoder in pure Java for test usage and also
+ * in case native one isn't available in some environment.
  */
 public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
   private GaloisField GF = GaloisField.getInstance();
   private int[] generatingPolynomial;
 
-  public JavaRSRawEncoder(int dataSize, int paritySize, int chunkSize) {
-    super(dataSize, paritySize, chunkSize);
-    init();
-  }
-
-  private void init() {
-    assert (dataSize() + paritySize() < GF.getFieldSize());
-    int[] primitivePower = RSUtil.getPrimitivePower(dataSize(), paritySize());
+  @Override
+  public void initialize(int numDataUnits, int numParityUnits,
+                         int chunkSize) {
+    assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
+    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(), getNumParityUnits());
     // compute generating polynomial
     int[] gen = {1};
     int[] poly = new int[2];
-    for (int i = 0; i < paritySize(); i++) {
+    for (int i = 0; i < getNumParityUnits(); i++) {
       poly[0] = primitivePower[i];
       poly[1] = 1;
       gen = GF.multiply(gen, poly);
@@ -52,12 +50,12 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    ByteBuffer[] data = new ByteBuffer[dataSize() + paritySize()];
-    for (int i = 0; i < paritySize(); i++) {
+    ByteBuffer[] data = new ByteBuffer[getNumDataUnits() + getNumParityUnits()];
+    for (int i = 0; i < getNumParityUnits(); i++) {
       data[i] = outputs[i];
     }
-    for (int i = 0; i < dataSize(); i++) {
-      data[i + paritySize()] = inputs[i];
+    for (int i = 0; i < getNumDataUnits(); i++) {
+      data[i + getNumParityUnits()] = inputs[i];
     }
 
     // Compute the remainder
@@ -66,12 +64,12 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
 
   @Override
   protected void doEncode(byte[][] inputs, byte[][] outputs) {
-    byte[][] data = new byte[dataSize() + paritySize()][];
-    for (int i = 0; i < paritySize(); i++) {
+    byte[][] data = new byte[getNumDataUnits() + getNumParityUnits()][];
+    for (int i = 0; i < getNumParityUnits(); i++) {
       data[i] = outputs[i];
     }
-    for (int i = 0; i < dataSize(); i++) {
-      data[i + paritySize()] = inputs[i];
+    for (int i = 0; i < getNumDataUnits(); i++) {
+      data[i + getNumParityUnits()] = inputs[i];
     }
 
     // Compute the remainder
