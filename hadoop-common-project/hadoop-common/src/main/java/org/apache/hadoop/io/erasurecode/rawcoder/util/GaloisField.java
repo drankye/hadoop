@@ -22,16 +22,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Implementation of Galois field arithmetics with 2^p elements. The input must
+ * Implementation of Galois field arithmetic with 2^p elements. The input must
  * be unsigned integers, adapted from HDFS-RAID.
  */
 public class GaloisField {
+
+  private static final int PRIMITIVE_ROOT = 2;
 
   // Field size 256 is good for byte based system
   private static final int DEFAULT_FIELD_SIZE = 256;
   // primitive polynomial 1 + X^2 + X^3 + X^4 + X^8
   private static final int DEFAULT_PRIMITIVE_POLYNOMIAL = 285;
-  static private final Map<Integer, GaloisField> instances = new HashMap<Integer, GaloisField>();
+  static private final Map<Integer, GaloisField> instances =
+      new HashMap<Integer, GaloisField>();
   private final int[] logTable;
   private final int[] powTable;
   private final int[][] mulTable;
@@ -94,7 +97,8 @@ public class GaloisField {
    * @param fieldSize           size of the field
    * @param primitivePolynomial a primitive polynomial corresponds to the size
    */
-  public static GaloisField getInstance(int fieldSize, int primitivePolynomial) {
+  public static GaloisField getInstance(int fieldSize,
+                                        int primitivePolynomial) {
     int key = ((fieldSize << 16) & 0xFFFF0000)
         + (primitivePolynomial & 0x0000FFFF);
     GaloisField gf;
@@ -233,18 +237,21 @@ public class GaloisField {
   /**
    * A "bulk" version of the solveVandermondeSystem
    */
-  public void solveVandermondeSystem(int[] x, byte[][] y, int len, int dataLen) {
+  public void solveVandermondeSystem(int[] x, byte[][] y,
+                                     int len, int dataLen) {
     for (int i = 0; i < len - 1; i++) {
       for (int j = len - 1; j > i; j--) {
         for (int k = 0; k < dataLen; k++) {
-          y[j][k] = (byte) (y[j][k] ^ mulTable[x[i]][y[j - 1][k] & 0x000000FF]);
+          y[j][k] = (byte) (y[j][k] ^ mulTable[x[i]][y[j - 1][k] &
+              0x000000FF]);
         }
       }
     }
     for (int i = len - 1; i >= 0; i--) {
       for (int j = i + 1; j < len; j++) {
         for (int k = 0; k < dataLen; k++) {
-          y[j][k] = (byte) (divTable[y[j][k] & 0x000000FF][x[j] ^ x[j - i - 1]]);
+          y[j][k] = (byte) (divTable[y[j][k] & 0x000000FF][x[j] ^
+              x[j - i - 1]]);
         }
       }
       for (int j = i; j < len - 1; j++) {
@@ -258,18 +265,21 @@ public class GaloisField {
   /**
    * A "bulk" version of the solveVandermondeSystem, using ByteBuffer
    */
-  public void solveVandermondeSystem(int[] x, ByteBuffer[] y, int len, int dataLen) {
+  public void solveVandermondeSystem(int[] x, ByteBuffer[] y,
+                                     int len, int dataLen) {
     for (int i = 0; i < len - 1; i++) {
       for (int j = len - 1; j > i; j--) {
         for (int k = 0; k < dataLen; k++) {
-          y[j].put(k, (byte) (y[j].get(k) ^ mulTable[x[i]][y[j - 1].get(k) & 0x000000FF]));
+          y[j].put(k, (byte) (y[j].get(k) ^ mulTable[x[i]][y[j - 1].get(k) &
+              0x000000FF]));
         }
       }
     }
     for (int i = len - 1; i >= 0; i--) {
       for (int j = i + 1; j < len; j++) {
         for (int k = 0; k < dataLen; k++) {
-          y[j].put(k, (byte) (divTable[y[j].get(k) & 0x000000FF][x[j] ^ x[j - i - 1]]));
+          y[j].put(k, (byte) (divTable[y[j].get(k) & 0x000000FF][x[j] ^
+              x[j - i - 1]]));
         }
       }
       for (int j = i; j < len - 1; j++) {
@@ -309,14 +319,15 @@ public class GaloisField {
    * array corresponds to the power of the entry. For example p[0] is the
    * constant term of the polynomial p.
    *
-   * @param dividend dividend polynomial, the remainder will be placed here when
-   *                 return
+   * @param dividend dividend polynomial, the remainder will be placed
+   *                 here when return
    * @param divisor  divisor polynomial
    */
   public void remainder(int[] dividend, int[] divisor) {
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
       // System.out.println("------------------"+i);
-      int ratio = divTable[dividend[i + divisor.length - 1]][divisor[divisor.length - 1]];
+      int ratio = divTable[dividend[i +
+          divisor.length - 1]][divisor[divisor.length - 1]];
       // String aa = "div[dividend("+(i + divisor.length -
       // 1)+")][divisor("+(divisor.length-1)+")]";
       // System.out.println(i+"-ratio=div[dividend("+(i + divisor.length -
@@ -324,7 +335,8 @@ public class GaloisField {
       for (int j = 0; j < divisor.length; j++) {
         int k = j + i;
         dividend[k] = dividend[k] ^ mulTable[ratio][divisor[j]];
-        // System.out.println("dividend["+k+"]=="+"dividend["+k+"]^mulTable["+aa+"]["+"divisor["+j+"]]");
+        // System.out.println("dividend["+k+"]=="+"dividend["+k+"]^
+        // mulTable["+aa+"]["+"divisor["+j+"]]");
       }
     }
   }
@@ -419,8 +431,10 @@ public class GaloisField {
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
       for (int j = 0; j < divisor.length; j++) {
         for (int k = 0; k < dividend[i].length; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1][k] & 0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i][k] = (byte) ((dividend[j + i][k] & 0x00FF) ^ mulTable[ratio][divisor[j]]);
+          int ratio = divTable[dividend[i + divisor.length - 1][k] &
+              0x00FF][divisor[divisor.length - 1]];
+          dividend[j + i][k] = (byte) ((dividend[j + i][k] & 0x00FF) ^
+              mulTable[ratio][divisor[j]]);
         }
       }
     }
@@ -435,8 +449,10 @@ public class GaloisField {
       int width = dividend[i].remaining();
       for (int j = 0; j < divisor.length; j++) {
         for (int k = 0; k < width; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1].get(k) & 0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i].put(k, (byte) ((dividend[j + i].get(k) & 0x00FF) ^ mulTable[ratio][divisor[j]]));
+          int ratio = divTable[dividend[i + divisor.length - 1].get(k) &
+              0x00FF][divisor[divisor.length - 1]];
+          dividend[j + i].put(k, (byte) ((dividend[j + i].get(k) & 0x00FF) ^
+              mulTable[ratio][divisor[j]]));
         }
       }
     }
@@ -486,4 +502,15 @@ public class GaloisField {
       }
     }
   }
+
+  public static int[] getPrimitivePower(int dataSize, int paritySize) {
+    GaloisField GF = GaloisField.getInstance();
+    int[] primitivePower = new int[dataSize + paritySize];
+    // compute powers of the primitive root
+    for (int i = 0; i < dataSize + paritySize; i++) {
+      primitivePower[i] = GF.power(PRIMITIVE_ROOT, i);
+    }
+    return primitivePower;
+  }
+
 }

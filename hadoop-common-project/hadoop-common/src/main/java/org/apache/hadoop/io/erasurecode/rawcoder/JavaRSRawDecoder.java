@@ -19,7 +19,6 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
@@ -39,7 +38,7 @@ public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
     assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
 
     this.errSignature = new int[getNumParityUnits()];
-    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
+    this.primitivePower = GF.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());
   }
 
@@ -52,17 +51,20 @@ public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     int dataLen = inputs[0].remaining();
-    GF.solveVandermondeSystem(errSignature, outputs, erasedIndexes.length, dataLen);
+    GF.solveVandermondeSystem(errSignature, outputs,
+        erasedIndexes.length, dataLen);
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+  protected void doDecode(byte[][] inputs, int[] erasedIndexes,
+                          byte[][] outputs) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
       GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
     int dataLen = inputs[0].length;
-    GF.solveVandermondeSystem(errSignature, outputs, erasedIndexes.length, dataLen);
+    GF.solveVandermondeSystem(errSignature, outputs,
+        erasedIndexes.length, dataLen);
   }
 }

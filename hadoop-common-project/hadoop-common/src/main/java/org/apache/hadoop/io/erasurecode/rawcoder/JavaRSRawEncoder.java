@@ -19,7 +19,6 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
@@ -36,7 +35,7 @@ public class JavaRSRawEncoder extends AbstractRawErasureEncoder {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
 
-    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
+    int[] primitivePower = GF.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());
     // compute generating polynomial
     int[] gen = {1};
