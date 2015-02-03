@@ -57,19 +57,19 @@ public class TestJavaRSRawCoder extends TestRawCoderBase {
     testCoding(false);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4() {
     prepare(10, 4);
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingNoDirectBuffer_3x3() {
     prepare(3, 3);
     testCoding(false);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_3x3() {
     prepare(3, 3);
     testCoding(true);
