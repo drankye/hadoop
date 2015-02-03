@@ -15,27 +15,151 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.erasurecode.rawcoder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECChunk;
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Raw coder test base with utilities.
+ * Erasure coder test base with utilities.
  */
-public abstract class TestRawCoderBase {
+public abstract class TestErasureCoderBase {
   protected static Random RAND = new Random();
-  protected Class<? extends RawErasureEncoder> encoderClass;
-  protected Class<? extends RawErasureDecoder> decoderClass;
+  protected Class<? extends ErasureEncoder> encoderClass;
+  protected Class<? extends ErasureDecoder> decoderClass;
 
   protected int numDataUnits;
   protected int numParityUnits;
-  protected int chunkSize = 16 * 1024;
+  protected int chunkSize = 1024;
+  protected int numChunksInBlock = 16;
   protected int[] erasedIndexes = new int[] {0};
+
+  protected static class TestBlock extends ECBlock {
+    private ECChunk[] chunks;
+    private int chkIdx = 0;
+
+    // For simple, just assume the block have the chunks already ready.
+    // In practice we need to read/or chunks from/to the block.
+    public TestBlock(ECChunk[] chunks) {
+      this.chunks = chunks;
+    }
+
+    // This is like reading/writing a chunk from/to a block until end.
+    public ECChunk nextChunk() {
+      if (chkIdx < chunks.length) {
+        return chunks[chkIdx];
+      }
+      return null;
+    }
+
+    public boolean hasNext() {
+      return chkIdx < chunks.length;
+    }
+  }
+
+  private static abstract class TestBlockCoder extends AbstractErasureCoderCallback {
+    private boolean finished = false;
+
+    @Override
+    public boolean hasNextInputs() {
+      return ! finished;
+    }
+
+    @Override
+    public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
+
+    }
+
+    @Override
+    public ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
+
+    }
+
+  }
+
+  private static abstract class TestBlockCoder1 extends AbstractErasureCoderCallback {
+    private ECChunk[][] inputChunks;
+    private ECChunk[][] outputChunks;
+    private int readInputIndex;
+    private int readOutputIndex;
+
+
+    @Override
+    public void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+      /**
+       * For simple, we prepare for and load all the chunks at this phase.
+       * Actually chunks should be read one by one only when needed while encoding/decoding.
+       */
+      inputChunks = new ECChunk[BLOCK_CHUNK_SIZE_MULIPLE][];
+      outputChunks = new ECChunk[BLOCK_CHUNK_SIZE_MULIPLE][];
+
+      for (int i = 0; i < BLOCK_CHUNK_SIZE_MULIPLE; i++) {
+        inputChunks[i] = getChunks(inputBlocks, i);
+        outputChunks[i] = getChunks(outputBlocks, i);
+      }
+    }
+
+    @Override
+    public boolean hasNextInputs() {
+      return readInputIndex < inputChunks.length;
+    }
+
+    @Override
+    public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
+      ECChunk[] readInputChunks = inputChunks[readInputIndex];
+      readInputIndex++;
+      return readInputChunks;
+    }
+
+    @Override
+    public ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
+      ECChunk[] readOutputChunks = outputChunks[readOutputIndex];
+      readOutputIndex++;
+      return readOutputChunks;
+    }
+
+    @Override
+    public void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+      for (int chunkIndex = 0; chunkIndex < outputChunks.length; chunkIndex++) {
+        for (int i = 0; i < outputChunks[chunkIndex].length; i++) {
+          ByteBuffer byteBuffer = outputChunks[chunkIndex][i].getChunkBuffer();
+          byte[] buffer = new byte[CHUNK_SIZE];
+          byteBuffer.get(buffer);
+          ECBlock ecBlock = outputBlocks[i];
+          dataManager.fillDataSegment(buffer, ecBlock, chunkIndex);
+        }
+      }
+    }
+
+    private ECChunk[] getChunks(ECBlock[] dataEcBlocks, int segmentIndex) {
+      ECChunk[] chunks = new ECChunk[dataEcBlocks.length];
+      for (int i = 0; i < dataEcBlocks.length; i++) {
+        ECBlock ecBlock = dataEcBlocks[i];
+        ByteBuffer buffer = ByteBuffer.allocateDirect(CHUNK_SIZE);
+        if (ecBlock.isMissing()) {
+          //fill zero datas
+          buffer.put(new byte[CHUNK_SIZE]);
+          buffer.flip();
+          chunks[i] = new ECChunk(buffer);
+        } else {
+          byte[] segmentData = dataManager.getDataSegment(ecBlock.getBlockId(), segmentIndex);
+          assert(segmentData.length == CHUNK_SIZE);
+          buffer.put(segmentData);
+          buffer.flip();
+          chunks[i] = new ECChunk(buffer);
+        }
+      }
+      return chunks;
+    }
+  }
 
   protected void testCoding(boolean usingDirectBuffer) {
     // Generate data and encode
@@ -66,7 +190,7 @@ public abstract class TestRawCoderBase {
 
   private ECChunk[] prepareInputChunks(ECChunk[] sourceChunks, ECChunk[] parityChunks) {
     ECChunk[] inputChunks = new ECChunk[numDataUnits + numParityUnits];
-    
+
     int idx = 0;
     for (int i = 0; i < numDataUnits; i++) {
       inputChunks[idx ++] = sourceChunks[i];
@@ -74,7 +198,7 @@ public abstract class TestRawCoderBase {
     for (int i = 0; i < numParityUnits; i++) {
       inputChunks[idx ++] = parityChunks[i];
     }
-    
+
     return inputChunks;
   }
 

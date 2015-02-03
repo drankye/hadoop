@@ -21,8 +21,9 @@ import java.util.List;
 
 /**
  * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
- * {@link org.apache.hadoop.io.erasurecode.blockcoder.ErasureCoder}. It contains one or more
- * {@link ECSubGroup}s organized according to erasure codec logic.
+ * {@link org.apache.hadoop.io.erasurecode.blockcoder.ErasureCoder}.
+ * It contains one or more {@link ECSubGroup}s organized according to erasure
+ * codec logic.
  *
  * Also see {@link ECSubGroup}.
  */
@@ -41,9 +42,13 @@ public abstract class ECGroup extends ECSubGroup {
   /**
    * Return sub-groups organized by codec specific logic. It's only for erasure
    * coder handling. A codec should know about how to layout, form a group and
-   * divide a group into sub-groups, but codec caller won't.
+   * divide a group into sub-groups, but codec caller won't. In most case there
+   * is only one sub-group, itself.
+   *
    * @return sub-groups
    */
-  public abstract List<ECSubGroup> getSubGroups();
+  public ECSubGroup[] getSubGroups() {
+    return new ECSubGroup[] {this};
+  }
 
 }

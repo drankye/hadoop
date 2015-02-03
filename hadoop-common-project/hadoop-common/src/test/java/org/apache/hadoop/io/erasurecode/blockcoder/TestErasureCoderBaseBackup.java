@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.erasurecode.coder;
+package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.erasurecode.ECBlock;
@@ -36,7 +36,7 @@ import java.util.Random;
 
 import static org.junit.Assert.assertTrue;
 
-public abstract class TestErasureCoderBase {
+public abstract class TestErasureCoderBaseBackup {
   protected static final String TEST_DIR =
       new File(System.getProperty("test.build.data", "/tmp")).getAbsolutePath();
   protected final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs").getAbsolutePath();
@@ -45,7 +45,6 @@ public abstract class TestErasureCoderBase {
   protected int BLOCK_SIZE = 1024 * 1024;
   protected int CHUNK_SIZE;
   protected int BLOCK_CHUNK_SIZE_MULIPLE;
-
 
   protected Configuration conf;
   protected String codecName = "codec_for_test";

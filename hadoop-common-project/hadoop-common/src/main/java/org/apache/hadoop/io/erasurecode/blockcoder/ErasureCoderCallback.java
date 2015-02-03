@@ -45,7 +45,7 @@ public interface ErasureCoderCallback {
   /**
    * Get next input chunks from the input blocks for coding.
    * @param inputBlocks
-   * @return an array of input chunks
+   * @return an array of input chunks, empty indicating EOF
    */
   public ECChunk[] getNextInputChunks(ECBlock[] inputBlocks);
 
