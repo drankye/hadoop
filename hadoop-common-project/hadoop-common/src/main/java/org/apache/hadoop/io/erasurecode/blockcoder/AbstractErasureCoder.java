@@ -18,8 +18,9 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
+
+import java.util.Iterator;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -29,7 +30,6 @@ import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
 public abstract class AbstractErasureCoder implements ErasureCoder {
 
   private RawErasureCoder rawCoder;
-  private ErasureCoderCallback callback;
 
   /**
    * Constructor providing with a rawCoder. The raw coder can be determined by
@@ -53,11 +53,6 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
     this.rawCoder = rawCoder;
   }
 
-  @Override
-  public void setCallback(ErasureCoderCallback callback) {
-    this.callback = callback;
-  }
-
   /**
    * Get the underlying raw blockcoder.
    * @return the underlying raw blockcoder
@@ -67,57 +62,10 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   }
 
   /**
-   * Notify the caller to prepare for reading the input blocks and writing to the
-   * output blocks via the callback.
-   * @param inputBlocks
-   * @param outputBlocks
-   */
-  protected void beforeCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
-    callback.beforeCoding(inputBlocks, outputBlocks);
-  }
-
-  /**
-   * Any next input chunk for coding via the callback
-   * @return true if any left input chunks to code, otherwise false
-   */
-  protected boolean hasNextInputs() {
-    return callback.hasNextInputs();
-  }
-
-  /**
-   * Get next input chunks from the input blocks for coding via the callback.
-   * @param inputBlocks
+   * Calculating a coding step
    * @return
    */
-  protected ECChunk[] getNextInputChunks(ECBlock[] inputBlocks) {
-    return callback.getNextInputChunks(inputBlocks);
-  }
-
-  /**
-   * Get next output chunks for from output blocks for coding via the callback.
-   * @param outputBlocks
-   * @return
-   */
-  protected ECChunk[] getNextOutputChunks(ECBlock[] outputBlocks) {
-    return callback.getNextOutputChunks(outputBlocks);
-  }
-
-  /**
-   * Notify the caller it's done coding the chunks via the callback.
-   * @param inputChunks
-   * @param outputChunks
-   */
-  protected void withCoded(ECChunk[] inputChunks, ECChunk[] outputChunks) {
-    callback.withCoded(inputChunks, outputChunks);
-  }
-
-  /**
-   * Notify the caller it's done coding the group via the callback, good chances
-   * to close input blocks and flush output blocks.
-   */
-  protected void postCoding(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
-    callback.postCoding(inputBlocks, outputBlocks);
-  }
+  protected abstract CodingStep perform();
 
   /**
    * Find out how many blocks are erased.

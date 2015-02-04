@@ -55,15 +55,6 @@ public interface ErasureCoder {
   public void setRawCoder(RawErasureCoder rawCoder);
 
   /**
-   * Set the callback or {@link ErasureCoderCallback} for the ErasureCoder. The
-   * callback will be mainly used to extract input chunks and output chunk buffers
-   * from blocks as the coder itself doesn't know how to do it.
-   *
-   * @param callback
-   */
-  public void setCallback(ErasureCoderCallback callback);
-
-  /**
    * Release the resources if any. Good chance to invoke RawErasureCoder#release.
    */
   public void release();

@@ -32,6 +32,6 @@ public interface ErasureEncoder extends ErasureCoder {
    *
    * @param group
    */
-  public void encode(ECGroup group);
+  public CodingStep encode(ECGroup group);
 
 }

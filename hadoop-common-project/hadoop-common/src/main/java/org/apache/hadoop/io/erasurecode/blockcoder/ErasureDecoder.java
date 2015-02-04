@@ -20,12 +20,14 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECGroup;
 
+import java.util.Iterator;
+
 /**
  * An erasure decoder to perform decoding given a group.
  *
  * It extends {@link ErasureCoder}.
  */
-public interface ErasureDecoder {
+public interface ErasureDecoder extends ErasureCoder {
 
   /**
    * Perform the decoding given a group. By default it will try the best to
@@ -33,6 +35,6 @@ public interface ErasureDecoder {
    *
    * @param group
    */
-  public void decode(ECGroup group);
+  public CodingStep decode(ECGroup group);
 
 }

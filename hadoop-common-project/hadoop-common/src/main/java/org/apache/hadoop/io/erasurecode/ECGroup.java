@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.io.erasurecode;
 
-import java.util.List;
-
 /**
  * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
  * {@link org.apache.hadoop.io.erasurecode.blockcoder.ErasureCoder}.
@@ -27,28 +25,35 @@ import java.util.List;
  *
  * Also see {@link ECSubGroup}.
  */
-public abstract class ECGroup extends ECSubGroup {
+public abstract class ECGroup {
+
+  private ECBlock[] dataBlocks;
+  private ECBlock[] parityBlocks;
 
   /**
    * A constructor specifying data blocks and parity blocks.
-   *
    * @param dataBlocks
    * @param parityBlocks
    */
   public ECGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    super(dataBlocks, parityBlocks);
+    this.dataBlocks = dataBlocks;
+    this.parityBlocks = parityBlocks;
   }
 
   /**
-   * Return sub-groups organized by codec specific logic. It's only for erasure
-   * coder handling. A codec should know about how to layout, form a group and
-   * divide a group into sub-groups, but codec caller won't. In most case there
-   * is only one sub-group, itself.
    *
-   * @return sub-groups
+   * @return data blocks
    */
-  public ECSubGroup[] getSubGroups() {
-    return new ECSubGroup[] {this};
+  public ECBlock[] getDataBlocks() {
+    return dataBlocks;
+  }
+
+  /**
+   *
+   * @return parity blocks
+   */
+  public ECBlock[] getParityBlocks() {
+    return parityBlocks;
   }
 
 }

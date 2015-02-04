@@ -17,7 +17,10 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.ECGroup;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
+
+import java.util.Iterator;
 
 /**
  * An abstract erasure decoder that's to be inherited by new decoders.
@@ -43,6 +46,11 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
    */
   protected RawErasureDecoder getRawDecoder() {
     return (RawErasureDecoder) getRawCoder();
+  }
+
+  @Override
+  public CodingStep decode(ECGroup group) {
+    return perform();
   }
 
 }
