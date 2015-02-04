@@ -22,15 +22,10 @@ import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.ECGroup;
 import org.apache.hadoop.io.erasurecode.TestCoderBase;
 
-import java.util.Random;
-
-import static org.junit.Assert.assertArrayEquals;
-
 /**
  * Erasure coder test base with utilities.
  */
 public abstract class TestErasureCoderBase extends TestCoderBase {
-  protected static Random RAND = new Random();
   protected Class<? extends ErasureEncoder> encoderClass;
   protected Class<? extends ErasureDecoder> decoderClass;
 
@@ -74,25 +69,30 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     ECGroup blockGroup = prepareBlockGroupForEncoding();
     // Backup all the source chunks for later recovering because some coders
     // may affect the source data.
-    TestBlock[] clonedDataBlocks = cloneDataBlocks((TestBlock[])
+    TestBlock[] clonedDataBlocks = cloneBlocksWithData((TestBlock[])
         blockGroup.getDataBlocks());
     // Make a copy of a strip for later comparing
-    byte[][] erasedSources = copyToBeErasedSources(clonedDataBlocks);
+    TestBlock[] toEraseBlocks = copyDataBlocksToErase(clonedDataBlocks);
 
-    encoder.encode(sourceChunks, parityChunks);
+    encoder.encode(blockGroup);
     // Erase the copied sources
-    eraseSources(clonedDataBlocks);
+    eraseSomeDataBlocks(clonedDataBlocks);
 
     //Decode
-    ECChunk[] inputChunks = prepareInputChunksForDecoding(clonedDataBlocks,
-        parityChunks);
-    ECChunk[] recoveredChunks =
-        prepareOutputChunksForDecoding();
+    blockGroup = new ECGroup(clonedDataBlocks, blockGroup.getParityBlocks());
+    TestBlock[] recoveredBlocks = prepareOutputBlocksForDecoding();
     ErasureDecoder decoder = createDecoder();
-    decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
+    decoder.decode(blockGroup);
 
     //Compare
-    compareAndVerify(erasedSources, recoveredChunks);
+    compareAndVerify(toEraseBlocks, recoveredBlocks);
+  }
+
+  protected void compareAndVerify(TestBlock[] erasedBlocks,
+                                  TestBlock[] recoveredBlocks) {
+    for (int i = 0; i < erasedBlocks.length; ++i) {
+      compareAndVerify(erasedBlocks[i].chunks, recoveredBlocks[i].chunks);
+    }
   }
 
   private ErasureEncoder createEncoder() {
@@ -126,6 +126,17 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     for (int i = 0; i < numDataUnits; i++) {
       dataBlocks[i] = generateDataBlock();
     }
+
+    return new ECGroup(dataBlocks, parityBlocks);
+  }
+
+  protected TestBlock[] prepareOutputBlocksForDecoding() {
+    TestBlock[] blocks = new TestBlock[erasedIndexes.length];
+    for (int i = 0; i < blocks.length; i++) {
+      blocks[i] = allocateOutputBlock();
+    }
+
+    return blocks;
   }
 
   protected ECBlock generateDataBlock() {
@@ -138,20 +149,30 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     return new TestBlock(chunks);
   }
 
-  protected ECBlock allocateParityBlock() {
+  protected TestBlock[] copyDataBlocksToErase(TestBlock[] dataBlocks) {
+    TestBlock[] copiedBlocks = new TestBlock[erasedIndexes.length];
+
+    for (int i = 0; i < erasedIndexes.length; ++i) {
+      copiedBlocks[i] = cloneBlockWithData(dataBlocks[erasedIndexes[i]]);
+    }
+
+    return copiedBlocks;
+  }
+
+  protected TestBlock allocateOutputBlock() {
     ECChunk[] chunks = new ECChunk[numChunksInBlock];
 
     for (int i = 0; i < numChunksInBlock; ++i) {
-      chunks[i] = allocateChunk();
+      chunks[i] = allocateOutputChunk();
     }
 
     return new TestBlock(chunks);
   }
 
-  protected static TestBlock[] cloneDataBlocks(TestBlock[] sourceBlocks) {
-    TestBlock[] results = new TestBlock[sourceBlocks.length];
-    for (int i = 0; i < sourceBlocks.length; ++i) {
-      results[i] = cloneDataBlock(sourceBlocks[i]);
+  protected static TestBlock[] cloneBlocksWithData(TestBlock[] blocks) {
+    TestBlock[] results = new TestBlock[blocks.length];
+    for (int i = 0; i < blocks.length; ++i) {
+      results[i] = cloneBlockWithData(blocks[i]);
     }
 
     return results;
@@ -162,13 +183,21 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param block
    * @return a new block
    */
-  protected static TestBlock cloneDataBlock(TestBlock block) {
-    ECChunk[] newChunks = new ECChunk[block.chunks.length];
-
-    for (int i = 0; i < newChunks.length; ++i) {
-      newChunks[i] = cloneDataChunk(block.chunks[i]);
-    }
+  protected static TestBlock cloneBlockWithData(TestBlock block) {
+    ECChunk[] newChunks = cloneChunksWithData(block.chunks);
 
     return new TestBlock(newChunks);
+  }
+
+  protected void eraseSomeDataBlocks(TestBlock[] dataBlocks) {
+    for (int i = 0; i < erasedIndexes.length; ++i) {
+      eraseDataFromBlock(dataBlocks, erasedIndexes[i]);
+    }
+  }
+
+  protected void eraseDataFromBlock(TestBlock[] blocks, int erasedIndex) {
+    TestBlock theBlock = blocks[erasedIndex];
+    eraseDataFromChunks(theBlock.chunks);
+    theBlock.setMissing(true);
   }
 }

@@ -15,42 +15,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.erasurecode;
+package org.apache.hadoop.io.erasurecode.blockcoder;
+
+import org.apache.hadoop.io.erasurecode.rawcoder.TestRawCoderBase;
+import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.XorRawEncoder;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.Random;
 
 /**
- * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
- * {@link org.apache.hadoop.io.erasurecode.blockcoder.ErasureCoder}.
- *
+ * Test XOR encoding and decoding.
  */
-public class ECGroup {
+public class TestXorErasureCoder extends TestErasureCoderBase {
 
-  private ECBlock[] dataBlocks;
-  private ECBlock[] parityBlocks;
+  @Before
+  public void setup() {
+    this.encoderClass = XorErasureEncoder.class;
+    this.decoderClass = XorErasureDecoder.class;
 
-  /**
-   * A constructor specifying data blocks and parity blocks.
-   * @param dataBlocks
-   * @param parityBlocks
-   */
-  public ECGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
-    this.dataBlocks = dataBlocks;
-    this.parityBlocks = parityBlocks;
+    this.numDataUnits = 10;
+    this.numParityUnits = 1;
+    this.erasedIndexes = new int[] {0};
   }
 
-  /**
-   *
-   * @return data blocks
-   */
-  public ECBlock[] getDataBlocks() {
-    return dataBlocks;
+  @Test
+  public void testCodingNoDirectBuffer() {
+    testCoding(false);
   }
 
-  /**
-   *
-   * @return parity blocks
-   */
-  public ECBlock[] getParityBlocks() {
-    return parityBlocks;
+  @Test
+  public void testCodingDirectBuffer() {
+    testCoding(true);
   }
 
 }

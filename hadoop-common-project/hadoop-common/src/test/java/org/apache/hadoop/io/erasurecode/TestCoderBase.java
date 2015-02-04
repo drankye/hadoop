@@ -34,12 +34,13 @@ public abstract class TestCoderBase {
   protected int[] erasedIndexes = new int[] {0};
   protected boolean usingDirectBuffer = true;
 
-  protected void compareAndVerify(byte[][] erasedSources,
-                                ECChunk[] recoveredChunks) {
-    byte[][] recoveredSources = ECChunk.toArray(recoveredChunks);
-    for (int i = 0; i < erasedSources.length; ++i) {
-      assertArrayEquals("Decoding and comparing failed.", erasedSources[i],
-          recoveredSources[i]);
+  protected void compareAndVerify(ECChunk[] erasedChunks,
+                                  ECChunk[] recoveredChunks) {
+    byte[][] erased = ECChunk.toArray(erasedChunks);
+    byte[][] recovered = ECChunk.toArray(recoveredChunks);
+    for (int i = 0; i < erasedChunks.length; ++i) {
+      assertArrayEquals("Decoding and comparing failed.", erased[i],
+          recovered[i]);
     }
   }
 
@@ -66,24 +67,30 @@ public abstract class TestCoderBase {
     return inputChunks;
   }
 
-  protected byte[][] copyToBeErasedSources(ECChunk[] sourceChunks) {
-    byte[][] copiedSources = new byte[erasedIndexes.length][];
+  protected ECChunk[] copyDataChunksToErase(ECChunk[] dataChunks) {
+    ECChunk[] copiedChunks = new ECChunk[erasedIndexes.length];
 
     for (int i = 0; i < erasedIndexes.length; ++i) {
-      copiedSources[i] = copyToBeErasedSource(sourceChunks, erasedIndexes[i]);
+      copiedChunks[i] = cloneChunkWithData(dataChunks[erasedIndexes[i]]);
     }
 
-    return copiedSources;
+    return copiedChunks;
   }
 
-  protected void eraseSources(ECChunk[] sourceChunks) {
+  protected void eraseSomeDataBlocks(ECChunk[] dataChunks) {
     for (int i = 0; i < erasedIndexes.length; ++i) {
-      eraseSource(sourceChunks, erasedIndexes[i]);
+      eraseDataFromChunk(dataChunks[erasedIndexes[i]]);
     }
   }
 
-  protected void eraseSource(ECChunk[] sourceChunks, int erasedIndex) {
-    ByteBuffer chunkBuffer = sourceChunks[erasedIndex].getBuffer();
+  protected void eraseDataFromChunks(ECChunk[] chunks) {
+    for (int i = 0; i < chunks.length; ++i) {
+      eraseDataFromChunk(chunks[i]);
+    }
+  }
+
+  protected void eraseDataFromChunk(ECChunk chunk) {
+    ByteBuffer chunkBuffer = chunk.getBuffer();
     // erase the data
     chunkBuffer.position(0);
     for (int i = 0; i < chunkSize; ++i) {
@@ -92,21 +99,10 @@ public abstract class TestCoderBase {
     chunkBuffer.flip();
   }
 
-  protected byte[] copyToBeErasedSource(ECChunk[] sourceChunks, int erasedIndex) {
-    byte[] copiedData = new byte[chunkSize];
-    ByteBuffer chunkBuffer = sourceChunks[erasedIndex].getBuffer();
-    // copy data out
-    chunkBuffer.position(0);
-    chunkBuffer.get(copiedData);
-    chunkBuffer.position(0);
-
-    return copiedData;
-  }
-
-  protected static ECChunk[] cloneDataChunks(ECChunk[] sourceChunks) {
-    ECChunk[] results = new ECChunk[sourceChunks.length];
-    for (int i = 0; i < sourceChunks.length; ++i) {
-      results[i] = cloneDataChunk(sourceChunks[i]);
+  protected static ECChunk[] cloneChunksWithData(ECChunk[] chunks) {
+    ECChunk[] results = new ECChunk[chunks.length];
+    for (int i = 0; i < chunks.length; ++i) {
+      results[i] = cloneChunkWithData(chunks[i]);
     }
 
     return results;
@@ -117,7 +113,7 @@ public abstract class TestCoderBase {
    * @param chunk
    * @return a new chunk
    */
-  protected static ECChunk cloneDataChunk(ECChunk chunk) {
+  protected static ECChunk cloneChunkWithData(ECChunk chunk) {
     ByteBuffer srcBuffer = chunk.getBuffer();
     ByteBuffer destBuffer;
 
@@ -137,13 +133,13 @@ public abstract class TestCoderBase {
     return new ECChunk(destBuffer);
   }
 
-  protected ECChunk allocateChunk() {
-    ByteBuffer buffer = allocateBuffer();
+  protected ECChunk allocateOutputChunk() {
+    ByteBuffer buffer = allocateOutputBuffer();
 
     return new ECChunk(buffer);
   }
 
-  protected ByteBuffer allocateBuffer() {
+  protected ByteBuffer allocateOutputBuffer() {
     ByteBuffer buffer = usingDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) :
         ByteBuffer.allocate(chunkSize);
 
@@ -153,22 +149,22 @@ public abstract class TestCoderBase {
   protected ECChunk[] prepareOutputChunksForDecoding() {
     ECChunk[] chunks = new ECChunk[erasedIndexes.length];
     for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateChunk();
+      chunks[i] = allocateOutputChunk();
     }
 
     return chunks;
   }
 
-  protected ECChunk[] prepareParityChunks() {
+  protected ECChunk[] prepareParityChunksForEncoding() {
     ECChunk[] chunks = new ECChunk[numParityUnits];
     for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateChunk();
+      chunks[i] = allocateOutputChunk();
     }
 
     return chunks;
   }
 
-  protected ECChunk[] prepareSourceChunks() {
+  protected ECChunk[] prepareDataChunksForEncoding() {
     ECChunk[] chunks = new ECChunk[numDataUnits];
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = generateDataChunk();
@@ -178,7 +174,7 @@ public abstract class TestCoderBase {
   }
 
   protected ECChunk generateDataChunk() {
-    ByteBuffer buffer = allocateBuffer();
+    ByteBuffer buffer = allocateOutputBuffer();
     for (int i = 0; i < chunkSize; i++) {
       buffer.put((byte) RAND.nextInt(256));
     }

@@ -49,6 +49,11 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   }
 
   @Override
+  public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
+    rawCoder.initialize(numDataUnits, numParityUnits, chunkSize);
+  }
+
+  @Override
   public void setRawCoder(RawErasureCoder rawCoder) {
     this.rawCoder = rawCoder;
   }
