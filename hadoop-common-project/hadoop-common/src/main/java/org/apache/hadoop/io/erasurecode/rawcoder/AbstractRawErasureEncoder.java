@@ -75,7 +75,7 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
     /**
      * Note callers may pass byte array, or ByteBuffer via ECChunk according
-     * to how ECChunk is created. Some implementations of coder use byte array
+     * to how ECChunk is created. Some implementations of blockcoder use byte array
      * (ex: pure Java), some use native ByteBuffer (ex: ISA-L), all for the
      * better performance.
      */
