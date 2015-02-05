@@ -33,24 +33,11 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
 
   protected static class TestBlock extends ECBlock {
     private ECChunk[] chunks;
-    private int chkIdx = 0;
 
     // For simple, just assume the block have the chunks already ready.
     // In practice we need to read/or chunks from/to the block.
     public TestBlock(ECChunk[] chunks) {
       this.chunks = chunks;
-    }
-
-    // This is like reading/writing a chunk from/to a block until end.
-    public ECChunk nextChunk() {
-      if (hasNext()) {
-        return chunks[chkIdx];
-      }
-      return null;
-    }
-
-    public boolean hasNext() {
-      return chkIdx < chunks.length;
     }
   }
 
@@ -74,18 +61,70 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     // Make a copy of a strip for later comparing
     TestBlock[] toEraseBlocks = copyDataBlocksToErase(clonedDataBlocks);
 
-    encoder.encode(blockGroup);
+    CodingStep codingStep = encoder.encode(blockGroup);
+    performEncodingStep(codingStep);
     // Erase the copied sources
     eraseSomeDataBlocks(clonedDataBlocks);
 
     //Decode
     blockGroup = new ECGroup(clonedDataBlocks, blockGroup.getParityBlocks());
-    TestBlock[] recoveredBlocks = prepareOutputBlocksForDecoding();
     ErasureDecoder decoder = createDecoder();
-    decoder.decode(blockGroup);
+    codingStep = decoder.decode(blockGroup);
+    TestBlock[] recoveredBlocks = performDecodingStep(codingStep);
 
     //Compare
     compareAndVerify(toEraseBlocks, recoveredBlocks);
+  }
+
+  private void performEncodingStep(CodingStep codingStep) {
+    ECBlock[] inputBlocks = codingStep.getInputBlocks();
+    ECBlock[] outputBlocks = codingStep.getOutputBlocks();
+    ECChunk[] inputChunks = new ECChunk[inputBlocks.length];
+    ECChunk[] outputChunks = new ECChunk[outputBlocks.length];
+
+    for (int i = 0; i < numChunksInBlock; ++i) {
+      for (int j = 0; j < inputBlocks.length; ++j) {
+        inputChunks[j] = ((TestBlock) inputBlocks[j]).chunks[i];
+      }
+
+      for (int j = 0; j < outputBlocks.length; ++j) {
+        outputChunks[j] = ((TestBlock) outputBlocks[j]).chunks[i];
+      }
+
+      codingStep.performCoding(inputChunks, outputChunks);
+    }
+
+    codingStep.finish();
+  }
+
+  private TestBlock[] performDecodingStep(CodingStep codingStep) {
+    ECBlock[] inputBlocks = codingStep.getInputBlocks();
+    ECBlock[] outputBlocks = codingStep.getOutputBlocks();
+
+    ECChunk[] inputChunks = new ECChunk[inputBlocks.length];
+    ECChunk[] outputChunks = new ECChunk[outputBlocks.length];
+
+    TestBlock[] recoveredBlocks = new TestBlock[outputBlocks.length];
+    for (int i = 0; i < recoveredBlocks.length; ++i) {
+      recoveredBlocks[i] = new TestBlock(new ECChunk[numChunksInBlock]);
+    }
+
+    for (int i = 0; i < numChunksInBlock; ++i) {
+      for (int j = 0; j < inputBlocks.length; ++j) {
+        inputChunks[j] = ((TestBlock) inputBlocks[j]).chunks[i];
+      }
+
+      for (int j = 0; j < outputBlocks.length; ++j) {
+        outputChunks[j] = allocateOutputChunk();
+        recoveredBlocks[j].chunks[i] = outputChunks[j];
+      }
+
+      codingStep.performCoding(inputChunks, outputChunks);
+    }
+
+    codingStep.finish();
+
+    return recoveredBlocks;
   }
 
   protected void compareAndVerify(TestBlock[] erasedBlocks,
@@ -120,11 +159,15 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
   }
 
   protected ECGroup prepareBlockGroupForEncoding() {
-    ECBlock[] dataBlocks = new ECBlock[numDataUnits];
-    ECBlock[] parityBlocks = new ECBlock[numParityUnits];
+    ECBlock[] dataBlocks = new TestBlock[numDataUnits];
+    ECBlock[] parityBlocks = new TestBlock[numParityUnits];
 
     for (int i = 0; i < numDataUnits; i++) {
       dataBlocks[i] = generateDataBlock();
+    }
+
+    for (int i = 0; i < numParityUnits; i++) {
+      parityBlocks[i] = allocateOutputBlock();
     }
 
     return new ECGroup(dataBlocks, parityBlocks);

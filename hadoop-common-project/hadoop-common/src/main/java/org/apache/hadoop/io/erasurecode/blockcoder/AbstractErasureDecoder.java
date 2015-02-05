@@ -125,9 +125,10 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     }
 
     int[] erasedIndexes = new int[numErased];
+    int j = 0;
     for (int i = 0; i < inputBlocks.length; i++) {
       if (inputBlocks[i].isErased()) {
-        erasedIndexes[i] = i;
+        erasedIndexes[j ++] = i;
       }
     }
 
