@@ -17,12 +17,6 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.erasurecode.ECGroup;
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
-
-import java.util.Iterator;
-
 /**
  * A common class of basic facilities to be shared by encoder and decoder
  *

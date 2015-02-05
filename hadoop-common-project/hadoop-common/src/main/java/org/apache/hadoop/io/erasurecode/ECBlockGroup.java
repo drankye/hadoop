@@ -18,11 +18,9 @@
 package org.apache.hadoop.io.erasurecode;
 
 /**
- * A group of blocks or {@link ECBlock} incurred in an erasure coding task for
- * {@link org.apache.hadoop.io.erasurecode.blockcoder.ErasureCoder}.
- *
+ * A group of blocks or {@link ECBlock} incurred in an erasure coding task.
  */
-public class ECGroup {
+public class ECBlockGroup {
 
   private ECBlock[] dataBlocks;
   private ECBlock[] parityBlocks;
@@ -32,7 +30,7 @@ public class ECGroup {
    * @param dataBlocks
    * @param parityBlocks
    */
-  public ECGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
+  public ECBlockGroup(ECBlock[] dataBlocks, ECBlock[] parityBlocks) {
     this.dataBlocks = dataBlocks;
     this.parityBlocks = parityBlocks;
   }

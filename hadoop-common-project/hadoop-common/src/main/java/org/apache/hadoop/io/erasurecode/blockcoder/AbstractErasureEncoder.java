@@ -18,7 +18,7 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.erasurecode.ECGroup;
+import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 
 /**
  * An abstract erasure encoder that's to be inherited by new encoders.
@@ -29,17 +29,22 @@ public abstract class AbstractErasureEncoder extends AbstractErasureCoder
     implements ErasureEncoder {
 
   @Override
-  public CodingStep encode(ECGroup group) {
-    return performEncoding(group);
+  public ErasureCodingStep encode(ECBlockGroup blockGroup) {
+    return performEncoding(blockGroup);
   }
 
-  protected abstract CodingStep performEncoding(ECGroup group);
+  /**
+   * Perform encoding against a block group.
+   * @param blockGroup
+   * @return encoding step for caller to do the real work
+   */
+  protected abstract ErasureCodingStep performEncoding(ECBlockGroup blockGroup);
 
-  protected ECBlock[] getInputBlocks(ECGroup blockGroup) {
+  protected ECBlock[] getInputBlocks(ECBlockGroup blockGroup) {
     return blockGroup.getDataBlocks();
   }
 
-  protected ECBlock[] getOutputBlocks(ECGroup blockGroup) {
+  protected ECBlock[] getOutputBlocks(ECBlockGroup blockGroup) {
     return blockGroup.getParityBlocks();
   }
 }

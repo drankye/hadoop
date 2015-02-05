@@ -2,12 +2,13 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
 
-public abstract class AbstractCodingStep implements CodingStep {
+public abstract class AbstractErasureCodingStep implements ErasureCodingStep {
 
   private ECBlock[] inputBlocks;
   private ECBlock[] outputBlocks;
 
-  public AbstractCodingStep(ECBlock[] inputBlocks, ECBlock[] outputBlocks) {
+  public AbstractErasureCodingStep(ECBlock[] inputBlocks,
+                                   ECBlock[] outputBlocks) {
     this.inputBlocks = inputBlocks;
     this.outputBlocks = outputBlocks;
   }

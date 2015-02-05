@@ -21,9 +21,14 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
  * An erasure coder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
  * each step,it calculates necessary input blocks to read chunks from and output
- * parity blocks to write parity chunks into from the group; then extracts chunks
- * from inputs and invokes underlying RawErasureCoder to encode or decode until
- * the input blocks are exhausted.
+ * parity blocks to write parity chunks into from the group. It also takes care
+ * of appropriate raw coder to use for the step. And encapsulates all the
+ * necessary info (input blocks, output blocks and raw coder) into a step
+ * represented by {@link ErasureCodingStep}. ErasureCoder callers can use the
+ * step to do the real work with retrieved input and output chunks.
+ *
+ * Note, currently only one coding step is supported. Will support complex cases
+ * of multiple coding steps.
  *
  */
 public interface ErasureCoder {

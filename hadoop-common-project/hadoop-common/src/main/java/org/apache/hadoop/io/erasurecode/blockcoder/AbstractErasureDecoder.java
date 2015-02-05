@@ -18,7 +18,7 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
-import org.apache.hadoop.io.erasurecode.ECGroup;
+import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 
 /**
  * An abstract erasure decoder that's to be inherited by new decoders.
@@ -29,19 +29,24 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     implements ErasureDecoder {
 
   @Override
-  public CodingStep decode(ECGroup group) {
-    return performDecoding(group);
+  public ErasureCodingStep decode(ECBlockGroup blockGroup) {
+    return performDecoding(blockGroup);
   }
 
-  protected abstract CodingStep performDecoding(ECGroup group);
+  /**
+   * Perform decoding against a block blockGroup.
+   * @param blockGroup
+   * @return decoding step for caller to do the real work
+   */
+  protected abstract ErasureCodingStep performDecoding(ECBlockGroup blockGroup);
 
   /**
    * We have all the data blocks and parity blocks as input blocks for
-   * recovering by default.
+   * recovering by default. It's codec specific
    * @param blockGroup
    * @return
    */
-  protected ECBlock[] getInputBlocks(ECGroup blockGroup) {
+  protected ECBlock[] getInputBlocks(ECBlockGroup blockGroup) {
     ECBlock[] inputBlocks = new ECBlock[getNumParityUnits()
         + getNumDataUnits()];
 
@@ -62,7 +67,7 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
    * @param blockGroup
    * @return
    */
-  protected ECBlock[] getOutputBlocks(ECGroup blockGroup) {
+  protected ECBlock[] getOutputBlocks(ECBlockGroup blockGroup) {
     ECBlock[] outputBlocks = new ECBlock[getNumErasedBlocks(blockGroup)];
 
     int idx = 0;
@@ -81,7 +86,12 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     return outputBlocks;
   }
 
-  protected int getNumErasedBlocks(ECGroup blockGroup) {
+  /**
+   * Get the number of erased blocks in the block group.
+   * @param blockGroup
+   * @return number of erased blocks
+   */
+  protected int getNumErasedBlocks(ECBlockGroup blockGroup) {
     int num = 0;
     for (int i = 0; i < getNumParityUnits(); i++) {
       if (blockGroup.getParityBlocks()[i].isErased()) {

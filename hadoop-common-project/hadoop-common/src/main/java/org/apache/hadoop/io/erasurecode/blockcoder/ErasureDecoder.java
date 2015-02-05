@@ -18,23 +18,24 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 
-import org.apache.hadoop.io.erasurecode.ECGroup;
-
-import java.util.Iterator;
+import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 
 /**
- * An erasure decoder to perform decoding given a group.
+ * Erasure decoder interface to perform decoding given a block group.
  *
  * It extends {@link ErasureCoder}.
  */
 public interface ErasureDecoder extends ErasureCoder {
 
   /**
-   * Perform the decoding given a group. By default it will try the best to
+   * Perform the decoding given a blockGroup. By default it will try the best to
    * attempt to recover all the missing blocks according to the codec logic.
    *
-   * @param group
+   * Note, currently only one coding step is supported. Will support complex
+   * cases of multiple coding steps.
+   *
+   * @param blockGroup
    */
-  public CodingStep decode(ECGroup group);
+  public ErasureCodingStep decode(ECBlockGroup blockGroup);
 
 }

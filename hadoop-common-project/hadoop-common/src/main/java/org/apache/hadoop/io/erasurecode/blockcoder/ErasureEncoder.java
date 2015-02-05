@@ -17,21 +17,23 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.erasurecode.ECGroup;
+import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 
 /**
- * An erasure encoder to perform encoding given a group.
+ * Erasure encoder interface to perform encoding given a block group.
  *
  * It extends {@link ErasureCoder}.
  */
 public interface ErasureEncoder extends ErasureCoder {
 
   /**
-   * Perform the encoding given a group. It will generate all the necessary
-   * parity blocks according to the codec logic.
+   * Calculate the encoding steps given a block blockGroup.
    *
-   * @param group
+   * Note, currently only one coding step is supported. Will support complex
+   * cases of multiple coding steps.
+   *
+   * @param blockGroup
    */
-  public CodingStep encode(ECGroup group);
+  public ErasureCodingStep encode(ECBlockGroup blockGroup);
 
 }

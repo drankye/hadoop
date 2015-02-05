@@ -31,7 +31,9 @@ public abstract class TestCoderBase {
   protected int numDataUnits;
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
-  protected int[] erasedIndexes = new int[] {0};
+  // Indexes of erased data units. Will also support test of erasing
+  // parity units
+  protected int[] erasedDataIndexes = new int[] {0};
   protected boolean usingDirectBuffer = true;
 
   protected void compareAndVerify(ECChunk[] erasedChunks,
@@ -45,9 +47,9 @@ public abstract class TestCoderBase {
   }
 
   protected int[] getErasedIndexesForDecoding() {
-    int[] erasedIndexesForDecoding = new int[erasedIndexes.length];
-    for (int i = 0; i < erasedIndexes.length; ++i) {
-      erasedIndexesForDecoding[i] = erasedIndexes[i] + numParityUnits;
+    int[] erasedIndexesForDecoding = new int[erasedDataIndexes.length];
+    for (int i = 0; i < erasedDataIndexes.length; ++i) {
+      erasedIndexesForDecoding[i] = erasedDataIndexes[i] + numParityUnits;
     }
     return erasedIndexesForDecoding;
   }
@@ -68,18 +70,19 @@ public abstract class TestCoderBase {
   }
 
   protected ECChunk[] copyDataChunksToErase(ECChunk[] dataChunks) {
-    ECChunk[] copiedChunks = new ECChunk[erasedIndexes.length];
+    ECChunk[] copiedChunks = new ECChunk[erasedDataIndexes.length];
 
-    for (int i = 0; i < erasedIndexes.length; ++i) {
-      copiedChunks[i] = cloneChunkWithData(dataChunks[erasedIndexes[i]]);
+    int j = 0;
+    for (int i = 0; i < erasedDataIndexes.length; ++i) {
+      copiedChunks[j ++] = cloneChunkWithData(dataChunks[erasedDataIndexes[i]]);
     }
 
     return copiedChunks;
   }
 
   protected void eraseSomeDataBlocks(ECChunk[] dataChunks) {
-    for (int i = 0; i < erasedIndexes.length; ++i) {
-      eraseDataFromChunk(dataChunks[erasedIndexes[i]]);
+    for (int i = 0; i < erasedDataIndexes.length; ++i) {
+      eraseDataFromChunk(dataChunks[erasedDataIndexes[i]]);
     }
   }
 
@@ -140,14 +143,14 @@ public abstract class TestCoderBase {
   }
 
   protected ByteBuffer allocateOutputBuffer() {
-    ByteBuffer buffer = usingDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) :
-        ByteBuffer.allocate(chunkSize);
+    ByteBuffer buffer = usingDirectBuffer ?
+        ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
 
     return buffer;
   }
 
   protected ECChunk[] prepareOutputChunksForDecoding() {
-    ECChunk[] chunks = new ECChunk[erasedIndexes.length];
+    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length];
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = allocateOutputChunk();
     }

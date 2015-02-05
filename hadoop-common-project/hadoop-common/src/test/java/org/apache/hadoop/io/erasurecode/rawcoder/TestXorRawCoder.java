@@ -35,7 +35,8 @@ public class TestXorRawCoder extends TestRawCoderBase {
 
     this.numDataUnits = 10;
     this.numParityUnits = 1;
-    this.erasedIndexes = new int[] {0};
+
+    this.erasedDataIndexes = new int[] {0};
   }
 
   @Test

@@ -2,20 +2,20 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECBlockGroup;
+import org.apache.hadoop.io.erasurecode.rawcoder.JavaRSRawDecoder;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
-import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
 
 /**
- * Xor erasure decoder that decodes a block group.
+ * ReedSolomon erasure decoder that decodes a block group.
  *
  * It implements {@link ErasureDecoder}.
  */
-public class XorErasureDecoder extends AbstractErasureDecoder {
+public class RSErasureDecoder extends AbstractErasureDecoder {
 
   @Override
   protected ErasureCodingStep performDecoding(final ECBlockGroup blockGroup) {
-    // May be configured
-    RawErasureDecoder rawDecoder = new XorRawDecoder();
+    // TODO: should be configured, either JavaRSRawDecoder or IsaRSRawDecoder
+    RawErasureDecoder rawDecoder = new JavaRSRawDecoder();
     rawDecoder.initialize(getNumDataUnits(),
         getNumParityUnits(), getChunkSize());
 
