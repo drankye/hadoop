@@ -17,10 +17,8 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECGroup;
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
-
-import java.util.Iterator;
 
 /**
  * An abstract erasure encoder that's to be inherited by new encoders.
@@ -30,27 +28,18 @@ import java.util.Iterator;
 public abstract class AbstractErasureEncoder extends AbstractErasureCoder
     implements ErasureEncoder {
 
-  /**
-   * Constructor providing with a rawEncoder. The raw encoder can be determined by
-   * configuration or by default for a codec.
-   *
-   * @param rawEncoder
-   */
-  public AbstractErasureEncoder(RawErasureEncoder rawEncoder) {
-    super(rawEncoder);
-  }
-
-  /**
-   * Get the underlying raw encoder.
-   * @return the underlying raw encoder
-   */
-  protected RawErasureEncoder getRawEncoder() {
-    return (RawErasureEncoder) getRawCoder();
-  }
-
   @Override
   public CodingStep encode(ECGroup group) {
-    return perform();
+    return performEncoding(group);
   }
 
+  protected abstract CodingStep performEncoding(ECGroup group);
+
+  protected ECBlock[] getInputBlocks(ECGroup blockGroup) {
+    return blockGroup.getDataBlocks();
+  }
+
+  protected ECBlock[] getOutputBlocks(ECGroup blockGroup) {
+    return blockGroup.getParityBlocks();
+  }
 }

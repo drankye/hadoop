@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
+import org.apache.hadoop.io.erasurecode.ECGroup;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
 
 import java.util.Iterator;
@@ -29,109 +30,40 @@ import java.util.Iterator;
  */
 public abstract class AbstractErasureCoder implements ErasureCoder {
 
-  private RawErasureCoder rawCoder;
+  private int numDataUnits;
+  private int numParityUnits;
+  private int chunkSize;
 
-  /**
-   * Constructor providing with a rawCoder. The raw coder can be determined by
-   * configuration or by default for a codec.
-   *
-   * @param rawCoder
-   */
-  public AbstractErasureCoder(RawErasureCoder rawCoder) {
-    setRawCoder(rawCoder);
-  }
-
-  /**
-   * Default constructor.
-   */
-  public AbstractErasureCoder() {
-    // Nothing to do
+  @Override
+  public void initialize(int numDataUnits, int numParityUnits,
+                         int chunkSize) {
+    this.numDataUnits = numDataUnits;
+    this.numParityUnits = numParityUnits;
+    this.chunkSize = chunkSize;
   }
 
   @Override
-  public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
-    rawCoder.initialize(numDataUnits, numParityUnits, chunkSize);
+  public int getNumDataUnits() {
+    return numDataUnits;
   }
 
   @Override
-  public void setRawCoder(RawErasureCoder rawCoder) {
-    this.rawCoder = rawCoder;
+  public int getNumParityUnits() {
+    return numParityUnits;
   }
 
-  /**
-   * Get the underlying raw blockcoder.
-   * @return the underlying raw blockcoder
-   */
-  protected RawErasureCoder getRawCoder() {
-    return rawCoder;
+  @Override
+  public int getChunkSize() {
+    return chunkSize;
   }
 
-  /**
-   * Calculating a coding step
-   * @return
-   */
-  protected abstract CodingStep perform();
-
-  /**
-   * Find out how many blocks are erased.
-   * @param inputBlocks all the input blocks
-   * @return number of erased blocks
-   */
-  protected static int getNumErasedBlocks(ECBlock[] inputBlocks) {
-    int numErased = 0;
-    for (int i = 0; i < inputBlocks.length; i++) {
-      if (inputBlocks[i].isMissing()) {
-        numErased ++;
-      }
-    }
-
-    return numErased;
-  }
-
-  /**
-   * Get indexes of erased blocks from inputBlocks
-   * @param inputBlocks
-   * @return indexes of erased blocks from inputBlocks
-   */
-  protected int[] getErasedIndexes(ECBlock[] inputBlocks) {
-    int numErased = getNumErasedBlocks(inputBlocks);
-    if (numErased == 0) {
-      return new int[0];
-    }
-
-    int[] erasedIndexes = new int[numErased];
-    for (int i = 0; i < inputBlocks.length; i++) {
-      if (inputBlocks[i].isMissing()) {
-        erasedIndexes[i] = i;
-      }
-    }
-
-    return erasedIndexes;
-  }
-
-  /**
-   * Get erased input blocks from inputBlocks
-   * @param inputBlocks
-   * @return an array of erased blocks from inputBlocks
-   */
-  protected ECBlock[] getErasedBlocks(ECBlock[] inputBlocks) {
-    int numErased = getNumErasedBlocks(inputBlocks);
-    if (numErased == 0) {
-      return new ECBlock[0];
-    }
-
-    ECBlock[] erasedBlocks = new ECBlock[numErased];
-    for (int i = 0; i < inputBlocks.length; i++) {
-      if (inputBlocks[i].isMissing()) {
-        erasedBlocks[i] = inputBlocks[i];
-      }
-    }
-
-    return erasedBlocks;
+  @Override
+  public boolean preferNativeBuffer() {
+    return false;
   }
 
   @Override
   public void release() {
-    rawCoder.release();
+    // Nothing to do by default
   }
 }

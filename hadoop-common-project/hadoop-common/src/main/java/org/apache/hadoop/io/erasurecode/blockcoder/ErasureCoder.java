@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
-
 /**
  * An erasure coder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
@@ -27,19 +25,11 @@ import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder;
  * from inputs and invokes underlying RawErasureCoder to encode or decode until
  * the input blocks are exhausted.
  *
- * As to how to extract input chunks from input blocks and output chunk buffers
- * from output blocks, it leverages an {@link ErasureCoderCallback} for decoupling,
- * as itself doesn't know to do it since it depends on the context in which it's
- * called. In HDFS, it can be HDFS client (in stripping case) or DataNode (in
- * offline transforming case).
  */
 public interface ErasureCoder {
 
   /**
-   * Initialize with the important parameters for the code. These parameters will
-   * be used to initialize the underlying raw erasure coder
-   * {@link org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder}.
-   *
+   * Initialize with the important parameters for the code.
    * @param numDataUnits how many data inputs for the coding
    * @param numParityUnits how many parity outputs the coding generates
    * @param chunkSize the size of the input/output buffer
@@ -47,12 +37,33 @@ public interface ErasureCoder {
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize);
 
   /**
-   * Set the underlying raw erasure coder or
-   * {@link org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoder}
-   *
-   * @param rawCoder
+   * The number of data input units for the coding. A unit can be a byte,
+   * chunk or buffer or even a block.
+   * @return count of data input units
    */
-  public void setRawCoder(RawErasureCoder rawCoder);
+  public int getNumDataUnits();
+
+  /**
+   * The number of parity output units for the coding. A unit can be a byte,
+   * chunk, buffer or even a block.
+   * @return count of parity output units
+   */
+  public int getNumParityUnits();
+
+  /**
+   * Chunk buffer size for the input/output
+   * @return chunk buffer size
+   */
+  public int getChunkSize();
+
+  /**
+   * Tell if native or off-heap buffer is preferred or not. It's for callers to
+   * decide how to allocate coding chunk buffers, either on heap or off heap.
+   * It will return false by default.
+   * @return true if native buffer is preferred for performance consideration,
+   * otherwise false.
+   */
+  public boolean preferNativeBuffer();
 
   /**
    * Release the resources if any. Good chance to invoke RawErasureCoder#release.

@@ -52,16 +52,16 @@ public abstract class TestCoderBase {
     return erasedIndexesForDecoding;
   }
 
-  protected ECChunk[] prepareInputChunksForDecoding(ECChunk[] sourceChunks,
+  protected ECChunk[] prepareInputChunksForDecoding(ECChunk[] dataChunks,
                                                   ECChunk[] parityChunks) {
-    ECChunk[] inputChunks = new ECChunk[numDataUnits + numParityUnits];
+    ECChunk[] inputChunks = new ECChunk[numParityUnits + numDataUnits];
     
     int idx = 0;
     for (int i = 0; i < numParityUnits; i++) {
       inputChunks[idx ++] = parityChunks[i];
     }
     for (int i = 0; i < numDataUnits; i++) {
-      inputChunks[idx ++] = sourceChunks[i];
+      inputChunks[idx ++] = dataChunks[i];
     }
     
     return inputChunks;

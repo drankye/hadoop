@@ -24,23 +24,23 @@ package org.apache.hadoop.io.erasurecode;
 public class ECBlock {
 
   private boolean isParity;
-  private boolean isMissing;
+  private boolean isErased;
 
   /**
-   * A default constructor. isParity and isMissing are false by default.
+   * A default constructor. isParity and isErased are false by default.
    */
   public ECBlock() {
     this(false, false);
   }
 
   /**
-   * A constructor specifying isParity and isMissing.
+   * A constructor specifying isParity and isErased.
    * @param isParity
-   * @param isMissing
+   * @param isErased
    */
-  public ECBlock(boolean isParity, boolean isMissing) {
+  public ECBlock(boolean isParity, boolean isErased) {
     this.isParity = isParity;
-    this.isMissing = isMissing;
+    this.isErased = isErased;
   }
 
   /**
@@ -55,8 +55,8 @@ public class ECBlock {
    * Set true if the block is missing.
    * @param isMissing
    */
-  public void setMissing(boolean isMissing) {
-    this.isMissing = isMissing;
+  public void setErased(boolean isMissing) {
+    this.isErased = isMissing;
   }
 
   /**
@@ -71,8 +71,8 @@ public class ECBlock {
    *
    * @return true if it's missing, otherwise false
    */
-  public boolean isMissing() {
-    return isMissing;
+  public boolean isErased() {
+    return isErased;
   }
 
 }

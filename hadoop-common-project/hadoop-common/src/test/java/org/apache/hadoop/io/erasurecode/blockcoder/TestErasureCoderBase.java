@@ -198,6 +198,6 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
   protected void eraseDataFromBlock(TestBlock[] blocks, int erasedIndex) {
     TestBlock theBlock = blocks[erasedIndex];
     eraseDataFromChunks(theBlock.chunks);
-    theBlock.setMissing(true);
+    theBlock.setErased(true);
   }
 }
