@@ -285,7 +285,7 @@ public class ApplicationMasterService extends AbstractService implements
       RegisterApplicationMasterResponse response = recordFactory
           .newRecordInstance(RegisterApplicationMasterResponse.class);
       response.setMaximumResourceCapability(rScheduler
-          .getMaximumResourceCapability());
+          .getMaximumResourceCapability(app.getQueue()));
       response.setApplicationACLs(app.getRMAppAttempt(applicationAttemptId)
           .getSubmissionContext().getAMContainerSpec().getApplicationACLs());
       response.setQueue(app.getQueue());
@@ -488,10 +488,11 @@ public class ApplicationMasterService extends AbstractService implements
       RMApp app =
           this.rmContext.getRMApps().get(applicationId);
       
-      // set label expression for Resource Requests
+      // set label expression for Resource Requests if resourceName=ANY 
       ApplicationSubmissionContext asc = app.getApplicationSubmissionContext();
       for (ResourceRequest req : ask) {
-        if (null == req.getNodeLabelExpression()) {
+        if (null == req.getNodeLabelExpression()
+            && ResourceRequest.ANY.equals(req.getResourceName())) {
           req.setNodeLabelExpression(asc.getNodeLabelExpression());
         }
       }

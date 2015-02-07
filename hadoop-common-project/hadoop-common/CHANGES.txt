@@ -19,6 +19,11 @@ Trunk (Unreleased)
 
     HADOOP-11353. Add support for .hadooprc (aw)
 
+    HADOOP-9044. add FindClass main class to provide classpath checking
+    of installations (Steve Loughran via aw)
+
+    HADOOP-11485. Pluggable shell integration (aw)
+
   IMPROVEMENTS
 
     HADOOP-8017. Configure hadoop-main pom to get rid of M2E plugin execution
@@ -145,6 +150,20 @@ Trunk (Unreleased)
 
     HADOOP-11058. Missing HADOOP_CONF_DIR generates strange results
     (Masatake Iwasaki via aw)
+
+    HADOOP-11460. Deprecate shell vars (John Smith via aw)
+
+    HADOOP-11346. Rewrite sls/rumen to use new shell framework (John Smith
+    via aw)
+
+    HADOOP-10976. moving the source code of hadoop-tools docs to the
+    directory under hadoop-tools (Masatake Iwasaki via aw)
+
+    HADOOP-7713. dfs -count -q should label output column (Jonathan Allen
+    via aw)
+
+    HADOOP-6964. Allow compact property description in xml (Kengo Seki
+    via aw)
 
   BUG FIXES
 
@@ -386,6 +405,9 @@ Release 2.7.0 - UNRELEASED
     HADOOP-11490. Expose truncate API via FileSystem and shell command.
     (Milan Desai via shv)
 
+    HADOOP-11045. Introducing a tool to detect flaky tests of hadoop jenkins testing
+    job. (Yongjun Zhang and Todd Lipcon via ozawa)
+
   IMPROVEMENTS
 
     HADOOP-11483. HardLink.java should use the jdk7 createLink method (aajisaka)
@@ -524,6 +546,24 @@ Release 2.7.0 - UNRELEASED
     HADOOP-11498. Bump the version of HTrace to 3.1.0-incubating (Masatake
     Iwasaki via Colin P. McCabe)
 
+    HADOOP-11442. hadoop-azure: Create test jar.
+    (Shashank Khandelwal via cnauroth)
+
+    HADOOP-11544. Remove unused configuration keys for tracing. (Masatake
+    Iwasaki via aajisaka)
+
+    HADOOP-11492. Bump up curator version to 2.7.1. (Arun Suresh and
+    Karthik Kambatla via kasha)
+
+    HADOOP-11463 Replace method-local TransferManager object with
+    S3AFileSystem#transfers. (Ted Yu via stevel)
+
+    HADOOP-11543. Improve help message for hadoop/yarn command.
+    (Brahma Reddy Battula via ozawa)
+
+    HADOOP-11520. Clean incomplete multi-part uploads in S3A tests.
+    (Thomas Demoor via stevel)
+
   OPTIMIZATIONS
 
     HADOOP-11323. WritableComparator#compare keeps reference to byte array.
@@ -537,6 +577,9 @@ Release 2.7.0 - UNRELEASED
 
     HADOOP-11188. hadoop-azure: automatically expand page blobs when they become
     full. (Eric Hanson via cnauroth)
+
+    HADOOP-11506. Configuration variable expansion regex expensive for long
+    values. (Gera Shegalov via gera)
 
   BUG FIXES
 
@@ -810,6 +853,33 @@ Release 2.7.0 - UNRELEASED
 
     HADOOP-11432. Fix SymlinkBaseTest#testCreateLinkUsingPartQualPath2.
     (Liang Xie via gera)
+
+    HADOOP-10181. GangliaContext does not work with multicast ganglia setup.
+    (Andrew Johnson via cnauroth)
+
+    HADOOP-11529. Fix findbugs warnings in hadoop-archives.
+    (Masatake Iwasaki via wheat9)
+
+    HADOOP-11546. Checkstyle failing: Unable to instantiate 
+    DoubleCheckedLockingCheck. (ozawa)
+
+    HADOOP-11548. checknative should display a nicer error message when openssl
+    support is not compiled in. (Anu Engineer via cnauroth)
+
+    HADOOP-11547. hadoop-common native compilation fails on Windows due to
+    missing support for __attribute__ declaration. (cnauroth)
+
+    HADOOP-11549. flaky test detection tool failed to handle special control
+    characters in test result. (Yongjun Zhang via aajisaka)
+
+    HADOOP-10062. race condition in MetricsSystemImpl#publishMetricsNow that 
+    causes incorrect results. (Sangjin Lee via junping_du)
+
+    HADOOP-11526. Memory leak in Bzip2Compressor and Bzip2Decompressor.
+    (Anu Engineer via cnauroth)
+
+    HADOOP-11535 TableMapping related tests failed due to 'successful'
+    resolving of invalid test hostname. (Kai Zheng via stevel)
 
 Release 2.6.1 - UNRELEASED
 

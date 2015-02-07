@@ -127,22 +127,11 @@ Trunk (Unreleased)
     HDFS-6609. Use DirectorySnapshottableFeature to represent a snapshottable
     directory. (Jing Zhao via wheat9)
 
-    HDFS-5782. Change BlockListAsLongs constructor to take Replica as parameter
-    type instead of concrete classes Block and ReplicaInfo.  (David Powell
-    and Joe Pallas via szetszwo)
-
     HDFS-7591. hdfs classpath command should support same options as hadoop
     classpath (Varun Saxena via Arpit Agarwal)
 
-    HDFS-5631. Change BlockMetadataHeader.readHeader(..), ChunkChecksum
-    class and constructor to public; and fix FsDatasetSpi to use generic type
-    instead of FsVolumeImpl.  (David Powell and Joe Pallas via szetszwo)
-
     HDFS-7430. Rewrite the BlockScanner to use O(1) memory and use multiple
     threads (cmccabe)
-
-    HDFS-7681. Change ReplicaInputStreams constructor to take InputStream(s)
-    instead of FileDescriptor(s).  (Joe Pallas via szetszwo)
 
   OPTIMIZATIONS
 
@@ -289,6 +278,9 @@ Trunk (Unreleased)
     HDFS-7320. The appearance of hadoop-hdfs-httpfs site docs is inconsistent 
     (Masatake Iwasaki via aw)
 
+    HDFS-7721. The HDFS BlockScanner may run fast during the first hour
+    (cmccabe)
+
 Release 2.7.0 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -313,6 +305,8 @@ Release 2.7.0 - UNRELEASED
     HDFS-7056. Snapshot support for truncate. (Plamen Jeliazkov and shv)
 
     HDFS-6673. Add delimited format support to PB OIV tool. (Eddy Xu via wang)
+
+    HDFS-7655. Expose truncate API for Web HDFS. (yliu)
 
   IMPROVEMENTS
 
@@ -565,6 +559,25 @@ Release 2.7.0 - UNRELEASED
     others run (kihwal)
 
     HDFS-7706. Switch BlockManager logging to use slf4j. (wang)
+
+    HDFS-5631. Change BlockMetadataHeader.readHeader(..), ChunkChecksum
+    class and constructor to public; and fix FsDatasetSpi to use generic type
+    instead of FsVolumeImpl.  (David Powell and Joe Pallas via szetszwo)
+
+    HDFS-5782. Change BlockListAsLongs constructor to take Replica as parameter
+    type instead of concrete classes Block and ReplicaInfo.  (David Powell
+    and Joe Pallas via szetszwo)
+
+    HDFS-7681. Change ReplicaInputStreams constructor to take InputStream(s)
+    instead of FileDescriptor(s).  (Joe Pallas via szetszwo)
+
+    HDFS-7712. Switch blockStateChangeLog to use slf4j. (wang)
+
+    HDFS-7270. Add congestion signaling capability to DataNode write protocol.
+    (wheat9)
+
+    HDFS-7732. Fix the order of the parameters in DFSConfigKeys.
+    (Brahma Reddy Battula via aajisaka)
 
   OPTIMIZATIONS
 
@@ -821,6 +834,29 @@ Release 2.7.0 - UNRELEASED
     HDFS-7423. various typos and message formatting fixes in nfs daemon and
     doc. (Charles Lamb via yliu)
 
+    HDFS-7696. In FsDatasetImpl, the getBlockInputStream(..) and
+    getTmpInputStreams(..) methods may leak file descriptors.  (szetszwo)
+
+    HDFS-6651. Deletion failure can leak inodes permanently.
+    (Jing Zhao via wheat9)
+
+    HDFS-7707. Edit log corruption due to delayed block removal again.
+    (Yongjun Zhang via kihwal)
+
+    HDFS-7734. Class cast exception in NameNode#main. (yliu via wang)
+
+    HDFS-7719. BlockPoolSliceStorage#removeVolumes fails to remove some
+    in-memory state associated with volumes. (Lei (Eddy) Xu via Colin P.
+    McCabe)
+
+    HDFS-7709. Fix findbug warnings in httpfs. (Rakesh R via ozawa)
+
+    HDFS-7698. Fix locking on HDFS read statistics and add a method for
+    clearing them. (Colin P. McCabe via yliu)
+
+    HDFS-7741. Remove unnecessary synchronized in FSDataInputStream and
+    HdfsDataInputStream. (yliu)
+
 Release 2.6.1 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -850,6 +886,9 @@ Release 2.6.1 - UNRELEASED
 
     HDFS-3443. Fix NPE when namenode transition to active during startup by
     adding checkNNStartup() in NameNodeRpcServer.  (Vinayakumar B via szetszwo)
+
+    HDFS-7733. NFS: readdir/readdirplus return null directory
+    attribute on failure. (Arpit Agarwal)
 
 Release 2.6.0 - 2014-11-18
 
