@@ -268,11 +268,19 @@ Release 2.7.0 - UNRELEASED
 
     MAPREDUCE-6151. Update document of GridMix (Masatake Iwasaki via aw)
 
+    MAPREDUCE-6143. add configuration for mapreduce speculative execution in
+    MR2 (zxu via rkanter)
+
+    MAPREDUCE-5800. Use Job#getInstance instead of deprecated constructors
+    (aajisaka)
+
   OPTIMIZATIONS
 
     MAPREDUCE-6169. MergeQueue should release reference to the current item 
     from key and value at the end of the iteration to save memory. 
     (Zhihai Xu via kasha)
+
+    MAPREDUCE-6059. Speed up history server startup time (Siqi Li via aw)
 
   BUG FIXES
 
@@ -323,6 +331,18 @@ Release 2.7.0 - UNRELEASED
 
     MAPREDUCE-6231. Grep example job is not working on a fully-distributed
     cluster. (aajisaka)
+
+    MAPREDUCE-6243. Fix findbugs warnings in hadoop-rumen. (Masatake Iwasaki
+    via aajisaka)
+
+    MAPREDUCE-5988. Fix dead links to the javadocs in mapreduce project.
+    (aajisaka)
+
+    MAPREDUCE-6186. Redundant call to requireJob() while displaying the conf
+    page (Rohit Agarwal via jlowe)
+
+    MAPREDUCE-6233. org.apache.hadoop.mapreduce.TestLargeSort.testLargeSort
+    failed in trunk (zxu via rkanter)
 
 Release 2.6.0 - 2014-11-18
 

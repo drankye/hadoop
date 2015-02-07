@@ -25,9 +25,6 @@ Trunk - Unreleased
     YARN-1471. The SLS simulator is not running the preemption policy 
     for CapacityScheduler (Carlo Curino via cdouglas)
 
-    YARN-2216 TestRMApplicationHistoryWriter sometimes fails in trunk.
-    (Zhijie Shen via xgong)
-
     YARN-2436. [post-HADOOP-9902] yarn application help doesn't work (aw)
 
     YARN-2525. yarn logs command gives error on trunk (Akira AJISAKA via aw)
@@ -224,6 +221,39 @@ Release 2.7.0 - UNRELEASED
 
     YARN-3108. ApplicationHistoryServer doesn't process -D arguments (Chang Li
     via jeagles)
+
+    YARN-2808. Made YARN CLI list attempt’s finished containers of a running
+    application. (Naganarasimha G R via zjshen)
+
+    YARN-3085. Application summary should include the application type (Rohith
+    via jlowe)
+
+    YARN-3022. Expose Container resource information from NodeManager for
+    monitoring (adhoot via ranter)
+
+    YARN-3098. Created common QueueCapacities class in Capacity Scheduler to
+    track capacities-by-labels of queues. (Wangda Tan via jianhe)
+
+    YARN-3075. NodeLabelsManager implementation to retrieve label to node 
+    mapping (Varun Saxena via wangda)
+
+    YARN-1393. SLS: Add how-to-use instructions. (Wei Yan via kasha)
+
+    YARN-1723. AMRMClientAsync missing blacklist addition and removal
+    functionality. (Bartosz Ługowski via sseth)
+
+    YARN-3123. Made YARN CLI show a single completed container even if the app
+    is running. (Naganarasimha G R via zjshen)
+
+    YARN-1582. Capacity Scheduler: add a maximum-allocation-mb setting per
+    queue (Thomas Graves via jlowe)
+
+    YARN-1904. Ensure exceptions thrown in ClientRMService &
+    ApplicationHistoryClientService are uniform when application-attempt is
+    not found. (zjshen via acmurthy)
+
+    YARN-3144. Configuration for making delegation token failures to timeline
+    server not-fatal (Jonathan Eagles via jlowe)
 
   OPTIMIZATIONS
 
@@ -445,6 +475,40 @@ Release 2.7.0 - UNRELEASED
 
     YARN-3029. FSDownload.unpack() uses local locale for FS case conversion, may not
     work everywhere. (Varun Saxena via ozawa)
+
+    YARN-3099. Capacity Scheduler LeafQueue/ParentQueue should use ResourceUsage
+    to track used-resources-by-label.(Wangda Tan via jianhe)
+
+    YARN-3077. Fixed RM to create zk root path recursively. (Chun Chen via jianhe)
+
+    YARN-3113. Release audit warning for Sorting icons.psd. (stevel via kihwal)
+
+    YARN-3056. Add verification for containerLaunchDuration
+    in TestNodeManagerMetrics. (zhihai xu via xgong)
+
+    YARN-2543. Made resource usage be published to the timeline server too.
+    (Naganarasimha G R via zjshen)
+
+    YARN-3058. Fix error message of tokens' activation delay configuration.
+    (Yi Liu via ozawa)
+
+    YARN-3101. In Fair Scheduler, fix canceling of reservations for exceeding
+    max share (Anubhav Dhoot via Sandy Ryza)
+
+    YARN-3149. Fix typo in message for invalid application id.
+    (Bibin A Chundatt via xgong)
+
+    YARN-3145. Fixed ConcurrentModificationException on CapacityScheduler
+    ParentQueue#getQueueUserAclInfo. (Tsuyoshi OZAWA via jianhe)
+
+    YARN-1537. Fix race condition in
+    TestLocalResourcesTrackerImpl.testLocalResourceCache. (xgong via acmurthy)
+
+    YARN-2694. Ensure only single node label specified in ResourceRequest.
+    (Wangda Tan via jianhe)
+
+    YARN-3089. LinuxContainerExecutor does not handle file arguments to
+    deleteAsUser (Eric Payne via jlowe)
 
 Release 2.6.0 - 2014-11-18
 
@@ -1692,6 +1756,9 @@ Release 2.5.0 - 2014-08-11
 
     YARN-1726. ResourceSchedulerWrapper broken due to AbstractYarnScheduler. 
     (Wei Yan via kasha)
+
+    YARN-2216. TestRMApplicationHistoryWriter sometimes fails in trunk.
+    (Zhijie Shen via xgong)
 
 Release 2.4.1 - 2014-06-23 
 

@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -91,11 +92,14 @@ import org.apache.hadoop.yarn.api.records.ReservationRequests;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.YarnApplicationAttemptState;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.client.api.AHSClient;
 import org.apache.hadoop.yarn.client.api.TimelineClient;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.ApplicationIdNotProvidedException;
+import org.apache.hadoop.yarn.exceptions.ApplicationNotFoundException;
+import org.apache.hadoop.yarn.exceptions.ContainerNotFoundException;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.client.TimelineDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
@@ -338,6 +342,9 @@ public class TestYarnClient {
   @Test(timeout = 10000)
   public void testGetContainers() throws YarnException, IOException {
     Configuration conf = new Configuration();
+    conf.setBoolean(YarnConfiguration.APPLICATION_HISTORY_ENABLED,
+        true);
+    
     final YarnClient client = new MockYarnClient();
     client.init(conf);
     client.start();
@@ -351,12 +358,25 @@ public class TestYarnClient {
         (ContainerId.newContainerId(appAttemptId, 1)));
     Assert.assertEquals(reports.get(1).getContainerId(),
         (ContainerId.newContainerId(appAttemptId, 2)));
+    Assert.assertEquals(reports.get(2).getContainerId(),
+        (ContainerId.newContainerId(appAttemptId, 3)));
+    
+    //First2 containers should come from RM with updated state information and 
+    // 3rd container is not there in RM and should
+    Assert.assertEquals(ContainerState.RUNNING,
+        (reports.get(0).getContainerState()));
+    Assert.assertEquals(ContainerState.RUNNING,
+        (reports.get(1).getContainerState()));
+    Assert.assertEquals(ContainerState.COMPLETE,
+        (reports.get(2).getContainerState()));
     client.stop();
   }
 
   @Test(timeout = 10000)
   public void testGetContainerReport() throws YarnException, IOException {
     Configuration conf = new Configuration();
+    conf.setBoolean(YarnConfiguration.APPLICATION_HISTORY_ENABLED,
+        true);
     final YarnClient client = new MockYarnClient();
     client.init(conf);
     client.start();
@@ -373,6 +393,12 @@ public class TestYarnClient {
     Assert.assertEquals(report.getContainerId().toString(),
         (ContainerId.newContainerId(expectedReports.get(0)
             .getCurrentApplicationAttemptId(), 1)).toString());
+    containerId = ContainerId.newContainerId(appAttemptId, 3);
+    report = client.getContainerReport(containerId);
+    Assert.assertNotNull(report);
+    Assert.assertEquals(report.getContainerId().toString(),
+        (ContainerId.newContainerId(expectedReports.get(0)
+            .getCurrentApplicationAttemptId(), 3)).toString());
     client.stop();
   }
 
@@ -383,6 +409,9 @@ public class TestYarnClient {
       new HashMap<ApplicationId, List<ApplicationAttemptReport>>();
     private HashMap<ApplicationAttemptId, List<ContainerReport>> containers = 
       new HashMap<ApplicationAttemptId, List<ContainerReport>>();
+    private HashMap<ApplicationAttemptId, List<ContainerReport>> containersFromAHS =
+      new HashMap<ApplicationAttemptId, List<ContainerReport>>();
+
     GetApplicationsResponse mockAppResponse =
       mock(GetApplicationsResponse.class);
     GetApplicationAttemptsResponse mockAppAttemptsResponse = 
@@ -428,6 +457,9 @@ public class TestYarnClient {
 
         when(rmClient.getContainerReport(any(GetContainerReportRequest.class)))
             .thenReturn(mockContainerResponse);
+        
+        historyClient = mock(AHSClient.class);
+        
       } catch (YarnException e) {
         Assert.fail("Exception is not expected.");
       } catch (IOException e) {
@@ -501,15 +533,37 @@ public class TestYarnClient {
       ContainerReport container = ContainerReport.newInstance(
           ContainerId.newContainerId(attempt.getApplicationAttemptId(), 1), null,
           NodeId.newInstance("host", 1234), Priority.UNDEFINED, 1234, 5678,
-          "diagnosticInfo", "logURL", 0, ContainerState.COMPLETE);
+          "diagnosticInfo", "logURL", 0, ContainerState.RUNNING);
       containerReports.add(container);
 
       ContainerReport container1 = ContainerReport.newInstance(
           ContainerId.newContainerId(attempt.getApplicationAttemptId(), 2), null,
           NodeId.newInstance("host", 1234), Priority.UNDEFINED, 1234, 5678,
-          "diagnosticInfo", "logURL", 0, ContainerState.COMPLETE);
+          "diagnosticInfo", "logURL", 0, ContainerState.RUNNING);
       containerReports.add(container1);
       containers.put(attempt.getApplicationAttemptId(), containerReports);
+      
+      //add containers to be sent from AHS
+      List<ContainerReport> containerReportsForAHS =
+          new ArrayList<ContainerReport>();
+      
+      container = ContainerReport.newInstance(
+          ContainerId.newContainerId(attempt.getApplicationAttemptId(), 1), null,
+          NodeId.newInstance("host", 1234), Priority.UNDEFINED, 1234, 5678,
+          "diagnosticInfo", "logURL", 0, null);
+      containerReportsForAHS.add(container);
+
+      container1 = ContainerReport.newInstance(
+          ContainerId.newContainerId(attempt.getApplicationAttemptId(), 2), null,
+          NodeId.newInstance("host", 1234), Priority.UNDEFINED, 1234, 5678,
+          "diagnosticInfo", "HSlogURL", 0, null);
+      containerReportsForAHS.add(container1);
+      ContainerReport container2 = ContainerReport.newInstance(
+          ContainerId.newContainerId(attempt.getApplicationAttemptId(),3), null,
+          NodeId.newInstance("host", 1234), Priority.UNDEFINED, 1234, 5678,
+          "diagnosticInfo", "HSlogURL", 0, ContainerState.COMPLETE);
+      containerReportsForAHS.add(container2);
+      containersFromAHS.put(attempt.getApplicationAttemptId(), containerReportsForAHS);
 
       ApplicationId applicationId2 = ApplicationId.newInstance(1234, 6);
       ApplicationReport newApplicationReport2 = ApplicationReport.newInstance(
@@ -586,14 +640,36 @@ public class TestYarnClient {
             IOException {
       when(mockContainersResponse.getContainerList()).thenReturn(
         getContainersReport(appAttemptId));
+      when(historyClient.getContainers(any(ApplicationAttemptId.class)))
+      .thenReturn(getContainersFromAHS(appAttemptId));
       return super.getContainers(appAttemptId);
+    }
+
+    private List<ContainerReport> getContainersFromAHS(
+        ApplicationAttemptId appAttemptId) {
+      return containersFromAHS.get(appAttemptId);
     }
 
     @Override
     public ContainerReport getContainerReport(ContainerId containerId)
         throws YarnException, IOException {
-      when(mockContainerResponse.getContainerReport()).thenReturn(
-        getContainer(containerId));
+      try {
+        ContainerReport container = getContainer(containerId, containers);
+        when(mockContainerResponse.getContainerReport()).thenReturn(container);
+      } catch (YarnException e) {
+        when(rmClient.getContainerReport(any(GetContainerReportRequest.class)))
+        .thenThrow(e).thenReturn(mockContainerResponse);
+      }
+      try {
+        ContainerReport container =
+            getContainer(containerId, containersFromAHS);
+        when(historyClient.getContainerReport(any(ContainerId.class)))
+            .thenReturn(container);
+      } catch (YarnException e) {
+        when(historyClient.getContainerReport(any(ContainerId.class)))
+            .thenThrow(e);
+      }
+
       return super.getContainerReport(containerId);
     }
     
@@ -611,8 +687,25 @@ public class TestYarnClient {
       return containers.get(appAttemptId);
     }
 
-    public ContainerReport getContainer(ContainerId containerId) {
-      return containers.get(containerId.getApplicationAttemptId()).get(0);
+    private ContainerReport getContainer(
+        ContainerId containerId,
+        HashMap<ApplicationAttemptId, List<ContainerReport>> containersToAppAttemptMapping)
+        throws YarnException, IOException {
+      List<ContainerReport> containersForAppAttempt =
+          containersToAppAttemptMapping.get(containerId
+              .getApplicationAttemptId());
+      if (containersForAppAttempt == null) {
+        throw new ApplicationNotFoundException(containerId
+            .getApplicationAttemptId().getApplicationId() + " is not found ");
+      }
+      Iterator<ContainerReport> iterator = containersForAppAttempt.iterator();
+      while (iterator.hasNext()) {
+        ContainerReport next = iterator.next();
+        if (next.getContainerId().equals(containerId)) {
+          return next;
+        }
+      }
+      throw new ContainerNotFoundException(containerId + " is not found ");
     }
   }
 
@@ -761,6 +854,42 @@ public class TestYarnClient {
   }
 
   @Test
+  public void testBestEffortTimelineDelegationToken()
+      throws Exception {
+    Configuration conf = new YarnConfiguration();
+    conf.setBoolean(YarnConfiguration.TIMELINE_SERVICE_ENABLED, true);
+    SecurityUtil.setAuthenticationMethod(AuthenticationMethod.KERBEROS, conf);
+
+    YarnClientImpl client = spy(new YarnClientImpl() {
+
+      @Override
+      TimelineClient createTimelineClient() throws IOException, YarnException {
+        timelineClient = mock(TimelineClient.class);
+        when(timelineClient.getDelegationToken(any(String.class)))
+          .thenThrow(new IOException("Best effort test exception"));
+        return timelineClient;
+      }
+    });
+
+    client.init(conf);
+    try {
+      conf.setBoolean(YarnConfiguration.TIMELINE_SERVICE_CLIENT_BEST_EFFORT, true);
+      client.serviceInit(conf);
+      client.getTimelineDelegationToken();
+    } catch (Exception e) {
+      Assert.fail("Should not have thrown an exception");
+    }
+    try {
+      conf.setBoolean(YarnConfiguration.TIMELINE_SERVICE_CLIENT_BEST_EFFORT, false);
+      client.serviceInit(conf);
+      client.getTimelineDelegationToken();
+      Assert.fail("Get delegation token should have thrown an exception");
+    } catch (Exception e) {
+      // Success
+    }
+  }
+
+  @Test
   public void testAutomaticTimelineDelegationTokenLoading()
       throws Exception {
     Configuration conf = new YarnConfiguration();
@@ -771,21 +900,17 @@ public class TestYarnClient {
     final Token<TimelineDelegationTokenIdentifier> dToken =
         new Token<TimelineDelegationTokenIdentifier>(
             timelineDT.getBytes(), new byte[0], timelineDT.getKind(), new Text());
-    // crate a mock client
+    // create a mock client
     YarnClientImpl client = spy(new YarnClientImpl() {
+
       @Override
-      protected void serviceInit(Configuration conf) throws Exception {
-        if (getConfig().getBoolean(YarnConfiguration.TIMELINE_SERVICE_ENABLED,
-            YarnConfiguration.DEFAULT_TIMELINE_SERVICE_ENABLED)) {
-          timelineServiceEnabled = true;
-          timelineClient = mock(TimelineClient.class);
-          when(timelineClient.getDelegationToken(any(String.class)))
-              .thenReturn(dToken);
-          timelineClient.init(getConfig());
-          timelineService = TimelineUtils.buildTimelineTokenService(getConfig());
-        }
-        this.setConfig(conf);
+      TimelineClient createTimelineClient() throws IOException, YarnException {
+        timelineClient = mock(TimelineClient.class);
+        when(timelineClient.getDelegationToken(any(String.class)))
+          .thenReturn(dToken);
+        return timelineClient;
       }
+
 
       @Override
       protected void serviceStart() throws Exception {
