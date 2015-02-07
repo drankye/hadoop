@@ -23,10 +23,11 @@ import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
 import java.nio.ByteBuffer;
 
 /**
- * A raw erasure decoder in RS code scheme in pure Java for test usage and also
- * in case native one isn't available in some environment.
+ * A raw erasure decoder in RS code scheme in pure Java in case native one
+ * isn't available in some environment. Please note this implementation isn't
+ * optimized in performance and always use native implementations when possible.
  */
-public class JavaRSRawDecoder extends AbstractRawErasureDecoder {
+public class JRSRawDecoder extends AbstractRawErasureDecoder {
   private GaloisField GF = GaloisField.getInstance();
 
   private int[] errSignature;

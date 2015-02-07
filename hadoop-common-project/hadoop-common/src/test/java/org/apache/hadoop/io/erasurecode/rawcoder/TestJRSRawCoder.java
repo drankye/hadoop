@@ -25,9 +25,9 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 /**
- * Test JavaRS encoding and decoding with 10x4.
+ * Test raw Reed-solomon encoding and decoding.
  */
-public class TestJavaRSRawCoder extends TestRawCoderBase {
+public class TestJRSRawCoder extends TestRawCoderBase {
 
   private static int symbolSize = 0;
   private static int symbolMax = 0;
@@ -40,8 +40,8 @@ public class TestJavaRSRawCoder extends TestRawCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = JavaRSRawEncoder.class;
-    this.decoderClass = JavaRSRawDecoder.class;
+    this.encoderClass = JRSRawEncoder.class;
+    this.decoderClass = JRSRawDecoder.class;
   }
 
   private void prepare(int numDataUnits, int numParityUnits,

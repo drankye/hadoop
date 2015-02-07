@@ -23,7 +23,7 @@ import java.util.Map;
 
 /**
  * Implementation of Galois field arithmetic with 2^p elements. The input must
- * be unsigned integers, adapted from HDFS-RAID.
+ * be unsigned integers. It's ported from HDFS-RAID, slightly adapted.
  */
 public class GaloisField {
 
