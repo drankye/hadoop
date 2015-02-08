@@ -17,8 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-
-import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
@@ -28,18 +27,17 @@ import java.nio.ByteBuffer;
  * optimized in performance and always use native implementations when possible.
  */
 public class JRSRawDecoder extends AbstractRawErasureDecoder {
-  private GaloisField GF = GaloisField.getInstance();
-
+  // To describe and calculate the needed Vandermonde matrix
   private int[] errSignature;
   private int[] primitivePower;
 
   @Override
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
-    assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
+    assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
     this.errSignature = new int[getNumParityUnits()];
-    this.primitivePower = GF.getPrimitivePower(getNumDataUnits(),
+    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());
   }
 
@@ -48,11 +46,11 @@ public class JRSRawDecoder extends AbstractRawErasureDecoder {
                           ByteBuffer[] outputs) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      GF.substitute(inputs, outputs[i], primitivePower[i]);
+      RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
     int dataLen = inputs[0].remaining();
-    GF.solveVandermondeSystem(errSignature, outputs,
+    RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }
 
@@ -61,11 +59,11 @@ public class JRSRawDecoder extends AbstractRawErasureDecoder {
                           byte[][] outputs) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      GF.substitute(inputs, outputs[i], primitivePower[i]);
+      RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
     int dataLen = inputs[0].length;
-    GF.solveVandermondeSystem(errSignature, outputs,
+    RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }
 }

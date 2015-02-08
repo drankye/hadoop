@@ -18,7 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.io.erasurecode.ECChunk;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,7 +34,7 @@ public class TestJRSRawCoder extends TestRawCoderBase {
 
   static {
     symbolSize = (int) Math.round(Math.log(
-        GaloisField.getInstance().getFieldSize()) / Math.log(2));
+        RSUtil.GF.getFieldSize()) / Math.log(2));
     symbolMax = (int) Math.pow(2, symbolSize);
   }
 

@@ -17,8 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-
-import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisField;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
 
@@ -28,15 +27,14 @@ import java.nio.ByteBuffer;
  * optimized in performance and always use native implementations when possible.
  */
 public class JRSRawEncoder extends AbstractRawErasureEncoder {
-  private GaloisField GF = GaloisField.getInstance();
   private int[] generatingPolynomial;
 
   @Override
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
-    assert (getNumDataUnits() + getNumParityUnits() < GF.getFieldSize());
+    assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
-    int[] primitivePower = GF.getPrimitivePower(getNumDataUnits(),
+    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());
     // compute generating polynomial
     int[] gen = {1};
@@ -44,7 +42,7 @@ public class JRSRawEncoder extends AbstractRawErasureEncoder {
     for (int i = 0; i < getNumParityUnits(); i++) {
       poly[0] = primitivePower[i];
       poly[1] = 1;
-      gen = GF.multiply(gen, poly);
+      gen = RSUtil.GF.multiply(gen, poly);
     }
     // generating polynomial has all generating roots
     generatingPolynomial = gen;
@@ -61,7 +59,7 @@ public class JRSRawEncoder extends AbstractRawErasureEncoder {
     }
 
     // Compute the remainder
-    GF.remainder(data, generatingPolynomial);
+    RSUtil.GF.remainder(data, generatingPolynomial);
   }
 
   @Override
@@ -75,6 +73,6 @@ public class JRSRawEncoder extends AbstractRawErasureEncoder {
     }
 
     // Compute the remainder
-    GF.remainder(data, generatingPolynomial);
+    RSUtil.GF.remainder(data, generatingPolynomial);
   }
 }

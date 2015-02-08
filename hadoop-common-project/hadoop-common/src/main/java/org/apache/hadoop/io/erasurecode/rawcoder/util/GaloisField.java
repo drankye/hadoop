@@ -27,11 +27,9 @@ import java.util.Map;
  */
 public class GaloisField {
 
-  private static final int PRIMITIVE_ROOT = 2;
-
   // Field size 256 is good for byte based system
   private static final int DEFAULT_FIELD_SIZE = 256;
-  // primitive polynomial 1 + X^2 + X^3 + X^4 + X^8
+  // primitive polynomial 1 + X^2 + X^3 + X^4 + X^8 (substitute 2)
   private static final int DEFAULT_PRIMITIVE_POLYNOMIAL = 285;
   static private final Map<Integer, GaloisField> instances =
       new HashMap<Integer, GaloisField>();
@@ -113,7 +111,7 @@ public class GaloisField {
   }
 
   /**
-   * Get the object performs Galois field arithmetics with default setting
+   * Get the object performs Galois field arithmetic with default setting
    */
   public static GaloisField getInstance() {
     return getInstance(DEFAULT_FIELD_SIZE, DEFAULT_PRIMITIVE_POLYNOMIAL);
@@ -235,7 +233,7 @@ public class GaloisField {
   }
 
   /**
-   * A "bulk" version of the solveVandermondeSystem
+   * A "bulk" version to the solve Vandermonde System
    */
   public void solveVandermondeSystem(int[] x, byte[][] y,
                                      int len, int dataLen) {
@@ -263,7 +261,7 @@ public class GaloisField {
   }
 
   /**
-   * A "bulk" version of the solveVandermondeSystem, using ByteBuffer
+   * A "bulk" version of the solveVandermondeSystem, using ByteBuffer.
    */
   public void solveVandermondeSystem(int[] x, ByteBuffer[] y,
                                      int len, int dataLen) {
@@ -325,18 +323,11 @@ public class GaloisField {
    */
   public void remainder(int[] dividend, int[] divisor) {
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
-      // System.out.println("------------------"+i);
       int ratio = divTable[dividend[i +
           divisor.length - 1]][divisor[divisor.length - 1]];
-      // String aa = "div[dividend("+(i + divisor.length -
-      // 1)+")][divisor("+(divisor.length-1)+")]";
-      // System.out.println(i+"-ratio=div[dividend("+(i + divisor.length -
-      // 1)+")][divisor("+(divisor.length-1)+")]");
       for (int j = 0; j < divisor.length; j++) {
         int k = j + i;
         dividend[k] = dividend[k] ^ mulTable[ratio][divisor[j]];
-        // System.out.println("dividend["+k+"]=="+"dividend["+k+"]^
-        // mulTable["+aa+"]["+"divisor["+j+"]]");
       }
     }
   }
@@ -403,7 +394,7 @@ public class GaloisField {
   }
 
   /**
-   * A "bulk" version of the substitute, using ByteBuffer
+   * A "bulk" version of the substitute, using ByteBuffer.
    * Tends to be 2X faster than the "int" substitute in a loop.
    *
    * @param p input polynomial
@@ -501,16 +492,6 @@ public class GaloisField {
         }
       }
     }
-  }
-
-  public static int[] getPrimitivePower(int dataSize, int paritySize) {
-    GaloisField GF = GaloisField.getInstance();
-    int[] primitivePower = new int[dataSize + paritySize];
-    // compute powers of the primitive root
-    for (int i = 0; i < dataSize + paritySize; i++) {
-      primitivePower[i] = GF.power(PRIMITIVE_ROOT, i);
-    }
-    return primitivePower;
   }
 
 }
