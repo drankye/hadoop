@@ -4,6 +4,10 @@ import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 
+/**
+ * Erasure decoding step, a wrapper of all the necessary information to perform
+ * a decoding step involved in the whole process of decoding a block group.
+ */
 public class ErasureDecodingStep extends AbstractErasureCodingStep {
   private int[] erasedIndexes;
   private RawErasureDecoder rawDecoder;

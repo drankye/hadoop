@@ -23,7 +23,8 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * Raw coder test base with utilities.
+ * Test base of common utilities for tests not only raw coders but also block
+ * coders.
  */
 public abstract class TestCoderBase {
   protected static Random RAND = new Random();
@@ -31,11 +32,20 @@ public abstract class TestCoderBase {
   protected int numDataUnits;
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
+
   // Indexes of erased data units. Will also support test of erasing
   // parity units
   protected int[] erasedDataIndexes = new int[] {0};
+
+  // Data buffers are either direct or on-heap, for performance the two cases
+  // may go to different coding implementations.
   protected boolean usingDirectBuffer = true;
 
+  /**
+   * Compare and verify if erased chunks are equal to recovered chunks
+   * @param erasedChunks
+   * @param recoveredChunks
+   */
   protected void compareAndVerify(ECChunk[] erasedChunks,
                                   ECChunk[] recoveredChunks) {
     byte[][] erased = ECChunk.toArray(erasedChunks);
@@ -46,6 +56,11 @@ public abstract class TestCoderBase {
     }
   }
 
+  /**
+   * Adjust and return erased indexes based on the array of the input chunks (
+   * parity chunks + data chunks).
+   * @return
+   */
   protected int[] getErasedIndexesForDecoding() {
     int[] erasedIndexesForDecoding = new int[erasedDataIndexes.length];
     for (int i = 0; i < erasedDataIndexes.length; ++i) {
@@ -54,6 +69,12 @@ public abstract class TestCoderBase {
     return erasedIndexesForDecoding;
   }
 
+  /**
+   * Return input chunks for decoding, which is parityChunks + dataChunks.
+   * @param dataChunks
+   * @param parityChunks
+   * @return
+   */
   protected ECChunk[] prepareInputChunksForDecoding(ECChunk[] dataChunks,
                                                   ECChunk[] parityChunks) {
     ECChunk[] inputChunks = new ECChunk[numParityUnits + numDataUnits];
@@ -69,6 +90,12 @@ public abstract class TestCoderBase {
     return inputChunks;
   }
 
+  /**
+   * Have a copy of the data chunks that's to be erased thereafter. The copy
+   * will be used to compare and verify with the to be recovered chunks.
+   * @param dataChunks
+   * @return
+   */
   protected ECChunk[] copyDataChunksToErase(ECChunk[] dataChunks) {
     ECChunk[] copiedChunks = new ECChunk[erasedDataIndexes.length];
 
@@ -80,18 +107,30 @@ public abstract class TestCoderBase {
     return copiedChunks;
   }
 
+  /**
+   * Erase some data chunks to test the recovering of them
+   * @param dataChunks
+   */
   protected void eraseSomeDataBlocks(ECChunk[] dataChunks) {
     for (int i = 0; i < erasedDataIndexes.length; ++i) {
       eraseDataFromChunk(dataChunks[erasedDataIndexes[i]]);
     }
   }
 
+  /**
+   * Erase data from the specified chunks, putting ZERO bytes to the buffers.
+   * @param chunks
+   */
   protected void eraseDataFromChunks(ECChunk[] chunks) {
     for (int i = 0; i < chunks.length; ++i) {
       eraseDataFromChunk(chunks[i]);
     }
   }
 
+  /**
+   * Erase data from the specified chunk, putting ZERO bytes to the buffer.
+   * @param chunk
+   */
   protected void eraseDataFromChunk(ECChunk chunk) {
     ByteBuffer chunkBuffer = chunk.getBuffer();
     // erase the data
@@ -102,6 +141,13 @@ public abstract class TestCoderBase {
     chunkBuffer.flip();
   }
 
+  /**
+   * Clone chunks along with copying the associated data. It respects how the
+   * chunk buffer is allocated, direct or non-direct. It avoids affecting the
+   * original chunk buffers.
+   * @param chunks
+   * @return
+   */
   protected static ECChunk[] cloneChunksWithData(ECChunk[] chunks) {
     ECChunk[] results = new ECChunk[chunks.length];
     for (int i = 0; i < chunks.length; ++i) {
@@ -112,7 +158,9 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Clone exactly a chunk, avoiding affecting the original chunk.
+   * Clone chunk along with copying the associated data. It respects how the
+   * chunk buffer is allocated, direct or non-direct. It avoids affecting the
+   * original chunk.
    * @param chunk
    * @return a new chunk
    */
@@ -136,12 +184,20 @@ public abstract class TestCoderBase {
     return new ECChunk(destBuffer);
   }
 
+  /**
+   * Allocate a chunk for output or writing.
+   * @return
+   */
   protected ECChunk allocateOutputChunk() {
     ByteBuffer buffer = allocateOutputBuffer();
 
     return new ECChunk(buffer);
   }
 
+  /**
+   * Allocate a buffer for output or writing.
+   * @return
+   */
   protected ByteBuffer allocateOutputBuffer() {
     ByteBuffer buffer = usingDirectBuffer ?
         ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
@@ -149,24 +205,10 @@ public abstract class TestCoderBase {
     return buffer;
   }
 
-  protected ECChunk[] prepareOutputChunksForDecoding() {
-    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length];
-    for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateOutputChunk();
-    }
-
-    return chunks;
-  }
-
-  protected ECChunk[] prepareParityChunksForEncoding() {
-    ECChunk[] chunks = new ECChunk[numParityUnits];
-    for (int i = 0; i < chunks.length; i++) {
-      chunks[i] = allocateOutputChunk();
-    }
-
-    return chunks;
-  }
-
+  /**
+   * Prepare data chunks for each data unit, by generating random data.
+   * @return
+   */
   protected ECChunk[] prepareDataChunksForEncoding() {
     ECChunk[] chunks = new ECChunk[numDataUnits];
     for (int i = 0; i < chunks.length; i++) {
@@ -176,6 +218,10 @@ public abstract class TestCoderBase {
     return chunks;
   }
 
+  /**
+   * Generate data chunk by making random data.
+   * @return
+   */
   protected ECChunk generateDataChunk() {
     ByteBuffer buffer = allocateOutputBuffer();
     for (int i = 0; i < chunkSize; i++) {
@@ -185,4 +231,32 @@ public abstract class TestCoderBase {
 
     return new ECChunk(buffer);
   }
+
+  /**
+   * Prepare parity chunks for encoding, each chunk for each parity unit.
+   * @return
+   */
+  protected ECChunk[] prepareParityChunksForEncoding() {
+    ECChunk[] chunks = new ECChunk[numParityUnits];
+    for (int i = 0; i < chunks.length; i++) {
+      chunks[i] = allocateOutputChunk();
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Prepare output chunks for decoding, each output chunk for each erased
+   * chunk.
+   * @return
+   */
+  protected ECChunk[] prepareOutputChunksForDecoding() {
+    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length];
+    for (int i = 0; i < chunks.length; i++) {
+      chunks[i] = allocateOutputChunk();
+    }
+
+    return chunks;
+  }
+
 }
