@@ -23,8 +23,8 @@ import java.nio.ByteBuffer;
 
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
- * isn't available in some environment. Please note this implementation isn't
- * optimized in performance and always use native implementations when possible.
+ * isn't available in some environment. Please note this implementation doesn't
+ * outperform and always use native implementations when possible.
  */
 public class JRSRawEncoder extends AbstractRawErasureEncoder {
   private int[] generatingPolynomial;

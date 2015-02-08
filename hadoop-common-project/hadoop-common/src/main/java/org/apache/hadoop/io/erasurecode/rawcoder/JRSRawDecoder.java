@@ -23,8 +23,8 @@ import java.nio.ByteBuffer;
 
 /**
  * A raw erasure decoder in RS code scheme in pure Java in case native one
- * isn't available in some environment. Please note this implementation isn't
- * optimized in performance and always use native implementations when possible.
+ * isn't available in some environment. Please note this implementation doesn't
+ * outperform and always use native implementations when possible.
  */
 public class JRSRawDecoder extends AbstractRawErasureDecoder {
   // To describe and calculate the needed Vandermonde matrix
