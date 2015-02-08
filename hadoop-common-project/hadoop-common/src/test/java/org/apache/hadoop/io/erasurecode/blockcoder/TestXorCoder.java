@@ -23,7 +23,7 @@ import org.junit.Test;
 /**
  * Test XOR encoding and decoding.
  */
-public class TestXorErasureCoder extends TestErasureCoderBase {
+public class TestXorCoder extends TestErasureCoderBase {
 
   @Before
   public void setup() {
