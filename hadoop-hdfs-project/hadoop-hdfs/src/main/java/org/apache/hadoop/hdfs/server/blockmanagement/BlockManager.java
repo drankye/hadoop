@@ -1936,7 +1936,7 @@ public class BlockManager {
           break;
         }
 
-        BlockInfoContiguous bi = blocksMap.getStoredBlock(b);
+        BlockInfoContiguous bi = getStoredBlock(b);
         if (bi == null) {
           if (LOG.isDebugEnabled()) {
             LOG.debug("BLOCK* rescanPostponedMisreplicatedBlocks: " +
@@ -2084,7 +2084,7 @@ public class BlockManager {
         continue;
       }
       
-      BlockInfoContiguous storedBlock = blocksMap.getStoredBlock(iblk);
+      BlockInfoContiguous storedBlock = getStoredBlock(iblk);
       // If block does not belong to any file, we are done.
       if (storedBlock == null) continue;
       
@@ -2224,7 +2224,7 @@ public class BlockManager {
     }
     
     // find block by blockId
-    BlockInfoContiguous storedBlock = blocksMap.getStoredBlock(block);
+    BlockInfoContiguous storedBlock = getStoredBlock(block);
     if(storedBlock == null) {
       // If blocksMap does not contain reported block id,
       // the replica should be removed from the data-node.
@@ -2522,7 +2522,7 @@ public class BlockManager {
     DatanodeDescriptor node = storageInfo.getDatanodeDescriptor();
     if (block instanceof BlockInfoContiguousUnderConstruction) {
       //refresh our copy in case the block got completed in another thread
-      storedBlock = blocksMap.getStoredBlock(block);
+      storedBlock = getStoredBlock(block);
     } else {
       storedBlock = block;
     }
@@ -3403,7 +3403,15 @@ public class BlockManager {
   }
 
   public BlockInfoContiguous getStoredBlock(Block block) {
-    return blocksMap.getStoredBlock(block);
+    BlockInfoContiguous info = null;
+    if (BlockIdManager.isStripedBlockID(block.getBlockId())) {
+      info = blocksMap.getStoredBlock(
+          new Block(BlockIdManager.convertToGroupID(block.getBlockId())));
+    }
+    if (info == null) {
+      info = blocksMap.getStoredBlock(block);
+    }
+    return info;
   }
 
   /** updates a block in under replication queue */
