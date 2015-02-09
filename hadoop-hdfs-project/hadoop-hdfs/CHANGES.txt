@@ -20,6 +20,9 @@ Trunk (Unreleased)
 
     HDFS-3689. Add support for variable length block. (jing9)
 
+    HDFS-7720. Quota by Storage Type API, tools and ClientNameNode Protocol
+    changes. (Xiaoyu Yao via Arpit Agarwal)
+
   IMPROVEMENTS
 
     HDFS-4665. Move TestNetworkTopologyWithNodeGroup to common.
@@ -280,6 +283,9 @@ Trunk (Unreleased)
 
     HDFS-7721. The HDFS BlockScanner may run fast during the first hour
     (cmccabe)
+
+    HDFS-7751. Fix TestHDFSCLI for quota with storage type.  (Xiaoyu Yao
+    via szetszwo)
 
 Release 2.7.0 - UNRELEASED
 
@@ -578,6 +584,15 @@ Release 2.7.0 - UNRELEASED
 
     HDFS-7732. Fix the order of the parameters in DFSConfigKeys.
     (Brahma Reddy Battula via aajisaka)
+
+    HDFS-7710. Remove dead code in BackupImage.java. (Xiaoyu Yao via aajisaka)
+
+    HDFS-7738. Revise the exception message for recover lease; add more truncate
+    tests such as truncate with HA setup, negative tests, truncate with other
+    operations and multiple truncates.  (szetszwo)
+
+    HDFS-7743. Code cleanup of BlockInfo and rename BlockInfo to
+    BlockInfoContiguous. (jing9)
 
   OPTIMIZATIONS
 
