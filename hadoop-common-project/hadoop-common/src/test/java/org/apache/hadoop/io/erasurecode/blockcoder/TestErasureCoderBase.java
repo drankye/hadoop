@@ -78,6 +78,10 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
 
     //Compare
     compareAndVerify(toEraseBlocks, codingStep.getOutputBlocks());
+
+    //Release resources
+    encoder.release();
+    decoder.release();
   }
 
   /**

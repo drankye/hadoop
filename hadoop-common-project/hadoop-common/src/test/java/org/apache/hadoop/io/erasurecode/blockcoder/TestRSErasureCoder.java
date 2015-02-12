@@ -36,14 +36,6 @@ public class TestRSErasureCoder extends TestErasureCoderBase {
     this.numChunksInBlock = 10;
   }
 
-  private void prepare(int numDataUnits, int numParityUnits,
-                       int[] erasedIndexes) {
-    this.numDataUnits = numDataUnits;
-    this.numParityUnits = numParityUnits;
-    this.erasedDataIndexes = erasedIndexes != null ?
-        erasedIndexes : new int[] {0};
-  }
-
   @Test
   public void testCodingNoDirectBuffer_10x4() {
     prepare(10, 4, null);

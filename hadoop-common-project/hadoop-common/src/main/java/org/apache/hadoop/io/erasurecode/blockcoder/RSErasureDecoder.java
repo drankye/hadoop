@@ -2,28 +2,67 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
 
 import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECBlockGroup;
-import org.apache.hadoop.io.erasurecode.rawcoder.JavaRSRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.JRSRawDecoder;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
 
 /**
- * ReedSolomon erasure decoder that decodes a block group.
+ * Reed-Solomon erasure decoder that decodes a block group.
  *
  * It implements {@link ErasureDecoder}.
  */
 public class RSErasureDecoder extends AbstractErasureDecoder {
+  private RawErasureDecoder rsRawDecoder;
+  private RawErasureDecoder xorRawDecoder;
+  private boolean useXorWhenPossible = true; // Will be configurable
 
   @Override
   protected ErasureCodingStep performDecoding(final ECBlockGroup blockGroup) {
-    // TODO: should be configured, either JavaRSRawDecoder or IsaRSRawDecoder
-    RawErasureDecoder rawDecoder = new JavaRSRawDecoder();
-    rawDecoder.initialize(getNumDataUnits(),
-        getNumParityUnits(), getChunkSize());
+
+    RawErasureDecoder rawDecoder;
 
     ECBlock[] inputBlocks = getInputBlocks(blockGroup);
+    ECBlock[] outputBlocks = getOutputBlocks(blockGroup);
+
+    /**
+     * Optimization: according to some benchmark, when only one block is erased
+     * and to be recovering, the most simple XOR scheme can be much efficient.
+     * We will have benchmark tests to verify this opt is effect or not.
+     */
+    if (outputBlocks.length == 1 && useXorWhenPossible) {
+      rawDecoder = checkCreateXorRawDecoder();
+    } else {
+      rawDecoder = checkCreateRSRawDecoder();
+    }
 
     return new ErasureDecodingStep(inputBlocks,
-        getErasedIndexes(inputBlocks),
-        getOutputBlocks(blockGroup), rawDecoder);
+        getErasedIndexes(inputBlocks), outputBlocks, rawDecoder);
   }
 
+  private RawErasureDecoder checkCreateRSRawDecoder() {
+    // TODO: should be configured, either JRSRawDecoder or IsaRSRawDecoder
+    // Will think about configuration related in ErasureCodec layer.
+    if (rsRawDecoder == null) {
+      rsRawDecoder = new JRSRawDecoder();
+      rsRawDecoder.initialize(getNumDataUnits(), getNumParityUnits(), getChunkSize());
+    }
+    return rsRawDecoder;
+  }
+
+  private RawErasureDecoder checkCreateXorRawDecoder() {
+    if (xorRawDecoder == null) {
+      xorRawDecoder = new XorRawDecoder();
+      xorRawDecoder.initialize(getNumDataUnits(), 1, getChunkSize());
+    }
+    return xorRawDecoder;
+  }
+
+  @Override
+  public void release() {
+    if (xorRawDecoder != null) {
+      xorRawDecoder.release();
+    } else if (rsRawDecoder != null) {
+      rsRawDecoder.release();
+    }
+  }
 }
