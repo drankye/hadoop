@@ -58,7 +58,7 @@ public class GaloisField {
       logTable[value] = pow;
       value = value * 2;
       if (value >= fieldSize) {
-        value = value ^ primitivePolynomial;// qiu yu
+        value = value ^ primitivePolynomial;
       }
     }
     // building multiplication table
@@ -195,8 +195,8 @@ public class GaloisField {
   }
 
   /**
-   * Given a Vandermonde matrix-fan de meng matrix- V[i][j]=x[j]^i and vector
-   * y, solve for z such that Vz=y. The output z will be placed in y.
+   * Given a Vandermonde matrix V[i][j]=x[j]^i and vector y, solve for z such
+   * that Vz=y. The output z will be placed in y.
    *
    * @param x the vector which describe the Vandermonde matrix
    * @param y right-hand side of the Vandermonde system equation. will be
@@ -233,7 +233,7 @@ public class GaloisField {
   }
 
   /**
-   * A "bulk" version to the solve Vandermonde System
+   * A "bulk" version to the solving of Vandermonde System
    */
   public void solveVandermondeSystem(int[] x, byte[][] y,
                                      int len, int dataLen) {
