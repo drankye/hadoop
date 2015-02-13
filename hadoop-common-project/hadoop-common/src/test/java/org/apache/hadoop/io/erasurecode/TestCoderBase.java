@@ -35,9 +35,11 @@ public abstract class TestCoderBase {
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
 
-  // Indexes of erased data units. Will also support test of erasing
-  // parity units
+  // Indexes of erased data units.
   protected int[] erasedDataIndexes = new int[] {0};
+
+  // Indexes of erased parity units.
+  protected int[] erasedParityIndexes = new int[] {0};
 
   // Data buffers are either direct or on-heap, for performance the two cases
   // may go to different coding implementations.
