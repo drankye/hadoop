@@ -36,21 +36,23 @@ public abstract class TestCoderBase {
   protected int chunkSize = 16 * 1024;
 
   // Indexes of erased data units.
-  protected int[] erasedDataIndexes = new int[] {0};
+  protected int[] erasedDataIndexes;
 
   // Indexes of erased parity units.
-  protected int[] erasedParityIndexes = new int[] {0};
+  protected int[] erasedParityIndexes;
 
   // Data buffers are either direct or on-heap, for performance the two cases
   // may go to different coding implementations.
   protected boolean usingDirectBuffer = true;
 
   protected void prepare(int numDataUnits, int numParityUnits,
-                         int[] erasedIndexes) {
+                         int[] erasedDataIndexes, int[] erasedParityIndexes) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
-    this.erasedDataIndexes = erasedIndexes != null ?
-        erasedIndexes : new int[] {0};
+    this.erasedParityIndexes = erasedParityIndexes != null ?
+        erasedParityIndexes : new int[0];
+    this.erasedDataIndexes = erasedDataIndexes != null ?
+        erasedDataIndexes : new int[0];
   }
 
   /**
@@ -66,13 +68,25 @@ public abstract class TestCoderBase {
     assertTrue("Decoding and comparing failed.", result);
   }
 
+  protected ECChunk[] join(ECChunk[] chunks1, ECChunk[] chunks2) {
+    ECChunk[] results = new ECChunk[chunks1.length + chunks2.length];
+    System.arraycopy(chunks1, 0, results, 0, chunks1.length);
+    System.arraycopy(chunks1, 0, results, chunks1.length, chunks2.length);
+
+    return results;
+  }
+
   /**
    * Adjust and return erased indexes based on the array of the input chunks (
    * parity chunks + data chunks).
    * @return
    */
   protected int[] getErasedIndexesForDecoding() {
-    int[] erasedIndexesForDecoding = new int[erasedDataIndexes.length];
+    int erasedCount = erasedDataIndexes.length + erasedParityIndexes.length;
+    int[] erasedIndexesForDecoding = new int[erasedCount];
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      erasedIndexesForDecoding[i] = erasedParityIndexes[i];
+    }
     for (int i = 0; i < erasedDataIndexes.length; i++) {
       erasedIndexesForDecoding[i] = erasedDataIndexes[i] + numParityUnits;
     }
@@ -112,6 +126,24 @@ public abstract class TestCoderBase {
     int j = 0;
     for (int i = 0; i < erasedDataIndexes.length; i++) {
       copiedChunks[j ++] = cloneChunkWithData(dataChunks[erasedDataIndexes[i]]);
+    }
+
+    return copiedChunks;
+  }
+
+  /**
+   * Have a copy of the parity chunks that's to be erased thereafter. The copy
+   * will be used to compare and verify with the to be recovered chunks.
+   * @param parityChunks
+   * @return
+   */
+  protected ECChunk[] copyParityChunksToErase(ECChunk[] parityChunks) {
+    ECChunk[] copiedChunks = new ECChunk[erasedParityIndexes.length];
+
+    int j = 0;
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      copiedChunks[j ++] = cloneChunkWithData(
+          parityChunks[erasedParityIndexes[i]]);
     }
 
     return copiedChunks;
@@ -261,7 +293,8 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk[] prepareOutputChunksForDecoding() {
-    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length];
+    int erasedCount = erasedDataIndexes.length + erasedParityIndexes.length;
+    ECChunk[] chunks = new ECChunk[erasedCount];
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = allocateOutputChunk();
     }

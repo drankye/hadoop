@@ -31,20 +31,23 @@ public class TestXorRawCoder extends TestRawCoderBase {
   public void setup() {
     this.encoderClass = XorRawEncoder.class;
     this.decoderClass = XorRawDecoder.class;
-
-    this.numDataUnits = 10;
-    this.numParityUnits = 1;
-
-    this.erasedDataIndexes = new int[] {0};
   }
 
   @Test
   public void testCodingNoDirectBuffer() {
+    prepare(10, 1, new int[] {0}, null);
     testCoding(false);
   }
 
   @Test
   public void testCodingDirectBuffer() {
+    prepare(10, 1, new int[] {0}, null);
+    testCoding(true);
+  }
+
+  @Test
+  public void testCodingDirectBuffer_erase_p0() {
+    prepare(10, 1, null, new int[] {0});
     testCoding(true);
   }
 

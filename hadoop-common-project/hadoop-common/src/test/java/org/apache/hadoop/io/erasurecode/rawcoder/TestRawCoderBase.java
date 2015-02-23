@@ -52,16 +52,19 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     encoder.encode(dataChunks, parityChunks);
     // Erase the copied sources
     eraseSomeDataBlocks(clonedDataChunks);
+    // Make a copy of a parity chunks for later comparing
+    ECChunk[] toEraseParityChunks = copyParityChunksToErase(parityChunks);
 
     //Decode
-    ECChunk[] inputChunks = prepareInputChunksForDecoding(clonedDataChunks,
-        parityChunks);
+    ECChunk[] inputChunks = prepareInputChunksForDecoding(
+        clonedDataChunks, parityChunks);
     ECChunk[] recoveredChunks = prepareOutputChunksForDecoding();
     RawErasureDecoder decoder = createDecoder();
     decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
 
+    ECChunk[] toEraseChunks = join(toEraseParityChunks, toEraseDataChunks);
     //Compare
-    compareAndVerify(toEraseDataChunks, recoveredChunks);
+    compareAndVerify(toEraseChunks, recoveredChunks);
   }
 
   /**
