@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.erasurecode;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -56,15 +56,13 @@ public class ECSchema {
   public String getCodecName() {
     return codecName;
   }
-  
-  
 
   public String getSchemaClassName() {
-	return schemaClassName;
+    return schemaClassName;
   }
 
   public void setSchemaClassName(String schemaClassName) {
-	this.schemaClassName = schemaClassName;
+    this.schemaClassName = schemaClassName;
   }
 
   /**

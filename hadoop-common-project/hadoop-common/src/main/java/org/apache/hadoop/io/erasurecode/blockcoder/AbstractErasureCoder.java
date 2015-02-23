@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.ECSchema;
+
 /**
  * A common class of basic facilities to be shared by encoder and decoder
  *
@@ -27,6 +29,12 @@ public abstract class AbstractErasureCoder implements ErasureCoder {
   private int numDataUnits;
   private int numParityUnits;
   private int chunkSize;
+
+  @Override
+  public void initialize(ECSchema schema) {
+    initialize(schema.getDataBlocks(), schema.getParityBlocks(),
+        schema.getChunkSize());
+  }
 
   @Override
   public void initialize(int numDataUnits, int numParityUnits,

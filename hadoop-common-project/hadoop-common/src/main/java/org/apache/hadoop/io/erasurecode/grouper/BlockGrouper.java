@@ -15,18 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.grouper;
+package org.apache.hadoop.io.erasurecode.grouper;
 
-
-import org.apache.hadoop.io.ec.*;
-
-import java.util.List;
+import org.apache.hadoop.io.erasurecode.ECBlock;
+import org.apache.hadoop.io.erasurecode.ECBlockGroup;
+import org.apache.hadoop.io.erasurecode.ECSchema;
 
 /**
  * As part of a codec, to handle how to form a block group for encoding
  * and how to recover a missing block from a block group
  */
-public abstract class BlockGrouper {
+public class BlockGrouper {
 
   private ECSchema schema;
 
@@ -58,29 +57,11 @@ public abstract class BlockGrouper {
    * @param parityBlocks To be computed parity blocks
    * @return
    */
-  public abstract BlockGroup makeBlockGroup(List<? extends ECBlockId> dataBlocks,
-                                            List<? extends ECBlockId> parityBlocks);
+  public ECBlockGroup makeBlockGroup(ECBlock[] dataBlocks,
+                                     ECBlock[] parityBlocks) {
 
-  /**
-   * Given a BlockGroup, tell if any of the missing blocks can be recovered,
-   * to be called by ECManager
-   * @param blockGroup a blockGroup that may contain missing blocks but not sure
-   *                   recoverable or not
-   * @return
-   */
-  public boolean anyRecoverable(BlockGroup blockGroup) {
-    int missingCount = 0;
-    for (SubBlockGroup subBlockGroup : blockGroup.getSubGroups()) {
-      for (ECBlock dataECBlock : subBlockGroup.getDataBlocks()) {
-        if (dataECBlock.isMissing()) missingCount++;
-      }
-
-      for (ECBlock parityECBlock : subBlockGroup.getParityBlocks()) {
-        if (parityECBlock.isMissing()) missingCount++;
-      }
-    }
-
-    return missingCount <= getParityBlocks();
+    ECBlockGroup blockGroup = new ECBlockGroup(dataBlocks, parityBlocks);
+    return blockGroup;
   }
 
   /**
@@ -93,17 +74,36 @@ public abstract class BlockGrouper {
    * @param blockGroup original blockGroup that contains missing blocks
    * @return a recoverable blockGroup just for recovery usage
    */
-  public abstract BlockGroup makeRecoverableGroup(BlockGroup blockGroup);
+  public ECBlockGroup makeRecoverableGroup(ECBlockGroup blockGroup) {
+    return blockGroup;
+  }
+
+  /**
+   * Given a BlockGroup, tell if any of the missing blocks can be recovered,
+   * to be called by ECManager
+   * @param blockGroup a blockGroup that may contain missing blocks but not sure
+   *                   recoverable or not
+   * @return
+   */
+  public boolean anyRecoverable(ECBlockGroup blockGroup) {
+    return getErasedCount(blockGroup) <= getParityBlocks();
+  }
 
   protected ECSchema getSchema() {
     return schema;
   }
 
-  protected ECBlock[] convert(List<? extends ECBlockId> blockIds, boolean isParity) {
-    ECBlock[] blocks = new ECBlock[blockIds.size()];
-    for (int i = 0; i < blockIds.size(); i++) {
-      blocks[i] = new ECBlock(blockIds.get(i), isParity);
-    }
-    return blocks;
+  protected static int getErasedCount(ECBlockGroup blockGroup) {
+    int erasedCount = 0;
+
+      for (ECBlock dataBlock : blockGroup.getDataBlocks()) {
+        if (dataBlock.isErased()) erasedCount++;
+      }
+
+      for (ECBlock parityBlock : blockGroup.getParityBlocks()) {
+        if (parityBlock.isErased()) erasedCount++;
+      }
+
+    return erasedCount;
   }
 }

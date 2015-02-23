@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.erasurecode;
 
 public class ECConfiguration {
 	private static final String CONF_PREFIX =  "io.ec.";

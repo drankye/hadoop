@@ -15,17 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.codec;
+package org.apache.hadoop.io.erasurecode.codec;
 
-import org.apache.hadoop.io.ec.ECSchema;
-import org.apache.hadoop.io.ec.coder.ErasureDecoder;
-import org.apache.hadoop.io.ec.coder.ErasureEncoder;
-import org.apache.hadoop.io.ec.coder.XorDecoder;
-import org.apache.hadoop.io.ec.coder.XorEncoder;
-import org.apache.hadoop.io.ec.grouper.BlockGrouper;
-import org.apache.hadoop.io.ec.grouper.XorBlockGrouper;
+import org.apache.hadoop.io.erasurecode.ECSchema;
+import org.apache.hadoop.io.erasurecode.blockcoder.ErasureDecoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.ErasureEncoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.RSErasureDecoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.RSErasureEncoder;
+import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 
-public class XorErasureCodec extends ErasureCodec{
+public class XorErasureCodec extends AbstractErasureCodec {
 
   @Override
   public void initWith(ECSchema schema) {
@@ -35,18 +34,24 @@ public class XorErasureCodec extends ErasureCodec{
 
   @Override
   public BlockGrouper createBlockGrouper() {
-    BlockGrouper blockGrouper = new XorBlockGrouper();
+    BlockGrouper blockGrouper = new BlockGrouper();
     blockGrouper.initWith(getSchema());
     return blockGrouper;
   }
 
   @Override
   public ErasureEncoder createEncoder() {
-    return new XorEncoder(getSchema().getDataBlocks(), getSchema().getChunkSize());
+    ErasureEncoder encoder = new RSErasureEncoder();
+    encoder.initialize(getSchema());
+
+    return encoder;
   }
 
   @Override
   public ErasureDecoder createDecoder() {
-    return new XorDecoder(getSchema().getDataBlocks(), getSchema().getChunkSize());
+    ErasureDecoder decoder = new RSErasureDecoder();
+    decoder.initialize(getSchema());
+
+    return decoder;
   }
 }

@@ -15,22 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec.codec;
+package org.apache.hadoop.io.erasurecode.codec;
 
-
-import org.apache.hadoop.io.ec.grouper.BlockGrouper;
-import org.apache.hadoop.io.ec.grouper.RSBlockGrouper;
+import org.apache.hadoop.io.erasurecode.blockcoder.ErasureDecoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.ErasureEncoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.RSErasureDecoder;
+import org.apache.hadoop.io.erasurecode.blockcoder.RSErasureEncoder;
+import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 
 /**
  * Reed-Solomon codec
  */
-public abstract class RSErasureCodec extends ErasureCodec {
+public class RSErasureCodec extends AbstractErasureCodec {
 
   @Override
   public BlockGrouper createBlockGrouper() {
-    BlockGrouper blockGrouper = new RSBlockGrouper();
+    BlockGrouper blockGrouper = new BlockGrouper();
     blockGrouper.initWith(getSchema());
     return blockGrouper;
+  }
+
+  @Override
+  public ErasureEncoder createEncoder() {
+    ErasureEncoder encoder = new RSErasureEncoder();
+    encoder.initialize(getSchema());
+
+    return encoder;
+  }
+
+  @Override
+  public ErasureDecoder createDecoder() {
+    ErasureDecoder decoder = new RSErasureDecoder();
+    decoder.initialize(getSchema());
+
+    return decoder;
   }
 
 }

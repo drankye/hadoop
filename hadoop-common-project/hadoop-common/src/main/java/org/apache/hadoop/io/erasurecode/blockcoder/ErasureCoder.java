@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.io.erasurecode.blockcoder;
 
+import org.apache.hadoop.io.erasurecode.ECSchema;
+
 /**
  * An erasure coder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
@@ -32,6 +34,12 @@ package org.apache.hadoop.io.erasurecode.blockcoder;
  *
  */
 public interface ErasureCoder {
+
+  /**
+   * Initialize with a schema for the code.
+   * @param schema
+   */
+  public void initialize(ECSchema schema);
 
   /**
    * Initialize with the important parameters for the code.

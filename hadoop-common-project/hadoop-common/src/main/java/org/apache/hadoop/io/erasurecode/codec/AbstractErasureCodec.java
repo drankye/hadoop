@@ -25,26 +25,52 @@ import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 /**
  * Erasure Codec to be managed by ECManager and used by ECWorker
  */
-public interface ErasureCodec {
+public abstract class AbstractErasureCodec implements ErasureCodec {
+  private ECSchema schema;
 
-  public void initWith(ECSchema schema);
+  public void initWith(ECSchema schema) {
+    this.schema = schema;
+  }
+
+  public String getName() {
+    return schema.getCodecName();
+  }
+
+  protected ECSchema getSchema() {
+    return schema;
+  }
 
   /**
    * Create block grouper, to be called by ECManager
    * @return
    */
-  public BlockGrouper createBlockGrouper();
+  public abstract BlockGrouper createBlockGrouper();
 
   /**
    * Create Erasure Encoder, to be called by ECWorker
    * @return
    */
-  public ErasureEncoder createEncoder();
+  public abstract ErasureEncoder createEncoder();
 
   /**
    * Create Erasure Decoder, to be called by ECWorker
    * @return
    */
-  public ErasureDecoder createDecoder();
+  public abstract ErasureDecoder createDecoder();
+
+  /**
+   * For ECManager
+   * @param schema
+   * @return
+   * @throws Exception
+   */
+  public static AbstractErasureCodec createErasureCodec(ECSchema schema) throws Exception {
+    String codecClassName = schema.getSchemaClassName();
+    Class codecClass = Class.forName(codecClassName);
+    AbstractErasureCodec codec = (AbstractErasureCodec) codecClass.newInstance();
+    codec.initWith(schema);
+
+    return codec;
+  }
 
 }
