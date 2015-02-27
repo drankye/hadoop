@@ -69,12 +69,18 @@ public class TestJRSRawCoder extends TestRawCoderBase {
   }
 
   @Test
+  public void testCodingDirectBuffer_10x4_erasing_p0() {
+    prepare(10, 4, null, new int[] {0});
+    testCoding(true);
+  }
+
+  //@Test
   public void testCodingDirectBuffer_10x4_erasing_d1_p0() {
     prepare(10, 4, new int[] {1}, new int[] {0});
     testCoding(true);
   }
 
-  @Test
+  //@Test
   public void testCodingDirectBuffer_10x4_erasing_all_parity() {
     prepare(10, 4, null, new int[] {0, 1, 2, 3});
     testCoding(true);

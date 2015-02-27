@@ -49,10 +49,10 @@ public abstract class TestCoderBase {
                          int[] erasedDataIndexes, int[] erasedParityIndexes) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
-    this.erasedParityIndexes = erasedParityIndexes != null ?
-        erasedParityIndexes : new int[0];
     this.erasedDataIndexes = erasedDataIndexes != null ?
         erasedDataIndexes : new int[0];
+    this.erasedParityIndexes = erasedParityIndexes != null ?
+        erasedParityIndexes : new int[0];
   }
 
   /**
@@ -70,9 +70,14 @@ public abstract class TestCoderBase {
 
   protected ECChunk[] join(ECChunk[] chunks1, ECChunk[] chunks2) {
     ECChunk[] results = new ECChunk[chunks1.length + chunks2.length];
-    System.arraycopy(chunks1, 0, results, 0, chunks1.length);
-    System.arraycopy(chunks1, 0, results, chunks1.length, chunks2.length);
-
+    if (chunks1.length > 0) {
+      System.arraycopy(chunks1, 0, results, 0, chunks1.length);
+      if (chunks2.length > 0) {
+        System.arraycopy(chunks2, 0, results, chunks1.length, chunks2.length);
+      }
+    } else if (chunks2.length > 0) {
+      System.arraycopy(chunks2, 0, results, 0, chunks2.length);
+    }
     return results;
   }
 
