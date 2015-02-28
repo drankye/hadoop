@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.erasurecode;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,89 +29,96 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SchemaLoader {
-  public static final Log LOG = LogFactory.getLog(SchemaLoader.class.getName());
+  private static final Log LOG = LogFactory.getLog(SchemaLoader.class.getName());
 
-  private static final String CODEC_CONF_PREFIX = "hadoop.io.ec.erasurecodec.codec.";
+  public static final String CONFIG_PREFIX = "hadoop.io.erasurecode.";
+  public static final String SCHEMA_FILE_KEY =
+      CONFIG_PREFIX + "predefined.schema.file";
+  public static final String DEFAULT_SCHEMA_FILE = "predefined-ecschema.xml";
 
   /**
-   * Load ec schemas from the config file. This file is
-   * expected to be in the XML format specified in the design doc.
-   * @return codecs form configure file
-   * @throws java.io.IOException
-   *             if the config file cannot be read.
-   * @throws javax.xml.parsers.ParserConfigurationException
-   *             if XML parser is misconfigured.
-   * @throws org.xml.sax.SAXException
-   *             if config file is malformed.
+   * Load predefined ec schemas from configuration file. This file is
+   * expected to be in the XML format.
    */
-  public synchronized List<ECSchema> loadSchema(Configuration conf) throws IOException,
-      ParserConfigurationException, SAXException {
-    File confFile = getConfigurationFile(conf);
+  public List<ECSchema> loadSchema(Configuration conf) {
+    File confFile = getSchemaFile(conf);
     if (confFile == null) {
-      return new ArrayList<ECSchema>();
+      LOG.warn("Not found any predefined EC schema file");
+      return Collections.emptyList();
     }
-    LOG.info("Loading EC schema file " + confFile);
+
+    try {
+      return loadSchema(confFile);
+    } catch (ParserConfigurationException e) {
+      throw new RuntimeException("Failed to load schema file: " + confFile);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to load schema file: " + confFile);
+    } catch (SAXException e) {
+      throw new RuntimeException("Failed to load schema file: " + confFile);
+    }
+  }
+
+  private List<ECSchema> loadSchema(File schemaFile)
+      throws ParserConfigurationException, IOException, SAXException {
+
+    LOG.info("Loading predefined EC schema file " + schemaFile);
 
     // Read and parse the schema file.
-    DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
-    docBuilderFactory.setIgnoringComments(true);
-    DocumentBuilder builder = docBuilderFactory.newDocumentBuilder();
-    Document doc = builder.parse(confFile);
+    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    dbf.setIgnoringComments(true);
+    DocumentBuilder builder = dbf.newDocumentBuilder();
+    Document doc = builder.parse(schemaFile);
     Element root = doc.getDocumentElement();
-    if (!"schemas".equals(root.getTagName()))
-      throw new RuntimeException(
-          "Bad EC schema config file: top-level element not <schemas>");
+
+    if (!"schemas".equals(root.getTagName())) {
+      throw new RuntimeException("Bad EC schema config file: " +
+          "top-level element not <schemas>");
+    }
+
     NodeList elements = root.getChildNodes();
-    List<ECSchema> codecs = new ArrayList<ECSchema>();
+    List<ECSchema> schemas = new ArrayList<ECSchema>();
     for (int i = 0; i < elements.getLength(); i++) {
       Node node = elements.item(i);
       if (node instanceof Element) {
         Element element = (Element) node;
         if ("schema".equals(element.getTagName())) {
-          ECSchema codec = loadSchema(element);
-          String codecClassName = conf.get(CODEC_CONF_PREFIX + codec.getCodecName());
-          if (codecClassName != null) {
-        	  codec.setSchemaClassName(codecClassName);
-        	  codecs.add(codec);
-          }
+          ECSchema schema = loadSchema(element);
+            schemas.add(schema);
         } else {
           LOG.warn("Bad element in EC schema configuration file: " + element.getTagName());
         }
       }
     }
-    return codecs;
+
+    return schemas;
   }
 
   /**
-   * Path to XML file containing schemas. If the path is relative, it is
-   * searched for in the classpath, but loaded like a regular File.
+   * Path to the XML file containing predefined ec schemas. If the path is
+   * relative, it is searched for in the classpath.
    */
-  private File getConfigurationFile(Configuration conf) {
-    String allocFilePath = conf.get(ECConfiguration.CONFIGURATION_FILE,
-        ECConfiguration.DEFAULT_CONFIGURATION_FILE);
-    File allocFile = new File(allocFilePath);
-    if (!allocFile.isAbsolute()) {
+  private File getSchemaFile(Configuration conf) {
+    String schemaFilePath = conf.get(SCHEMA_FILE_KEY, DEFAULT_SCHEMA_FILE);
+    File schemaFile = new File(schemaFilePath);
+    if (! schemaFile.isAbsolute()) {
       URL url = Thread.currentThread().getContextClassLoader()
-          .getResource(allocFilePath);
+          .getResource(schemaFilePath);
       if (url == null) {
-        LOG.warn(allocFilePath + " not found on the classpath.");
-        allocFile = null;
-      } else if (!url.getProtocol().equalsIgnoreCase("file")) {
+        LOG.warn(schemaFilePath + " not found on the classpath.");
+        schemaFile = null;
+      } else if (! url.getProtocol().equalsIgnoreCase("file")) {
         throw new RuntimeException(
-            "EC configuration file "
-                + url
-                + " found on the classpath is not on the local filesystem.");
+            "EC predefined schema file " + url +
+                " found on the classpath is not on the local filesystem.");
       } else {
-        allocFile = new File(url.getPath());
+        schemaFile = new File(url.getPath());
       }
     }
-    return allocFile;
+
+    return schemaFile;
   }
 
   /**
@@ -119,26 +126,20 @@ public class SchemaLoader {
    */
   private ECSchema loadSchema(Element element) {
     String schemaName = element.getAttribute("name");
-    Map<String, String> ecProperties = new HashMap<String, String>();
-    String erasureCoder = null;
+    Map<String, String> ecOptions = new HashMap<String, String>();
     NodeList fields = element.getChildNodes();
 
-    for (int j = 0; j < fields.getLength(); j++) {
-      Node fieldNode = fields.item(j);
-      if (!(fieldNode instanceof Element))
-        continue;
-      Element field = (Element) fieldNode;
-      String tagName = field.getTagName();
-      if ("codec".equals(tagName)) {
-        erasureCoder = ((Text)field.getFirstChild()).getData().trim();
-        ecProperties.put(tagName, erasureCoder);
-      } else {
-        String value = ((Text)field.getFirstChild()).getData().trim();
-        ecProperties.put(tagName, value);
+    for (int i = 0; i < fields.getLength(); i++) {
+      Node fieldNode = fields.item(i);
+      if (fieldNode instanceof Element) {
+        Element field = (Element) fieldNode;
+        String tagName = field.getTagName();
+        String value = ((Text) field.getFirstChild()).getData().trim();
+        ecOptions.put(tagName, value);
       }
     }
 
-    ECSchema codec = new ECSchema(schemaName, ecProperties, erasureCoder);
-    return codec;
+    ECSchema schema = new ECSchema(schemaName, ecOptions);
+    return schema;
   }
 }

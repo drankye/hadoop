@@ -1,4 +1,4 @@
-package org.apache.hadoop.io.ec;
+package org.apache.hadoop.io.erasurecode;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
@@ -15,7 +15,7 @@ public class TestSchemaLoader {
   final static String TEST_DIR = new File(System.getProperty(
       "test.build.data", "/tmp")).getAbsolutePath();
 
-  final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecs")
+  final static String SCHEMA_FILE = new File(TEST_DIR, "test-ecschema")
       .getAbsolutePath();
 
   @Test
@@ -26,37 +26,36 @@ public class TestSchemaLoader {
     out.println("  <schema name=\"RSk6m3\">");
     out.println("    <k>6</k>");
     out.println("    <m>3</m>");
-    out.println("    <codec>RS-Jerasure</codec>");
+    out.println("    <codec>RS</codec>");
     out.println("  </schema>");
-    out.println("  <schema name=\"LRCk6l2r2\">");
-    out.println("    <k>6</k>");
-    out.println("    <m>6</m>");
-    out.println("    <l>3</l>");
-    out.println("    <r>2</r>");
-    out.println("    <codec>LRC-ISA</codec>");
+    out.println("  <schema name=\"RSk10m4\">");
+    out.println("    <k>10</k>");
+    out.println("    <m>4</m>");
+    out.println("    <codec>RS</codec>");
     out.println("  </schema>");
     out.println("</schemas>");
     out.close();
 
     Configuration conf = new Configuration();
-    conf.set(ECConfiguration.CONFIGURATION_FILE, SCHEMA_FILE);
-    conf.set("hadoop.io.ec.erasurecodec.codec.RS-Jerasure",
-        "hadoop.io.ec.codec.codec.JerasureRS");
-    conf.set("hadoop.io.ec.erasurecodec.codec.RS-ISA",
-        "hadoop.io.ec.codec.codec.IsaRS");
-    conf.set("hadoop.io.ec.erasurecodec.codec.LRC",
-        "hadoop.io.ec.codec.codec.IsaLRC");
+    conf.set(SchemaLoader.SCHEMA_FILE_KEY, SCHEMA_FILE);
 
     SchemaLoader schemaLoader = new SchemaLoader();
     List<ECSchema> schemas = schemaLoader.loadSchema(conf);
 
-    assertEquals(1, schemas.size());
-    assertEquals("RSk6m3", schemas.get(0).getSchemaName());
-    assertEquals(3, schemas.get(0).getOptions().size());
-    assertEquals("6", schemas.get(0).getOptions().get("k"));
-    assertEquals("3", schemas.get(0).getOptions().get("m"));
-    assertEquals("RS-Jerasure",
-        schemas.get(0).getOptions().get("codec"));
-    assertEquals("RS-Jerasure", schemas.get(0).getCodecName());
+    assertEquals(2, schemas.size());
+
+    ECSchema schema1 = schemas.get(0);
+    assertEquals("RSk6m3", schema1.getSchemaName());
+    assertEquals(3, schema1.getOptions().size());
+    assertEquals(6, schema1.getNumDataUnits());
+    assertEquals(3, schema1.getNumParityUnits());
+    assertEquals("RS", schema1.getCodecName());
+
+    ECSchema schema2 = schemas.get(1);
+    assertEquals("RSk10m4", schema1.getSchemaName());
+    assertEquals(3, schema1.getOptions().size());
+    assertEquals(10, schema1.getNumDataUnits());
+    assertEquals(4, schema1.getNumParityUnits());
+    assertEquals("RS", schema1.getCodecName());
   }
 }
