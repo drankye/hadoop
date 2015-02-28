@@ -17,99 +17,139 @@
  */
 package org.apache.hadoop.io.erasurecode;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
+import java.util.Collections;
 import java.util.Map;
 
+/**
+ * Erasure coding schema to housekeeper relevant information.
+ */
 public class ECSchema {
-  private static final Log LOG =
-      LogFactory.getLog(ECSchema.class.getName());
+  public static final String NUM_DATA_UNITS_KEY = "k";
+  public static final String NUM_PARITY_UNITS_KEY = "m";
+  public static final String CODEC_NAME_KEY = "codec";
+  public static final String CHUNK_SIZE_KEY = "chunkSize";
+  public static final int DEFAULT_CHUNK_SIZE = 64 * 1024; // 64K
 
   private String schemaName;
-  private String schemaClassName;
   private String codecName;
   private Map<String, String> options;
-  private int dataBlocks;
-  private int parityBlocks;
+  private int numDataUnits;
+  private int numParityUnits;
   private int chunkSize;
 
-  public ECSchema(String schemaName, Map<String, String> options, String codec) {
+  /**
+   * Constructor with schema name and provided options. Note the options may
+   * contain additional information for the erasure codec to interpret further.
+   * @param schemaName schema name
+   * @param options schema options
+   */
+  public ECSchema(String schemaName, Map<String, String> options) {
     this.schemaName = schemaName;
-    this.options = options;
-    this.codecName = codec;
 
-    String dataSize = options.get("k");
-    String paritySize = options.get("m");
+    if (options == null || options.isEmpty()) {
+      throw new IllegalArgumentException("No schema options are provided");
+    }
+
+    String codecName = options.get(CODEC_NAME_KEY);
+    if (codecName == null || codecName.isEmpty()) {
+      throw new IllegalArgumentException("No codec option is provided");
+    }
+
+    int dataUnits = 0, parityUnits = 0;
     try {
-      this.dataBlocks = Integer.parseInt(dataSize);
-      this.parityBlocks = Integer.parseInt(paritySize);
+      if (options.containsKey(NUM_DATA_UNITS_KEY)) {
+        dataUnits = Integer.parseInt(options.get(NUM_DATA_UNITS_KEY));
+      }
+      if (options.containsKey(NUM_PARITY_UNITS_KEY)) {
+        parityUnits = Integer.parseInt(options.get(NUM_PARITY_UNITS_KEY));
+      }
     } catch (NumberFormatException e) {
-      LOG.error("Error format of data size:" + dataSize + "or parity size:" + paritySize);
+      throw new IllegalArgumentException("No codec option is provided");
+    }
+
+    initWith(codecName, dataUnits, parityUnits, options);
+  }
+
+  /**
+   * Constructor with key parameters provided. Note the options may contain
+   * additional information for the erasure codec to interpret further.
+   * @param schemaName
+   * @param codecName
+   * @param numDataUnits
+   * @param numParityUnits
+   * @param options
+   */
+  public ECSchema(String schemaName, String codecName,
+                  int numDataUnits, int numParityUnits,
+                  Map<String, String> options) {
+    this.schemaName = schemaName;
+    initWith(codecName, numDataUnits, numParityUnits, options);
+  }
+
+  private void initWith(String codecName, int numDataUnits, int numParityUnits,
+                        Map<String, String> options) {
+    this.codecName = codecName;
+    this.numDataUnits = numDataUnits;
+    this.numParityUnits = numParityUnits;
+
+    this.options = options != null ? Collections.unmodifiableMap(options) :
+        Collections.EMPTY_MAP;
+
+    int chunkSize = DEFAULT_CHUNK_SIZE;
+    try {
+      if (options.containsKey(CHUNK_SIZE_KEY)) {
+        chunkSize = Integer.parseInt(options.get(CHUNK_SIZE_KEY));
+      }
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("No codec option is provided");
     }
   }
 
+  /**
+   * Get the schema name
+   * @return schema name
+   */
   public String getSchemaName() {
     return schemaName;
   }
 
+  /**
+   * Get the codec name
+   * @return codec name
+   */
   public String getCodecName() {
     return codecName;
   }
 
-  public String getSchemaClassName() {
-    return schemaClassName;
-  }
-
-  public void setSchemaClassName(String schemaClassName) {
-    this.schemaClassName = schemaClassName;
-  }
-
   /**
-   * Erasure coding options to be configured and used by ErasureCoder.
-   * @return
+   * Get erasure coding options
+   * @return encoding options
    */
   public Map<String, String> getOptions() {
     return options;
   }
 
   /**
-   * Get required data blocks count in a BlockGroup
-   * @return
+   * Get required data units count in a coding group
+   * @return count of data units
    */
-  public int getDataBlocks() {
-    return dataBlocks;
+  public int getNumDataUnits() {
+    return numDataUnits;
   }
 
   /**
-   * Get required parity blocks count in a BlockGroup
-   * @return
+   * Get required parity units count in a coding group
+   * @return count of parity units
    */
-  public int getParityBlocks() {
-    return parityBlocks;
+  public int getNumParityUnits() {
+    return numParityUnits;
   }
 
-  public void setSchemaName(String schemaName) {
-    this.schemaName = schemaName;
-  }
-
-  public void setCodecName(String codecName) {
-    this.codecName = codecName;
-  }
-
-  public void setOptions(Map<String, String> options) {
-    this.options = options;
-  }
-
-  public void setDataBlocks(int dataBlocks) {
-    this.dataBlocks = dataBlocks;
-  }
-
-  public void setParityBlocks(int parityBlocks) {
-    this.parityBlocks = parityBlocks;
-  }
-  
+  /**
+   * Get chunk buffer size for the erasure encoding/decoding.
+   * @return chunk buffer size
+   */
   public int getChunkSize() {
-	return 16 * 1024;
+    return chunkSize;
   }
 }
