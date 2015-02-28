@@ -44,6 +44,8 @@ public class ECSchema {
    * @param options schema options
    */
   public ECSchema(String schemaName, Map<String, String> options) {
+    assert (schemaName != null && ! schemaName.isEmpty());
+
     this.schemaName = schemaName;
 
     if (options == null || options.isEmpty()) {
@@ -82,6 +84,9 @@ public class ECSchema {
   public ECSchema(String schemaName, String codecName,
                   int numDataUnits, int numParityUnits,
                   Map<String, String> options) {
+    assert (schemaName != null && ! schemaName.isEmpty());
+    assert (codecName != null && ! codecName.isEmpty());
+
     this.schemaName = schemaName;
     initWith(codecName, numDataUnits, numParityUnits, options);
   }
@@ -95,13 +100,18 @@ public class ECSchema {
     this.options = options != null ? Collections.unmodifiableMap(options) :
         Collections.EMPTY_MAP;
 
-    int chunkSize = DEFAULT_CHUNK_SIZE;
+    this.chunkSize = DEFAULT_CHUNK_SIZE;
     try {
       if (options.containsKey(CHUNK_SIZE_KEY)) {
-        chunkSize = Integer.parseInt(options.get(CHUNK_SIZE_KEY));
+        this.chunkSize = Integer.parseInt(options.get(CHUNK_SIZE_KEY));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException("No codec option is provided");
+    }
+
+    boolean isFine = numDataUnits > 0 && numParityUnits > 0 && chunkSize > 0;
+    if (! isFine) {
+      throw new IllegalArgumentException("Bad codec options are found");
     }
   }
 
