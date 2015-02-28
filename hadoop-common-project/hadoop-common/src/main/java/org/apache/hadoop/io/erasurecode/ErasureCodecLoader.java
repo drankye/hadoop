@@ -19,11 +19,7 @@ package org.apache.hadoop.io.erasurecode;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.*;
 import org.apache.hadoop.util.ReflectionUtils;
 
 import java.util.*;
@@ -35,54 +31,31 @@ import java.util.*;
 public class ErasureCodecLoader {
 
   public static final Log LOG =
-    LogFactory.getLog(ErasureCodecLoader.class.getName());
+      LogFactory.getLog(ErasureCodecLoader.class.getName());
 
-  private static final ServiceLoader<CompressionCodec> CODEC_PROVIDERS =
-    ServiceLoader.load(CompressionCodec.class);
+  public static final String CODEC_CONFIG_KEY = "io.erasurecode.codecs";
+  public static final String DEFAULT_CODECS =
+      "org.apache.hadoop.io.erasrecode.codec.RSErasureCodec";
+
+  private static final ServiceLoader<ErasureCodec> CODEC_PROVIDERS =
+      ServiceLoader.load(ErasureCodec.class);
 
   /**
-   * A map from the reversed filename suffixes to the codecs.
-   * This is probably overkill, because the maps should be small, but it
-   * automatically supports finding the longest matching suffix.
+   * A map from the codec name to the codec.
    */
-  private SortedMap<String, CompressionCodec> codecs = null;
-
-    /**
-     * A map from the reversed filename suffixes to the codecs.
-     * This is probably overkill, because the maps should be small, but it
-     * automatically supports finding the longest matching suffix.
-     */
-    private Map<String, CompressionCodec> codecsByName = null;
+  private Map<String, ErasureCodec> codecs = null;
 
   /**
-   * A map from class names to the codecs
-   */
-  private HashMap<String, CompressionCodec> codecsByClassName = null;
-
-  private void addCodec(CompressionCodec codec) {
-    String suffix = codec.getDefaultExtension();
-    codecs.put(new StringBuilder(suffix).reverse().toString(), codec);
-    codecsByClassName.put(codec.getClass().getCanonicalName(), codec);
-
-    String codecName = codec.getClass().getSimpleName();
-    codecsByName.put(codecName.toLowerCase(Locale.ENGLISH), codec);
-    if (codecName.endsWith("Codec")) {
-      codecName = codecName.substring(0, codecName.length() - "Codec".length());
-      codecsByName.put(codecName.toLowerCase(Locale.ENGLISH), codec);
-    }
-  }
-
-  /**
-   * Print the extension map out as a string.
+   * Print the codecs map out as a string.
    */
   @Override
   public String toString() {
     StringBuilder buf = new StringBuilder();
-    Iterator<Map.Entry<String, CompressionCodec>> itr =
-      codecs.entrySet().iterator();
+    Iterator<Map.Entry<String, ErasureCodec>> itr =
+        codecs.entrySet().iterator();
     buf.append("{ ");
     if (itr.hasNext()) {
-      Map.Entry<String, CompressionCodec> entry = itr.next();
+      Map.Entry<String, ErasureCodec> entry = itr.next();
       buf.append(entry.getKey());
       buf.append(": ");
       buf.append(entry.getValue().getClass().getName());
@@ -99,26 +72,26 @@ public class ErasureCodecLoader {
   }
 
   /**
-   * Get the list of codecs discovered via a Java ServiceLoader, or
+   * Get the list of codecs discovered via a Java ServiceLoader, and/or
    * listed in the configuration. Codecs specified in configuration come
    * later in the returned list, and are considered to override those
    * from the ServiceLoader.
-   * @param conf the configuration to look in
-   * @return a list of the {@link org.apache.hadoop.io.compress.CompressionCodec} classes
+   * @param conf the configuration to look at
+   * @return a list of {@link org.apache.hadoop.io.erasurecode.ErasureCodec}
    */
-  public static List<Class<? extends CompressionCodec>> getCodecClasses(Configuration conf) {
-    List<Class<? extends CompressionCodec>> result
-      = new ArrayList<Class<? extends CompressionCodec>>();
+  public static List<Class<? extends ErasureCodec>> load(Configuration conf) {
+    List<Class<? extends ErasureCodec>> results
+        = new ArrayList<Class<? extends ErasureCodec>>();
     // Add codec classes discovered via service loading
     synchronized (CODEC_PROVIDERS) {
       // CODEC_PROVIDERS is a lazy collection. Synchronize so it is
       // thread-safe. See HADOOP-8406.
-      for (CompressionCodec codec : CODEC_PROVIDERS) {
-        result.add(codec.getClass());
+      for (ErasureCodec codec : CODEC_PROVIDERS) {
+        results.add(codec.getClass());
       }
     }
     // Add codec classes from configuration
-    String codecsString = conf.get("io.compression.codecs");
+    String codecsString = conf.get(CODEC_CONFIG_KEY, DEFAULT_CODECS);
     if (codecsString != null) {
       StringTokenizer codecSplit = new StringTokenizer(codecsString, ",");
       while (codecSplit.hasMoreElements()) {
@@ -126,30 +99,32 @@ public class ErasureCodecLoader {
         if (codecSubstring.length() != 0) {
           try {
             Class<?> cls = conf.getClassByName(codecSubstring);
-            if (!CompressionCodec.class.isAssignableFrom(cls)) {
+            if (!ErasureCodec.class.isAssignableFrom(cls)) {
               throw new IllegalArgumentException("Class " + codecSubstring +
-                                                 " is not a CompressionCodec");
+                  " is not a ErasureCodec");
             }
-            result.add(cls.asSubclass(CompressionCodec.class));
+            results.add(cls.asSubclass(ErasureCodec.class));
           } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Compression codec " +
-                                               codecSubstring + " not found.",
-                                               ex);
+            throw new IllegalArgumentException("Erasure codec " +
+                codecSubstring + " not found.",
+                ex);
           }
         }
       }
     }
-    return result;
+
+    return results;
   }
 
   /**
    * Sets a list of codec classes in the configuration. In addition to any
-   * classes specified using this method, {@link org.apache.hadoop.io.compress.CompressionCodec} classes on
+   * classes specified using this method,
+   * {@link org.apache.hadoop.io.erasurecode.ErasureCodec} classes on
    * the classpath are discovered using a Java ServiceLoader.
    * @param conf the configuration to modify
    * @param classes the list of classes to set
    */
-  public static void setCodecClasses(Configuration conf,
+  public static void setCodecs(Configuration conf,
                                      List<Class> classes) {
     StringBuilder buf = new StringBuilder();
     Iterator<Class> itr = classes.iterator();
@@ -161,7 +136,7 @@ public class ErasureCodecLoader {
         buf.append(itr.next().getName());
       }
     }
-    conf.set("io.compression.codecs", buf.toString());
+    conf.set(CODEC_CONFIG_KEY, buf.toString());
   }
 
   /**
@@ -169,172 +144,56 @@ public class ErasureCodecLoader {
    * and register them. Defaults to gzip and deflate.
    */
   public ErasureCodecLoader(Configuration conf) {
-    codecs = new TreeMap<String, CompressionCodec>();
-    codecsByClassName = new HashMap<String, CompressionCodec>();
-    codecsByName = new HashMap<String, CompressionCodec>();
-    List<Class<? extends CompressionCodec>> codecClasses = getCodecClasses(conf);
+    codecs = new HashMap<String, ErasureCodec>();
+    List<Class<? extends ErasureCodec>> codecClasses = load(conf);
     if (codecClasses == null || codecClasses.isEmpty()) {
-      addCodec(new GzipCodec());
-      addCodec(new DefaultCodec());
+      // addCodec(new RSErasureCodec());
     } else {
-      for (Class<? extends CompressionCodec> codecClass : codecClasses) {
+      for (Class<? extends ErasureCodec> codecClass : codecClasses) {
         addCodec(ReflectionUtils.newInstance(codecClass, conf));
       }
     }
   }
-  
+
   /**
-   * Find the relevant compression codec for the given file based on its
-   * filename suffix.
-   * @param file the filename to check
+   * Find the erasure codec given the codec name.
+   *
+   * @param codecName the codec name
    * @return the codec object
    */
-  public CompressionCodec getCodec(Path file) {
-    CompressionCodec result = null;
-    if (codecs != null) {
-      String filename = file.getName();
-      String reversedFilename = new StringBuilder(filename).reverse().toString();
-      SortedMap<String, CompressionCodec> subMap = 
-        codecs.headMap(reversedFilename);
-      if (!subMap.isEmpty()) {
-        String potentialSuffix = subMap.lastKey();
-        if (reversedFilename.startsWith(potentialSuffix)) {
-          result = codecs.get(potentialSuffix);
-        }
-      }
-    }
-    return result;
-  }
-  
-  /**
-   * Find the relevant compression codec for the codec's canonical class name.
-   * @param classname the canonical class name of the codec
-   * @return the codec object
-   */
-  public CompressionCodec getCodecByClassName(String classname) {
-    if (codecsByClassName == null) {
-      return null;
-    }
-    return codecsByClassName.get(classname);
+  public ErasureCodec getCodecByName(String codecName) {
+    ErasureCodec codec = codecs.get(codecName);
+    return codec;
   }
 
-    /**
-     * Find the relevant compression codec for the codec's canonical class name
-     * or by codec alias.
-     * <p/>
-     * Codec aliases are case insensitive.
-     * <p/>
-     * The code alias is the short class name (without the package name).
-     * If the short class name ends with 'Codec', then there are two aliases for
-     * the codec, the complete short class name and the short class name without
-     * the 'Codec' ending. For example for the 'GzipCodec' codec class name the
-     * alias are 'gzip' and 'gzipcodec'.
-     *
-     * @param codecName the canonical class name of the codec
-     * @return the codec object
-     */
-    public CompressionCodec getCodecByName(String codecName) {
-      if (codecsByClassName == null) {
-        return null;
-      }
-      CompressionCodec codec = getCodecByClassName(codecName);
-      if (codec == null) {
-        // trying to get the codec by name in case the name was specified instead a class
-        codec = codecsByName.get(codecName.toLowerCase(Locale.ENGLISH));
-      }
-      return codec;
-    }
-
-    /**
-     * Find the relevant compression codec for the codec's canonical class name
-     * or by codec alias and returns its implemetation class.
-     * <p/>
-     * Codec aliases are case insensitive.
-     * <p/>
-     * The code alias is the short class name (without the package name).
-     * If the short class name ends with 'Codec', then there are two aliases for
-     * the codec, the complete short class name and the short class name without
-     * the 'Codec' ending. For example for the 'GzipCodec' codec class name the
-     * alias are 'gzip' and 'gzipcodec'.
-     *
-     * @param codecName the canonical class name of the codec
-     * @return the codec class
-     */
-    public Class<? extends CompressionCodec> getCodecClassByName(String codecName) {
-      CompressionCodec codec = getCodecByName(codecName);
-      if (codec == null) {
-        return null;
-      }
-      return codec.getClass();
-    }
-
-  /**
-   * Removes a suffix from a filename, if it has it.
-   * @param filename the filename to strip
-   * @param suffix the suffix to remove
-   * @return the shortened filename
-   */
-  public static String removeSuffix(String filename, String suffix) {
-    if (filename.endsWith(suffix)) {
-      return filename.substring(0, filename.length() - suffix.length());
-    }
-    return filename;
+  private void addCodec(ErasureCodec codec) {
+    String codecName = getCodecName(codec);
+    codecs.put(codecName, codec);
   }
-  
+
   /**
-   * A little test program.
-   * @param args
+   * Make codec name according to the codec class.
+   *
+   * Codec names are case insensitive.
+   *
+   * The code name is the short class name (without the package name).
+   * If the short class name ends with 'ErasureCodec', then "ErasureCodec" will
+   * be removed. For example for the 'RSErasureCodec' codec the codec name will
+   * be 'rs'.
+   *
+   * @param codecClass
+   * @return codec name
    */
-  public static void main(String[] args) throws Exception {
-    Configuration conf = new Configuration();
-    ErasureCodecLoader factory = new ErasureCodecLoader(conf);
-    boolean encode = false;
-    for(int i=0; i < args.length; ++i) {
-      if ("-in".equals(args[i])) {
-        encode = true;
-      } else if ("-out".equals(args[i])) {
-        encode = false;
-      } else {
-        CompressionCodec codec = factory.getCodec(new Path(args[i]));
-        if (codec == null) {
-          System.out.println("Codec for " + args[i] + " not found.");
-        } else { 
-          if (encode) {
-            CompressionOutputStream out = null;
-            java.io.InputStream in = null;
-            try {
-              out = codec.createOutputStream(
-                  new java.io.FileOutputStream(args[i]));
-              byte[] buffer = new byte[100];
-              String inFilename = removeSuffix(args[i], 
-                  codec.getDefaultExtension());
-              in = new java.io.FileInputStream(inFilename);
-              int len = in.read(buffer);
-              while (len > 0) {
-                out.write(buffer, 0, len);
-                len = in.read(buffer);
-              }
-            } finally {
-              if(out != null) { out.close(); }
-              if(in  != null) { in.close(); }
-            }
-          } else {
-            CompressionInputStream in = null;
-            try {
-              in = codec.createInputStream(
-                  new java.io.FileInputStream(args[i]));
-              byte[] buffer = new byte[100];
-              int len = in.read(buffer);
-              while (len > 0) {
-                System.out.write(buffer, 0, len);
-                len = in.read(buffer);
-              }
-            } finally {
-              if(in != null) { in.close(); }
-            }
-          }
-        }
-      }
+  public static String getCodecName(Class<? extends ErasureCodec> codecClass) {
+    String codecName = codecClass.getSimpleName();
+    if (codecName.endsWith("ErasureCodec")) {
+      codecName = codecName.substring(0, codecName.length() -
+          "ErasureCodec".length());
     }
+    return codecName.toLowerCase();
+  }
+
+  public static String getCodecName(ErasureCodec codec) {
+    return getCodecName(codec.getClass());
   }
 }
