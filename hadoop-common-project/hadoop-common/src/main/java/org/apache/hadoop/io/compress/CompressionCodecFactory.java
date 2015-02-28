@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ReflectionUtils;
 
@@ -118,7 +119,7 @@ public class CompressionCodecFactory {
       }
     }
     // Add codec classes from configuration
-    String codecsString = conf.get("io.compression.codecs");
+    String codecsString = conf.get(CommonConfigurationKeys.IO_COMPRESSION_CODECS_KEY);
     if (codecsString != null) {
       StringTokenizer codecSplit = new StringTokenizer(codecsString, ",");
       while (codecSplit.hasMoreElements()) {
@@ -161,7 +162,7 @@ public class CompressionCodecFactory {
         buf.append(itr.next().getName());
       }
     }
-    conf.set("io.compression.codecs", buf.toString());   
+    conf.set(CommonConfigurationKeys.IO_COMPRESSION_CODECS_KEY, buf.toString());
   }
   
   /**
