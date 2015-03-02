@@ -306,6 +306,9 @@ Trunk (Unreleased)
     HDFS-7803. Wrong command mentioned in HDFSHighAvailabilityWithQJM
     documentation (Arshad Mohammad via aw)
 
+    HDFS-4681. TestBlocksWithNotEnoughRacks#testCorruptBlockRereplicatedAcrossRacks 
+    fails using IBM java (Ayappan via aw)
+
 Release 2.7.0 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -687,6 +690,9 @@ Release 2.7.0 - UNRELEASED
 
     HDFS-7685. Document dfs.namenode.heartbeat.recheck-interval in
     hdfs-default.xml. (Kai Sasaki via aajisaka)
+
+    HDFS-5853. Add "hadoop.user.group.metrics.percentiles.intervals" to
+    hdfs-default.xml. (aajisaka)
 
   OPTIMIZATIONS
 

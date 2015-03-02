@@ -13,6 +13,9 @@ Trunk (Unreleased)
 
     HADOOP-10950. rework heap management vars (John Smith via aw)
 
+    HADOOP-11657. Align the output of `hadoop fs -du` to be more Unix-like.
+    (aajisaka)
+
   NEW FEATURES
 
     HADOOP-6590. Add a username check for hadoop sub-commands (John Smith via aw)
@@ -162,9 +165,6 @@ Trunk (Unreleased)
 
     HADOOP-11346. Rewrite sls/rumen to use new shell framework (John Smith
     via aw)
-
-    HADOOP-10976. moving the source code of hadoop-tools docs to the
-    directory under hadoop-tools (Masatake Iwasaki via aw)
 
     HADOOP-7713. dfs -count -q should label output column (Jonathan Allen
     via aw)
@@ -406,6 +406,9 @@ Trunk (Unreleased)
 
     HADOOP-11637. bash location hard-coded in shell scripts (aw)
 
+    HADOOP-10774. Update KerberosTestUtils for hadoop-auth tests when using
+    IBM Java (sangamesh via aw)
+
   OPTIMIZATIONS
 
     HADOOP-7761. Improve the performance of raw comparisons. (todd)
@@ -635,6 +638,9 @@ Release 2.7.0 - UNRELEASED
 
     HADOOP-11632. Cleanup Find.java to remove SupressWarnings annotations.
     (Akira Ajisaka via ozawa)
+
+    HADOOP-10976. moving the source code of hadoop-tools docs to the
+    directory under hadoop-tools (Masatake Iwasaki via aw)
 
   OPTIMIZATIONS
 
@@ -1015,6 +1021,9 @@ Release 2.7.0 - UNRELEASED
 
     HADOOP-9922. hadoop windows native build will fail in 32 bit machine.
     (Kiran Kumar M R via cnauroth)
+
+    HADOOP-11634. Description of webhdfs' principal/keytab should switch places
+    each other. (Brahma Reddy Battula via ozawa)
 
 Release 2.6.1 - UNRELEASED
 
