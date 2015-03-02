@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.util.ReflectionUtils;
 
 import java.util.*;
@@ -32,10 +33,6 @@ public class ErasureCodecLoader {
 
   public static final Log LOG =
       LogFactory.getLog(ErasureCodecLoader.class.getName());
-
-  public static final String CODEC_CONFIG_KEY = "io.erasurecode.codecs";
-  public static final String DEFAULT_CODECS =
-      "org.apache.hadoop.io.erasrecode.codec.RSErasureCodec";
 
   private static final ServiceLoader<ErasureCodec> CODEC_PROVIDERS =
       ServiceLoader.load(ErasureCodec.class);
@@ -91,7 +88,8 @@ public class ErasureCodecLoader {
       }
     }
     // Add codec classes from configuration
-    String codecsString = conf.get(CODEC_CONFIG_KEY, DEFAULT_CODECS);
+    String codecsString = conf.get(
+        CommonConfigurationKeys.IO_ERASURE_CODECS_KEY);
     if (codecsString != null) {
       StringTokenizer codecSplit = new StringTokenizer(codecsString, ",");
       while (codecSplit.hasMoreElements()) {
@@ -136,7 +134,7 @@ public class ErasureCodecLoader {
         buf.append(itr.next().getName());
       }
     }
-    conf.set(CODEC_CONFIG_KEY, buf.toString());
+    conf.set(CommonConfigurationKeys.IO_ERASURE_CODECS_KEY, buf.toString());
   }
 
   /**

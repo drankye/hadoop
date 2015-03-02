@@ -128,6 +128,12 @@ public class CommonConfigurationKeys extends CommonConfigurationKeysPublic {
       false;
 
   /**
+   * Erasure Coding
+   */
+  /** Supported erasure codec classes */
+  public static final String IO_ERASURE_CODECS_KEY = "io.erasure.codecs";
+
+  /**
    * Service Authorization
    */
   public static final String 

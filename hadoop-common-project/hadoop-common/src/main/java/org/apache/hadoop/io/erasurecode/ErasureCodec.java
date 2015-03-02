@@ -18,7 +18,7 @@
 package org.apache.hadoop.io.erasurecode;
 
 /**
- * Erasure Codec API to be defined in HDFS-11645.
+ * Erasure Codec API to be defined in HDFS-11645. This will be removed later.
  */
 public interface ErasureCodec {
 
