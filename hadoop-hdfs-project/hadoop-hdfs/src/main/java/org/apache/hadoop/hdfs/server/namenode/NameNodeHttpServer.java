@@ -161,8 +161,9 @@ public class NameNodeHttpServer {
     Map<String, String> params = new HashMap<String, String>();
 
     /**
-     * We pick up hadoop-auth (hadoop.http.authentication.*) related properties and transform them into
-     * ones with prefix for webhdfs (dfs.web.authentication.*)
+     * We pick up hadoop-auth (hadoop.http.authentication.*) related properties
+     * and transform them into ones with prefix for webhdfs
+     * (dfs.web.authentication.*)
      */
     String HADOOP_AUTH_PREFIX = "hadoop.http.authentication.";
     String name, value;
@@ -176,9 +177,10 @@ public class NameNodeHttpServer {
     }
 
     /**
-     * We pick up webhdfs related properties and put them into params so that can be referenced also later.
-     * This allows both web console and web hdfs can be configured in consistent and sharable way,
-     * thus allows sso between them easily. Note these properties may override hadoop-auth ones.
+     * We pick up webhdfs related properties and put them into params so that
+     * can be referenced also later. This allows both web console and web hdfs
+     * can be configured in consistent and sharable way, thus allows sso between
+     * them easily. Note these properties may override hadoop-auth ones.
      */
     for (Map.Entry<String, String> entry : conf) {
       name = entry.getKey();
