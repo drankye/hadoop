@@ -36,8 +36,7 @@ import java.net.URI;
 
 public class TestWebHdfsWithAuthFilterPlusConfig {
 
-  private static final String COOKIE_DOMAIN =
-      "hadoop-auth.com";
+  private static final String COOKIE_DOMAIN = "hadoop-auth.com";
 
   public static final class MyFilter extends AuthFilter {
 
@@ -46,7 +45,7 @@ public class TestWebHdfsWithAuthFilterPlusConfig {
         FilterChain chain) throws IOException, ServletException {
       String cookieDomain = getCookieDomain();
       if (cookieDomain != null && cookieDomain.equals(COOKIE_DOMAIN)) {
-        // assume it's authorized.
+        // assume it's authorized owing to the presence of this property.
         chain.doFilter(request, response);
       } else {
         ((HttpServletResponse) response)
@@ -61,49 +60,47 @@ public class TestWebHdfsWithAuthFilterPlusConfig {
 
   @Test
   public void testWebHdfsAuthFilterAuthorized() throws IOException {
-    conf = new Configuration();
-    conf.set(DFSConfigKeys.DFS_WEBHDFS_AUTHENTICATION_FILTER_KEY,
-        MyFilter.class.getName());
-    // This is the test property as one of hadoop-auth related properties.
-    conf.set("hadoop.http.authentication.cookie.domain", COOKIE_DOMAIN);
-    conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "localhost:0");
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-    InetSocketAddress addr = cluster.getNameNode().getHttpAddress();
-    fs = FileSystem.get(
-        URI.create("webhdfs://" + NetUtils.getHostPortString(addr)), conf);
-    cluster.waitActive();
-
-    // getFileStatus() is supposed to pass through this.
-    boolean isPassed = true;
-    try {
-      fs.getFileStatus(new Path("/"));
-    } catch (IOException e) {
-      isPassed = false;
-    }
-
-    fs.close();
-    cluster.shutdown();
-
-    Assert.assertTrue(isPassed);
+    test(true);
   }
 
   @Test
   public void testWebHdfsAuthFilterRejected() throws IOException {
+    test(false);
+  }
+
+  private void test(boolean withHadoopAuthProperty) throws IOException {
     conf = new Configuration();
     conf.set(DFSConfigKeys.DFS_WEBHDFS_AUTHENTICATION_FILTER_KEY,
         MyFilter.class.getName());
     conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "localhost:0");
+
+    if (withHadoopAuthProperty) {
+      // This is the test property as one of hadoop-auth related properties.
+      conf.set("hadoop.http.authentication.cookie.domain", COOKIE_DOMAIN);
+    }
+
     cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
     InetSocketAddress addr = cluster.getNameNode().getHttpAddress();
-    fs = FileSystem.get(
-        URI.create("webhdfs://" + NetUtils.getHostPortString(addr)), conf);
+    fs = FileSystem.get(URI.create("webhdfs://" +
+        NetUtils.getHostPortString(addr)), conf);
     cluster.waitActive();
 
-    // getFileStatus() is supposed to pass through with the default filter.
-    try {
-      fs.getFileStatus(new Path("/"));
-      Assert.fail("The filter fails to block the request");
-    } catch (IOException e) {
+    if (withHadoopAuthProperty) {
+      // It's supposed to pass through this since required property is set.
+      boolean isPassed = true;
+      try {
+        fs.getFileStatus(new Path("/"));
+      } catch (IOException e) {
+        isPassed = false;
+      }
+      Assert.assertTrue("With HadoopAuth property check", isPassed);
+    } else {
+      // It's supposed not to pass through this since no property is set.
+      try {
+        fs.getFileStatus(new Path("/"));
+        Assert.fail("The filter fails to block the request");
+      } catch (IOException e) {
+      }
     }
 
     fs.close();
