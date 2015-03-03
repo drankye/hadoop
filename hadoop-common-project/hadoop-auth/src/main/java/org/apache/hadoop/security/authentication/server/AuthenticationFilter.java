@@ -147,6 +147,8 @@ public class AuthenticationFilter implements Filter {
    */
   public static final String SIGNATURE_SECRET = "signature.secret";
 
+  public static final String SIGNATURE_SECRET_FILE = SIGNATURE_SECRET + ".file";
+
   /**
    * Constant for the configuration property that indicates the validity of the generated token.
    */
@@ -186,6 +188,7 @@ public class AuthenticationFilter implements Filter {
   private Signer signer;
   private SignerSecretProvider secretProvider;
   private AuthenticationHandler authHandler;
+  private String signatureSecret;
   private boolean randomSecret;
   private boolean customSecretProvider;
   private long validity;
@@ -328,6 +331,15 @@ public class AuthenticationFilter implements Filter {
    */
   protected AuthenticationHandler getAuthenticationHandler() {
     return authHandler;
+  }
+
+  /**
+   * Returns the signature secret.
+   *
+   * @return the signature secret that will be used to sign authentication token.
+   */
+  protected String getSignatureSecret() {
+    return signatureSecret;
   }
 
   /**

@@ -50,8 +50,6 @@ public class AuthenticationFilterInitializer extends FilterInitializer {
 
   static final String PREFIX = "hadoop.http.authentication.";
 
-  static final String SIGNATURE_SECRET_FILE = AuthenticationFilter.SIGNATURE_SECRET + ".file";
-
   /**
    * Initializes hadoop-auth AuthenticationFilter.
    * <p/>
