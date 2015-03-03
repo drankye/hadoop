@@ -46,7 +46,7 @@ import org.apache.hadoop.util.StringUtils;
  * obtains Hadoop-Auth configuration for webhdfs.
  */
 public class AuthFilter extends AuthenticationFilter {
-  private static final String CONF_PREFIX = "dfs.web.authentication.";
+  public static final String CONF_PREFIX = "dfs.web.authentication.";
 
   /**
    * Returns the filter configuration properties,

@@ -32,6 +32,7 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.server.common.JspHelper;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
+import org.apache.hadoop.hdfs.web.AuthFilter;
 import org.apache.hadoop.hdfs.web.WebHdfsFileSystem;
 import org.apache.hadoop.hdfs.web.resources.Param;
 import org.apache.hadoop.hdfs.web.resources.UserParam;
@@ -158,6 +159,35 @@ public class NameNodeHttpServer {
   private Map<String, String> getAuthFilterParams(Configuration conf)
       throws IOException {
     Map<String, String> params = new HashMap<String, String>();
+
+    /**
+     * We pick up hadoop-auth (hadoop.http.authentication.*) related properties and transform them into
+     * ones with prefix for webhdfs (dfs.web.authentication.*)
+     */
+    String HADOOP_AUTH_PREFIX = "hadoop.http.authentication.";
+    String name, value;
+    for (Map.Entry<String, String> entry : conf) {
+      name = entry.getKey();
+      if (name.startsWith(HADOOP_AUTH_PREFIX)) {
+        value = conf.get(name);
+        name = name.replace(HADOOP_AUTH_PREFIX, AuthFilter.CONF_PREFIX);
+        params.put(name, value);
+      }
+    }
+
+    /**
+     * We pick up webhdfs related properties and put them into params so that can be referenced also later.
+     * This allows both web console and web hdfs can be configured in consistent and sharable way,
+     * thus allows sso between them easily. Note these properties may override hadoop-auth ones.
+     */
+    for (Map.Entry<String, String> entry : conf) {
+      name = entry.getKey();
+      if (name.startsWith(AuthFilter.CONF_PREFIX)) {
+        value = conf.get(name);
+        params.put(name, value);
+      }
+    }
+
     String principalInConf = conf
         .get(DFSConfigKeys.DFS_WEB_AUTHENTICATION_KERBEROS_PRINCIPAL_KEY);
     if (principalInConf != null && !principalInConf.isEmpty()) {
