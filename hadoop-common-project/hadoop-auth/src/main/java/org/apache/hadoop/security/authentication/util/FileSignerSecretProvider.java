@@ -13,15 +13,14 @@
  */
 package org.apache.hadoop.security.authentication.util;
 
+import com.google.common.base.Charsets;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
 import org.apache.hadoop.security.authentication.util.SignerSecretProvider;
 
 import javax.servlet.ServletContext;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.Properties;
 
@@ -48,7 +47,8 @@ public class FileSignerSecretProvider extends SignerSecretProvider {
     if (signatureSecretFile != null) {
       try {
         StringBuilder sb = new StringBuilder();
-        reader = new FileReader(signatureSecretFile);
+        reader = new InputStreamReader(
+            new FileInputStream(signatureSecretFile), Charsets.UTF_8);
         int c = reader.read();
         while (c > -1) {
           sb.append((char) c);
