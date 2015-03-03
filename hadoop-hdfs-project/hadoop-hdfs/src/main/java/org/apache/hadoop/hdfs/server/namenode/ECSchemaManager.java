@@ -24,9 +24,7 @@ import org.apache.hadoop.io.erasurecode.SchemaLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * The EC Schema Manager handles schemas loading and persisting.
@@ -62,7 +60,7 @@ public final class ECSchemaManager {
   }
 
 
-  public void reloadSchemas() {
+  public void reload() {
     List<ECSchema> predefSchemas = schemaLoader.loadSchema(conf);
     boolean updated = false;
 
@@ -83,4 +81,7 @@ public final class ECSchemaManager {
     }
   }
 
+  public List<ECSchema> getSchemas() {
+    return new ArrayList<>(schemas.values());
+  }
 }
