@@ -100,7 +100,7 @@ public class TimelineAuthenticationFilterInitializer extends FilterInitializer {
         filterConfig.put(name, value);
       }
     }
-    
+
     String authType = filterConfig.get(AuthenticationFilter.AUTH_TYPE);
     if (authType.equals(PseudoAuthenticationHandler.TYPE)) {
       filterConfig.put(AuthenticationFilter.AUTH_TYPE,

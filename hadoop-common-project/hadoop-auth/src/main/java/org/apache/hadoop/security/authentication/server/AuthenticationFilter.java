@@ -18,12 +18,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.security.authentication.client.AuthenticatedURL;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.apache.hadoop.security.authentication.client.KerberosAuthenticator;
-import org.apache.hadoop.security.authentication.util.Signer;
-import org.apache.hadoop.security.authentication.util.SignerException;
-import org.apache.hadoop.security.authentication.util.RandomSignerSecretProvider;
-import org.apache.hadoop.security.authentication.util.SignerSecretProvider;
-import org.apache.hadoop.security.authentication.util.StringSignerSecretProvider;
-import org.apache.hadoop.security.authentication.util.ZKSignerSecretProvider;
+import org.apache.hadoop.security.authentication.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -188,7 +183,6 @@ public class AuthenticationFilter implements Filter {
   private Signer signer;
   private SignerSecretProvider secretProvider;
   private AuthenticationHandler authHandler;
-  private String signatureSecret;
   private boolean randomSecret;
   private boolean customSecretProvider;
   private long validity;
@@ -286,8 +280,12 @@ public class AuthenticationFilter implements Filter {
     // fallback to old behavior
     if (signerSecretProviderName == null) {
       String signatureSecret = config.getProperty(SIGNATURE_SECRET, null);
+      String signatureSecretFile = config.getProperty(
+          SIGNATURE_SECRET_FILE, null);
       if (signatureSecret != null) {
         providerClassName = StringSignerSecretProvider.class.getName();
+      } else if (signatureSecretFile != null) {
+        providerClassName = FileSignerSecretProvider.class.getName();
       } else {
         providerClassName = RandomSignerSecretProvider.class.getName();
         randomSecret = true;
@@ -298,6 +296,8 @@ public class AuthenticationFilter implements Filter {
         randomSecret = true;
       } else if ("string".equals(signerSecretProviderName)) {
         providerClassName = StringSignerSecretProvider.class.getName();
+      } else if ("file".equals(signerSecretProviderName)) {
+        providerClassName = FileSignerSecretProvider.class.getName();
       } else if ("zookeeper".equals(signerSecretProviderName)) {
         providerClassName = ZKSignerSecretProvider.class.getName();
       } else {
@@ -331,15 +331,6 @@ public class AuthenticationFilter implements Filter {
    */
   protected AuthenticationHandler getAuthenticationHandler() {
     return authHandler;
-  }
-
-  /**
-   * Returns the signature secret.
-   *
-   * @return the signature secret that will be used to sign authentication token.
-   */
-  protected String getSignatureSecret() {
-    return signatureSecret;
   }
 
   /**

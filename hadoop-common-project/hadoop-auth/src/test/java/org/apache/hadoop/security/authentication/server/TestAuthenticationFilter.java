@@ -247,14 +247,22 @@ public class TestAuthenticationFilter {
     filter = new AuthenticationFilter();
     try {
       FilterConfig config = Mockito.mock(FilterConfig.class);
-      Mockito.when(config.getInitParameter(AuthenticationFilter.AUTH_TYPE)).thenReturn("simple");
-      Mockito.when(config.getInitParameter(AuthenticationFilter.SIGNATURE_SECRET_FILE))
+      Mockito.when(config.getInitParameter(
+          AuthenticationFilter.AUTH_TYPE)).thenReturn("simple");
+      Mockito.when(config.getInitParameter(
+          AuthenticationFilter.SIGNATURE_SECRET_FILE))
           .thenReturn(secretFile.getAbsolutePath());
       Mockito.when(config.getInitParameterNames()).thenReturn(
           new Vector<String>(Arrays.asList(AuthenticationFilter.AUTH_TYPE,
               AuthenticationFilter.SIGNATURE_SECRET_FILE)).elements());
+      ServletContext context = Mockito.mock(ServletContext.class);
+      Mockito.when(context.getAttribute(
+          AuthenticationFilter.SIGNER_SECRET_PROVIDER_ATTRIBUTE))
+          .thenReturn(null);
+      Mockito.when(config.getServletContext()).thenReturn(context);
       filter.init(config);
-      Assert.assertEquals(filter.getSignatureSecret(), secretValue);
+      Assert.assertFalse(filter.isRandomSecret());
+      Assert.assertFalse(filter.isCustomSignerSecretProvider());
     } finally {
       filter.destroy();
     }
