@@ -282,10 +282,11 @@ public class AuthenticationFilter implements Filter {
       String signatureSecret = config.getProperty(SIGNATURE_SECRET, null);
       String signatureSecretFile = config.getProperty(
           SIGNATURE_SECRET_FILE, null);
-      if (signatureSecret != null) {
-        providerClassName = StringSignerSecretProvider.class.getName();
-      } else if (signatureSecretFile != null) {
+      // The precedence from high to low : file, inline string, random
+      if (signatureSecretFile != null) {
         providerClassName = FileSignerSecretProvider.class.getName();
+      } else if (signatureSecret != null) {
+        providerClassName = StringSignerSecretProvider.class.getName();
       } else {
         providerClassName = RandomSignerSecretProvider.class.getName();
         randomSecret = true;
