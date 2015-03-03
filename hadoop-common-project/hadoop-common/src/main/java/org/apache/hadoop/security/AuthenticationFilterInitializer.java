@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.security;
 
-import com.google.common.base.Charsets;
 import org.apache.hadoop.http.HttpServer2;
 import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
 import org.apache.hadoop.conf.Configuration;
@@ -25,11 +24,7 @@ import org.apache.hadoop.http.FilterContainer;
 import org.apache.hadoop.http.FilterInitializer;
 import org.apache.hadoop.security.authentication.server.KerberosAuthenticationHandler;
 
-import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,25 +68,6 @@ public class AuthenticationFilterInitializer extends FilterInitializer {
         name = name.substring(PREFIX.length());
         filterConfig.put(name, value);
       }
-    }
-
-    String signatureSecretFile = filterConfig.get(SIGNATURE_SECRET_FILE);
-    if (signatureSecretFile == null) {
-      throw new RuntimeException("Undefined property: " + SIGNATURE_SECRET_FILE);      
-    }
-
-    StringBuilder secret = new StringBuilder();
-    try (Reader reader = new InputStreamReader(
-        new FileInputStream(signatureSecretFile), Charsets.UTF_8)) {
-      int c = reader.read();
-      while (c > -1) {
-        secret.append((char)c);
-        c = reader.read();
-      }
-      reader.close();
-      filterConfig.put(AuthenticationFilter.SIGNATURE_SECRET, secret.toString());
-    } catch (IOException ex) {
-      throw new RuntimeException("Could not read HTTP signature secret file: " + signatureSecretFile);            
     }
 
     //Resolve _HOST into bind address
