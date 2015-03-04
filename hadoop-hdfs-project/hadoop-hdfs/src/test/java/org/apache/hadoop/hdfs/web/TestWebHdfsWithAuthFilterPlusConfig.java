@@ -34,18 +34,32 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
+/**
+ * This test verifies that WebHDFS can recognize the set of configuration
+ * properties, started with "hadoop.http.authentication.*".
+ */
 public class TestWebHdfsWithAuthFilterPlusConfig {
 
-  private static final String COOKIE_DOMAIN = "hadoop-auth.com";
+  private static final String COOKIE_DOMAIN_PROPERTY =
+      "hadoop.http.authentication.cookie.domain";
+  private static final String TEST_COOKIE_DOMAIN = "from-hadoop-auth";
 
   public static final class MyFilter extends AuthFilter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response,
         FilterChain chain) throws IOException, ServletException {
+
+      /**
+       * If it gets the two test properties then it's assumed to be authorized,
+       * otherwise, rejected. The logic is just for the test purpose.
+       */
       String cookieDomain = getCookieDomain();
-      if (cookieDomain != null && cookieDomain.equals(COOKIE_DOMAIN)) {
-        // assume it's authorized owing to the presence of this property.
+      String cookiePath = getCookiePath();
+      boolean isAuthorized = cookieDomain != null &&
+          cookieDomain.equals(TEST_COOKIE_DOMAIN);
+      if (isAuthorized) {
+        // assume it's authorized owing to the presence of the properties.
         chain.doFilter(request, response);
       } else {
         ((HttpServletResponse) response)
@@ -75,8 +89,8 @@ public class TestWebHdfsWithAuthFilterPlusConfig {
     conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "localhost:0");
 
     if (withHadoopAuthProperty) {
-      // This is the test property as one of hadoop-auth related properties.
-      conf.set("hadoop.http.authentication.cookie.domain", COOKIE_DOMAIN);
+      // As test properties from hadoop-auth related.
+      conf.set(COOKIE_DOMAIN_PROPERTY, TEST_COOKIE_DOMAIN);
     }
 
     cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
