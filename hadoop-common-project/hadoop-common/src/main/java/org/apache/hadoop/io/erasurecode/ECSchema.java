@@ -62,11 +62,20 @@ public class ECSchema {
       if (options.containsKey(NUM_DATA_UNITS_KEY)) {
         dataUnits = Integer.parseInt(options.get(NUM_DATA_UNITS_KEY));
       }
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Option value " +
+          options.get(CHUNK_SIZE_KEY) + " for " + CHUNK_SIZE_KEY +
+          " is found. It should be an integer");
+    }
+
+    try {
       if (options.containsKey(NUM_PARITY_UNITS_KEY)) {
         parityUnits = Integer.parseInt(options.get(NUM_PARITY_UNITS_KEY));
       }
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("No codec option is provided");
+      throw new IllegalArgumentException("Option value " +
+          options.get(CHUNK_SIZE_KEY) + " for " + CHUNK_SIZE_KEY +
+          " is found. It should be an integer");
     }
 
     initWith(codecName, dataUnits, parityUnits, options);
@@ -106,7 +115,9 @@ public class ECSchema {
         this.chunkSize = Integer.parseInt(options.get(CHUNK_SIZE_KEY));
       }
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("No codec option is provided");
+      throw new IllegalArgumentException("Option value " +
+          options.get(CHUNK_SIZE_KEY) + " for " + CHUNK_SIZE_KEY +
+          " is found. It should be an integer");
     }
 
     boolean isFine = numDataUnits > 0 && numParityUnits > 0 && chunkSize > 0;
@@ -161,5 +172,32 @@ public class ECSchema {
    */
   public int getChunkSize() {
     return chunkSize;
+  }
+
+  /**
+   * Make a meaningful string representation for log output.
+   * @return string representation
+   */
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder("ECSchema=[");
+
+    sb.append("Name=" + schemaName + ",");
+    sb.append(NUM_DATA_UNITS_KEY + "=" + numDataUnits + ",");
+    sb.append(NUM_PARITY_UNITS_KEY + "=" + numParityUnits + ",");
+    sb.append(CHUNK_SIZE_KEY + "=" + chunkSize + ",");
+
+    for (String opt : options.keySet()) {
+      boolean skip = (opt.equals(NUM_DATA_UNITS_KEY) ||
+          opt.equals(NUM_PARITY_UNITS_KEY) ||
+          opt.equals(CHUNK_SIZE_KEY));
+      if (! skip) {
+        sb.append(opt + "=" + options.get(opt) + ",");
+      }
+    }
+
+    sb.append("]");
+
+    return sb.toString();
   }
 }
