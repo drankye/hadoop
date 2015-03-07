@@ -70,13 +70,13 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     int idx = 0;
     for (int i = 0; i < getNumParityUnits(); i++) {
       if (blockGroup.getParityBlocks()[i].isErased()) {
-        outputBlocks[idx ++] = blockGroup.getParityBlocks()[i];
+        outputBlocks[idx++] = blockGroup.getParityBlocks()[i];
       }
     }
 
     for (int i = 0; i < getNumDataUnits(); i++) {
       if (blockGroup.getDataBlocks()[i].isErased()) {
-        outputBlocks[idx ++] = blockGroup.getDataBlocks()[i];
+        outputBlocks[idx++] = blockGroup.getDataBlocks()[i];
       }
     }
 
@@ -122,10 +122,10 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     }
 
     int[] erasedIndexes = new int[numErased];
-    int j = 0;
-    for (int i = 0; i < inputBlocks.length; i++) {
+    int i = 0, j = 0;
+    for (; i < inputBlocks.length && j < erasedIndexes.length; i++) {
       if (inputBlocks[i].isErased()) {
-        erasedIndexes[j ++] = i;
+        erasedIndexes[j++] = i;
       }
     }
 
@@ -144,9 +144,10 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
     }
 
     ECBlock[] erasedBlocks = new ECBlock[numErased];
-    for (int i = 0; i < inputBlocks.length && i < erasedBlocks.length; i++) {
+    int i = 0, j = 0;
+    for (; i < inputBlocks.length && j < erasedBlocks.length; i++) {
       if (inputBlocks[i].isErased()) {
-        erasedBlocks[i] = inputBlocks[i];
+        erasedBlocks[j++] = inputBlocks[i];
       }
     }
 
