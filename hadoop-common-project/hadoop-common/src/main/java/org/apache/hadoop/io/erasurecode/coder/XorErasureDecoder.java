@@ -45,12 +45,18 @@ public class XorErasureDecoder extends AbstractErasureDecoder {
 
   /**
    * Which blocks were erased ? For XOR it's simple we only allow and return one
-   * erased block.
+   * erased block, either data or parity.
    * @param blockGroup
-   * @return output blocks
+   * @return output blocks to recover
    */
   @Override
   protected ECBlock[] getOutputBlocks(ECBlockGroup blockGroup) {
+    /**
+     * If more than one blocks (either data or parity) erased, then it's not
+     * edible to recover. We don't have the check here since it will be done
+     * by upper level: ErasreCoder call can be avoid if not possible to recover
+     * at all.
+     */
     int erasedNum = getNumErasedBlocks(blockGroup);
     ECBlock[] outputBlocks = new ECBlock[erasedNum];
 

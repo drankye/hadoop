@@ -59,21 +59,16 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
   }
 
   /**
-   * Which blocks were erased ? Then have those blocks as output block because
-   * we attempt to recover them in most often cases by default.
+   * Which blocks were erased ? We only care data blocks here. Sub-classes can
+   * override this behavior.
    * @param blockGroup
-   * @return
+   * @return output blocks to recover
    */
   protected ECBlock[] getOutputBlocks(ECBlockGroup blockGroup) {
-    ECBlock[] outputBlocks = new ECBlock[getNumErasedBlocks(blockGroup)];
+    ECBlock[] outputBlocks = new ECBlock[
+        getNumErasedBlocks(blockGroup.getDataBlocks())];
 
     int idx = 0;
-    for (int i = 0; i < getNumParityUnits(); i++) {
-      if (blockGroup.getParityBlocks()[i].isErased()) {
-        outputBlocks[idx++] = blockGroup.getParityBlocks()[i];
-      }
-    }
-
     for (int i = 0; i < getNumDataUnits(); i++) {
       if (blockGroup.getDataBlocks()[i].isErased()) {
         outputBlocks[idx++] = blockGroup.getDataBlocks()[i];
