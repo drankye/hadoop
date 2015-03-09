@@ -26,6 +26,7 @@ import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
  * Erasure Codec to be managed by ECManager and used by ECWorker
  */
 public abstract class AbstractErasureCodec implements ErasureCodec {
+
   private ECSchema schema;
 
   public void initWith(ECSchema schema) {
