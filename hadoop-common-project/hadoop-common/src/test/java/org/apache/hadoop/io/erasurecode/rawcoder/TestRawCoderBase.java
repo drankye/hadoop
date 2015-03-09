@@ -62,10 +62,6 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     //Compare
     compareAndVerify(toEraseDataChunks, recoveredChunks);
-
-    //Release resources
-    encoder.release();
-    decoder.release();
   }
 
   /**
