@@ -27,6 +27,7 @@ public class RSErasureEncoder extends AbstractErasureEncoder {
   private RawErasureEncoder checkCreateRSRawEncoder() {
     // TODO: should be configured, either JRSRawEncoder or IsaRSRawDecoder
     // Will think about configuration related in ErasureCodec layer.
+    // Ref. HADOOP-11649
     if (rawEncoder == null) {
       rawEncoder = new JRSRawEncoder();
       rawEncoder.initialize(getNumDataUnits(), getNumParityUnits(), getChunkSize());
