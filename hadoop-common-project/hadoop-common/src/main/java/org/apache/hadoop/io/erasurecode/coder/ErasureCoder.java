@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.io.erasurecode.coder;
 
-import org.apache.hadoop.conf.Configurable;
-
 /**
  * An erasure coder to perform encoding or decoding given a group. Generally it
  * involves calculating necessary internal steps according to codec logic. For
@@ -33,7 +31,7 @@ import org.apache.hadoop.conf.Configurable;
  * of multiple coding steps.
  *
  */
-public interface ErasureCoder extends Configurable {
+public interface ErasureCoder {
 
   /**
    * Initialize with the important parameters for the code.

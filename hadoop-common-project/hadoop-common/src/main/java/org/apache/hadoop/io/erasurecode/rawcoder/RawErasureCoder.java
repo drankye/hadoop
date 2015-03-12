@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.conf.Configurable;
-
 /**
  * RawErasureCoder is a common interface for {@link RawErasureEncoder} and
  * {@link RawErasureDecoder} as both encoder and decoder share some properties.
@@ -33,7 +31,7 @@ import org.apache.hadoop.conf.Configurable;
  * low level constructs, since it only takes care of the math calculation with
  * a group of byte buffers.
  */
-public interface RawErasureCoder extends Configurable {
+public interface RawErasureCoder {
 
   /**
    * Initialize with the important parameters for the code.

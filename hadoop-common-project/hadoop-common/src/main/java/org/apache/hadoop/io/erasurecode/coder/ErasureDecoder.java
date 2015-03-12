@@ -25,7 +25,7 @@ import org.apache.hadoop.io.erasurecode.ECBlockGroup;
  *
  * It extends {@link ErasureCoder}.
  */
-public interface ErasureDecoder extends ErasureCoder {
+public interface ErasureDecoder {
 
   /**
    * Perform the decoding given a blockGroup. By default it will try the best to
