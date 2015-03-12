@@ -30,7 +30,7 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
 
   @Override
   public ErasureCodingStep decode(ECBlockGroup blockGroup) {
-    return doDecode(blockGroup);
+    return performDecoding(blockGroup);
   }
 
   /**
@@ -38,7 +38,7 @@ public abstract class AbstractErasureDecoder extends AbstractErasureCoder
    * @param blockGroup
    * @return decoding step for caller to do the real work
    */
-  protected abstract ErasureCodingStep doDecode(ECBlockGroup blockGroup);
+  protected abstract ErasureCodingStep performDecoding(ECBlockGroup blockGroup);
 
   /**
    * We have all the data blocks and parity blocks as input blocks for

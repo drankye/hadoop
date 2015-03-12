@@ -30,7 +30,7 @@ import org.apache.hadoop.io.erasurecode.rawcoder.XorRawEncoder;
 public class XorErasureEncoder extends AbstractErasureEncoder {
 
   @Override
-  protected ErasureCodingStep doEncode(final ECBlockGroup blockGroup) {
+  protected ErasureCodingStep performEncoding(final ECBlockGroup blockGroup) {
     // May be configured
     RawErasureEncoder rawEncoder = new XorRawEncoder();
     rawEncoder.initialize(getNumDataUnits(),

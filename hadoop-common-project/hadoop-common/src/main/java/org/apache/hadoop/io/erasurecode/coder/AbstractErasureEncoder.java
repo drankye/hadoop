@@ -30,7 +30,7 @@ public abstract class AbstractErasureEncoder extends AbstractErasureCoder
 
   @Override
   public ErasureCodingStep encode(ECBlockGroup blockGroup) {
-    return doEncode(blockGroup);
+    return performEncoding(blockGroup);
   }
 
   /**
@@ -38,7 +38,7 @@ public abstract class AbstractErasureEncoder extends AbstractErasureCoder
    * @param blockGroup
    * @return encoding step for caller to do the real work
    */
-  protected abstract ErasureCodingStep doEncode(ECBlockGroup blockGroup);
+  protected abstract ErasureCodingStep performEncoding(ECBlockGroup blockGroup);
 
   protected ECBlock[] getInputBlocks(ECBlockGroup blockGroup) {
     return blockGroup.getDataBlocks();
