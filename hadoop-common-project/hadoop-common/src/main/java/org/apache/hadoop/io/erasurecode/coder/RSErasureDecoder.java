@@ -1,5 +1,7 @@
 package org.apache.hadoop.io.erasurecode.coder;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.io.erasurecode.ECBlock;
 import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 import org.apache.hadoop.io.erasurecode.rawcoder.JRSRawDecoder;
@@ -14,9 +16,19 @@ import org.apache.hadoop.io.erasurecode.rawcoder.XorRawDecoder;
 public class RSErasureDecoder extends AbstractErasureDecoder {
   private RawErasureDecoder rsRawDecoder;
   private RawErasureDecoder xorRawDecoder;
-  private boolean useXorWhenPossible = true; // Will be configurable
+  private boolean useXorWhenPossible = true;
 
   @Override
+  public void setConf(Configuration conf) {
+    super.setConf(conf);
+
+    if (conf != null) {
+      this.useXorWhenPossible = conf.getBoolean(
+          CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_USEXOR_KEY, true);
+    }
+  }
+
+    @Override
   protected ErasureCodingStep doDecode(final ECBlockGroup blockGroup) {
 
     RawErasureDecoder rawDecoder;
