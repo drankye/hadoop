@@ -17,11 +17,13 @@
  */
 package org.apache.hadoop.io.erasurecode.coder;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Test ReedSolomon encoding and decoding.
+ * Test Reed-Solomon encoding and decoding.
  */
 public class TestRSErasureCoder extends TestErasureCoderBase {
 
@@ -45,6 +47,15 @@ public class TestRSErasureCoder extends TestErasureCoderBase {
   @Test
   public void testCodingDirectBuffer_10x4() {
     prepare(10, 4, null);
+    testCoding(true);
+  }
+
+  @Test
+  public void testCodingDirectBufferWithConf_10x4() {
+    Configuration conf = new Configuration();
+    conf.setBoolean(
+        CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_USEXOR_KEY, false);
+    prepare(conf, 10, 4, null);
     testCoding(true);
   }
 
