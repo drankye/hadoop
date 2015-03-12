@@ -133,18 +133,7 @@ public class CommonConfigurationKeys extends CommonConfigurationKeysPublic {
   /** Default value for IO_COMPRESSION_CODEC_USELZ4HC_KEY */
   public static final boolean IO_COMPRESSION_CODEC_LZ4_USELZ4HC_DEFAULT =
       false;
-
-  /**
-   * Erasure Coding configuration family
-   */
-
-  /** Supported erasure codec classes */
-  public static final String IO_ERASURECODE_CODECS_KEY = "io.erasurecode.codecs";
-
-  /** Use XOR raw coder when possible for the RS codec */
-  public static final String IO_ERASURECODE_CODEC_RS_USEXOR_KEY =
-      "io.erasurecode.codec.rs.usexor";
-
+  
   /**
    * Service Authorization
    */
