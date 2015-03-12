@@ -133,7 +133,7 @@ public class CommonConfigurationKeys extends CommonConfigurationKeysPublic {
   /** Default value for IO_COMPRESSION_CODEC_USELZ4HC_KEY */
   public static final boolean IO_COMPRESSION_CODEC_LZ4_USELZ4HC_DEFAULT =
       false;
-  
+
   /**
    * Service Authorization
    */
