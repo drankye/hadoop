@@ -14,7 +14,7 @@ public class RSErasureEncoder extends AbstractErasureEncoder {
   private RawErasureEncoder rawEncoder;
 
   @Override
-  protected ErasureCodingStep performEncoding(final ECBlockGroup blockGroup) {
+  protected ErasureCodingStep doEncode(final ECBlockGroup blockGroup) {
 
     RawErasureEncoder rawEncoder = checkCreateRSRawEncoder();
 

@@ -17,7 +17,7 @@ public class RSErasureDecoder extends AbstractErasureDecoder {
   private boolean useXorWhenPossible = true; // Will be configurable
 
   @Override
-  protected ErasureCodingStep performDecoding(final ECBlockGroup blockGroup) {
+  protected ErasureCodingStep doDecode(final ECBlockGroup blockGroup) {
 
     RawErasureDecoder rawDecoder;
 
