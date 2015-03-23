@@ -17,8 +17,10 @@
  */
 package org.apache.hadoop.io.erasurecode.codec;
 
-import org.apache.hadoop.io.erasurecode.ECSchema;
-import org.apache.hadoop.io.erasurecode.coder.*;
+import org.apache.hadoop.io.erasurecode.coder.ErasureDecoder;
+import org.apache.hadoop.io.erasurecode.coder.ErasureEncoder;
+import org.apache.hadoop.io.erasurecode.coder.RSErasureDecoder;
+import org.apache.hadoop.io.erasurecode.coder.RSErasureEncoder;
 
 /**
  * A Reed-Solomon erasure codec.
