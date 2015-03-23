@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.codec;
 
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.io.erasurecode.ECSchema;
 import org.apache.hadoop.io.erasurecode.coder.*;
 import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
@@ -24,7 +25,8 @@ import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 /**
  * Abstract Erasure Codec that implements {@link ErasureCodec}.
  */
-public abstract class AbstractErasureCodec implements ErasureCodec {
+public abstract class AbstractErasureCodec extends Configured
+    implements ErasureCodec {
 
   private ECSchema schema;
 
@@ -56,6 +58,10 @@ public abstract class AbstractErasureCodec implements ErasureCodec {
     return encoder;
   }
 
+  /**
+   * Create a new encoder instance to be initialized afterwards.
+   * @return encoder
+   */
   protected abstract ErasureEncoder doCreateEncoder();
 
   @Override
@@ -65,6 +71,10 @@ public abstract class AbstractErasureCodec implements ErasureCodec {
     return decoder;
   }
 
+  /**
+   * Create a new decoder instance to be initialized afterwards.
+   * @return decoder
+   */
   protected abstract ErasureDecoder doCreateDecoder();
 
   private void prepareErasureCoder(ErasureCoder erasureCoder) {
@@ -72,6 +82,7 @@ public abstract class AbstractErasureCodec implements ErasureCodec {
       throw new RuntimeException("No schema been set yet");
     }
 
+    erasureCoder.setConf(getConf());
     erasureCoder.initialize(getSchema());
   }
 }

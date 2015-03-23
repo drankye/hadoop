@@ -18,29 +18,20 @@
 package org.apache.hadoop.io.erasurecode.codec;
 
 import org.apache.hadoop.io.erasurecode.ECSchema;
-import org.apache.hadoop.io.erasurecode.coder.ErasureDecoder;
-import org.apache.hadoop.io.erasurecode.coder.ErasureEncoder;
-import org.apache.hadoop.io.erasurecode.coder.XorErasureDecoder;
-import org.apache.hadoop.io.erasurecode.coder.XorErasureEncoder;
+import org.apache.hadoop.io.erasurecode.coder.*;
 
 /**
- * A XOR erasure codec.
+ * A Reed-Solomon erasure codec.
  */
-public class XORErasureCodec extends AbstractErasureCodec {
-
-  @Override
-  public void setSchema(ECSchema schema) {
-    super.setSchema(schema);
-    assert(schema.getNumParityUnits() == 1);
-  }
+public class RSErasureCodec extends AbstractErasureCodec {
 
   @Override
   protected ErasureEncoder doCreateEncoder() {
-    return new XorErasureEncoder();
+    return new RSErasureEncoder();
   }
 
   @Override
   protected ErasureDecoder doCreateDecoder() {
-    return new XorErasureDecoder();
+    return new RSErasureDecoder();
   }
 }
