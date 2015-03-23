@@ -18,10 +18,11 @@
 package org.apache.hadoop.io.erasurecode.codec;
 
 import org.apache.hadoop.io.erasurecode.ECSchema;
+import org.apache.hadoop.io.erasurecode.coder.*;
 import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 
 /**
- * Erasure Codec to be managed by ECManager and used by ECWorker
+ * Abstract Erasure Codec that implements {@link ErasureCodec}.
  */
 public abstract class AbstractErasureCodec implements ErasureCodec {
 
@@ -44,6 +45,33 @@ public abstract class AbstractErasureCodec implements ErasureCodec {
   public BlockGrouper createBlockGrouper() {
     BlockGrouper blockGrouper = new BlockGrouper();
     blockGrouper.setSchema(getSchema());
+
     return blockGrouper;
+  }
+
+  @Override
+  public ErasureEncoder createEncoder() {
+    ErasureEncoder encoder = doCreateEncoder();
+    prepareErasureCoder(encoder);
+    return encoder;
+  }
+
+  protected abstract ErasureEncoder doCreateEncoder();
+
+  @Override
+  public ErasureDecoder createDecoder() {
+    ErasureDecoder decoder = doCreateDecoder();
+    prepareErasureCoder(decoder);
+    return decoder;
+  }
+
+  protected abstract ErasureDecoder doCreateDecoder();
+
+  private void prepareErasureCoder(ErasureCoder erasureCoder) {
+    if (getSchema() == null) {
+      throw new RuntimeException("No schema been set yet");
+    }
+
+    erasureCoder.initialize(getSchema());
   }
 }

@@ -29,10 +29,18 @@ public class BlockGrouper {
 
   private ECSchema schema;
 
+  /**
+   * Set EC schema.
+   * @param schema
+   */
   public void setSchema(ECSchema schema) {
     this.schema = schema;
   }
 
+  /**
+   * Get EC schema.
+   * @return
+   */
   protected ECSchema getSchema() {
     return schema;
   }

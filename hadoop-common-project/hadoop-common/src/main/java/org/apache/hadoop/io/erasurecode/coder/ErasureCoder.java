@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.coder;
 
 import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.io.erasurecode.ECSchema;
 
 /**
  * An erasure coder to perform encoding or decoding given a group. Generally it
@@ -42,6 +43,12 @@ public interface ErasureCoder extends Configurable {
    * @param chunkSize the size of the input/output buffer
    */
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize);
+
+  /**
+   * Initialize with an EC schema.
+   * @param schema
+   */
+  public void initialize(ECSchema schema);
 
   /**
    * The number of data input units for the coding. A unit can be a byte,

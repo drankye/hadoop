@@ -22,8 +22,10 @@ import org.apache.hadoop.io.erasurecode.coder.ErasureDecoder;
 import org.apache.hadoop.io.erasurecode.coder.ErasureEncoder;
 import org.apache.hadoop.io.erasurecode.coder.XorErasureDecoder;
 import org.apache.hadoop.io.erasurecode.coder.XorErasureEncoder;
-import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 
+/**
+ * A XOR erasure codec.
+ */
 public class XorErasureCodec extends AbstractErasureCodec {
 
   @Override
@@ -32,19 +34,13 @@ public class XorErasureCodec extends AbstractErasureCodec {
     assert(schema.getNumParityUnits() == 1);
   }
 
-
-
   @Override
-  public ErasureEncoder createEncoder() {
-    ErasureEncoder encoder = new XorErasureEncoder();
-
-    return encoder;
+  protected ErasureEncoder doCreateEncoder() {
+    return new XorErasureEncoder();
   }
 
   @Override
-  public ErasureDecoder createDecoder() {
-    ErasureDecoder decoder = new XorErasureDecoder();
-
-    return decoder;
+  protected ErasureDecoder doCreateDecoder() {
+    return new XorErasureDecoder();
   }
 }
