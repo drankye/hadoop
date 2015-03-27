@@ -1,0 +1,5 @@
+Building Steps:
+cd ../erasure_code
+make slib
+cd ../coder
+sh makejni.sh

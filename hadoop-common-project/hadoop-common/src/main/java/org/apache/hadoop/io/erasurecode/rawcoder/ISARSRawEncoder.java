@@ -64,12 +64,8 @@ public class ISARSRawEncoder extends AbstractRawErasureEncoder {
 
   private static native int destroy();
 
-  public void end() {
-    destroy();
-  }
-
   @Override
-  protected void finalize() {
+  public void release() {
     destroy();
   }
 }

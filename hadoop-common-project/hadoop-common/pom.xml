@@ -527,6 +527,8 @@
         <openssl.prefix></openssl.prefix>
         <openssl.lib></openssl.lib>
         <openssl.include></openssl.include>
+        <erasurecode.prefix></erasurecode.prefix>
+        <erasurecode.lib></erasurecode.lib>
         <require.openssl>false</require.openssl>
         <runningWithNative>true</runningWithNative>
         <bundle.openssl.in.bin>false</bundle.openssl.in.bin>
@@ -580,6 +582,8 @@
                     <javahClassName>org.apache.hadoop.io.compress.snappy.SnappyDecompressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Compressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Decompressor</javahClassName>
+                    <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.ISARSRawEncoder</javahClassName>
+                    <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.ISARSRawDecoder</javahClassName>
                     <javahClassName>org.apache.hadoop.crypto.OpensslCipher</javahClassName>
                     <javahClassName>org.apache.hadoop.crypto.random.OpensslSecureRandom</javahClassName>
                     <javahClassName>org.apache.hadoop.util.NativeCrc32</javahClassName>
@@ -644,6 +648,8 @@
         <snappy.prefix></snappy.prefix>
         <snappy.lib></snappy.lib>
         <snappy.include></snappy.include>
+        <erasurecode.prefix></erasurecode.prefix>
+        <erasurecode.lib></erasurecode.lib>
         <require.snappy>false</require.snappy>
         <bundle.snappy.in.bin>true</bundle.snappy.in.bin>
         <openssl.prefix></openssl.prefix>
@@ -750,6 +756,8 @@
                     <argument>/p:CustomOpensslLib=${openssl.lib}</argument>
                     <argument>/p:CustomOpensslInclude=${openssl.include}</argument>
                     <argument>/p:RequireOpenssl=${require.openssl}</argument>
+                    <argument>/p:CustomErasurecodePrefix=${erasurecode.prefix}</argument>
+                    <argument>/p:CustomErasurecodeLib=${erasurecode.lib}</argument>
                   </arguments>
                 </configuration>
               </execution>

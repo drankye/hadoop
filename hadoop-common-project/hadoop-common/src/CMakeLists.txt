@@ -140,6 +140,23 @@ CHECK_FUNCTION_EXISTS(posix_fadvise HAVE_POSIX_FADVISE)
 CHECK_LIBRARY_EXISTS(dl dlopen "" NEED_LINK_DL)
 
 SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+find_library(ERASURECODE_LIBRARY
+    NAMES erasure_code
+     PATHS ${CUSTOM_ERASURECODE_PREFIX} ${CUSTOM_ERASURECODE_PREFIX}/lib
+              ${CUSTOM_ERASURECODE_PREFIX}/lib64 ${CUSTOM_ERASURECODE_LIB})
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ${STORED_CMAKE_FIND_LIBRARY_SUFFIXES})
+if (EC_LIBRARY)
+    GET_FILENAME_COMPONENT(HADOOP_ERASURECODE_LIBRARY ${ERASURECODE_LIBRARY} NAME)
+    set(ERASURECODE_SOURCE_FILES
+        "${D}/io/erasurecode/isa_l/coder/isa_encoder_jni.c"
+        "${D}/io/erasurecode/isa_l/coder/isa_decoder_jni.c")
+else (ERASURECODE_LIBRARY)
+    set(ERASURECODE_SOURCE_FILES "")
+    MESSAGE(FATAL_ERROR "Required erasure code library could not be found. CMAKE_FIND_LIBRARY_SUFFIXES = ${CMAKE_FIND_LIBRARY_SUFFIXES} CUSTOM_EC_PREFIX=${CUSTOM_EC_PREFIX} CUSTOM_EC_LIB=${CUSTOM_EC_LIB}")
+endif (EC_LIBRARY)
+
+
+SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 set_find_shared_library_version("1")
 find_library(SNAPPY_LIBRARY 
     NAMES snappy
@@ -238,6 +255,7 @@ add_dual_library(hadoop
     ${D}/io/compress/lz4/Lz4Decompressor.c
     ${D}/io/compress/lz4/lz4.c
     ${D}/io/compress/lz4/lz4hc.c
+    ${ERASURECODE_SOURCE_FILES}
     ${SNAPPY_SOURCE_FILES}
     ${OPENSSL_SOURCE_FILES}
     ${D}/io/compress/zlib/ZlibCompressor.c
