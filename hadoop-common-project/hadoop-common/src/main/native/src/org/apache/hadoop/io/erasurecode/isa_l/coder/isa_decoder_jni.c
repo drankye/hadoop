@@ -37,7 +37,7 @@ or Intel's suppliers or licensors in any way.
 #include "../include/erasure_code.h"
 #include "../include/types.h"
 #include "../include/gf_vect_mul.h"
-#include "org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder.h"
+#include "org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -83,10 +83,10 @@ static void make_key(){
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_loadLib
   (JNIEnv *env, jclass myclass) {
     // Load liberasure_code.so
-  void *libec = dlopen(HADOOP_EC_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
+  void *libec = dlopen(HADOOP_ERASURECODE_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
   if (!libec) {
     char msg[1000];
-    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_EC_LIBRARY, dlerror());
+    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_ERASURECODE_LIBRARY, dlerror());
     THROW(env, "java/lang/UnsatisfiedLinkError", msg);
     return 0;
   }
