@@ -21,7 +21,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.apache.hadoop.util.NativeCodeLoader;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 
@@ -45,11 +44,31 @@ public class ISARSRawDecoder extends AbstractRawErasureDecoder {
     init(numDataUnits, numParityUnits, matrix);
   }
 
+  @Override
+  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
+                          ByteBuffer[] outputs) {
+    if (erasedIndexes.length == 0) {
+      return;
+    }
+
+    for (int i = 0, j = 0; i < erasedIndexes.length; ++i, ++j) {
+      inputs[erasedIndexes[i]] = outputs[j];
+    }
+
+    decode(inputs, erasedIndexes, getChunkSize());
+  }
+
+  @Override
+  protected void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    throw new RuntimeException(
+        "To be implemented, please use chunk or bytebuffer versions");
+  }
+
   private static native int loadLib();
 
   private native static int init(int dataSize, int paritySize, int[] matrix);
 
-  public native static int decode(ByteBuffer[] allData, int[] erasured, int chunkSize);
+  public native static int decode(ByteBuffer[] allData, int[] erased, int chunkSize);
 
   private native static int destroy();
 
@@ -57,16 +76,5 @@ public class ISARSRawDecoder extends AbstractRawErasureDecoder {
   @Override
   public void release() {
     destroy();
-  }
-
-
-  @Override
-  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs) {
-    //decode(inputs, erasedIndexes, chunkSize());
-  }
-
-  @Override
-  protected void doDecode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
-    throw new NotImplementedException();
   }
 }

@@ -21,7 +21,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.apache.hadoop.util.NativeCodeLoader;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 
@@ -53,7 +52,8 @@ public class ISARSRawEncoder extends AbstractRawErasureEncoder {
 
   @Override
   protected void doEncode(byte[][] inputs, byte[][] outputs) {
-    throw new NotImplementedException();
+    throw new RuntimeException(
+        "To be implemented, please use chunk or bytebuffer versions");
   }
 
   private static native int loadLib();

@@ -37,6 +37,7 @@ or Intel's suppliers or licensors in any way.
 #include "../include/erasure_code.h"
 #include "../include/types.h"
 #include "../include/gf_vect_mul.h"
+#include "org_apache_hadoop.h"
 #include "org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder.h"
 #include <jni.h>
 #include <pthread.h>
