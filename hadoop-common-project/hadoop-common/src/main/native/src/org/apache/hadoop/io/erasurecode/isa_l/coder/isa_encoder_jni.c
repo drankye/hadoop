@@ -73,13 +73,13 @@ static void make_key(){
     //(void) pthread_key_create(&de_key, NULL);
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_loadLib
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_loadLib
   (JNIEnv *env, jclass myclass) {
     // Load libsnappy.so
-  void *libec = dlopen(HADOOP_ERASURECODE_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
+  void *libec = dlopen("liberasure_code.so", RTLD_LAZY | RTLD_GLOBAL);
   if (!libec) {
     char msg[1000];
-    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_ERASURECODE_LIBRARY, dlerror());
+    snprintf(msg, 1000, "%s (%s)!", "Cannot load " "liberasure_code.so", dlerror());
     THROW(env, "java/lang/UnsatisfiedLinkError", msg);
     return 0;
   }
@@ -89,7 +89,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_loa
   return 0;
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_init
   (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
         fprintf(stdout, "[Encoder Init]before init.\n");
         Codec_Parameter * pCodecParameter = NULL;
@@ -140,7 +140,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_ini
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_encode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
         fprintf(stderr, "[Encoding]Before encoding...\n");
         int dataLen, codeLen;
@@ -182,7 +182,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_enc
         return 0;
   }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawEncoder_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_destroy
   (JNIEnv *env, jclass myclass){
         fprintf(stdout, "[Encoder destory]before destory\n");
         Codec_Parameter * pCodecParameter = NULL;

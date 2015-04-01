@@ -146,13 +146,9 @@ find_library(ERASURECODE_LIBRARY
               ${CUSTOM_ERASURECODE_PREFIX}/lib64 ${CUSTOM_ERASURECODE_LIB})
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ${STORED_CMAKE_FIND_LIBRARY_SUFFIXES})
 if (ERASURECODE_LIBRARY)
-    GET_FILENAME_COMPONENT(HADOOP_ERASURECODE_LIBRARY ${ERASURECODE_LIBRARY} NAME)
     set(ERASURECODE_SOURCE_FILES
         "${D}/io/erasurecode/isa_l/coder/isa_encoder_jni.c"
         "${D}/io/erasurecode/isa_l/coder/isa_decoder_jni.c")
-else (ERASURECODE_LIBRARY)
-    set(ERASURECODE_SOURCE_FILES "")
-#    MESSAGE(FATAL_ERROR "Required erasure code library could not be found. CMAKE_FIND_LIBRARY_SUFFIXES = ${CMAKE_FIND_LIBRARY_SUFFIXES} CUSTOM_ERASURECODE_PREFIX=${CUSTOM_ERASURECODE_PREFIX} CUSTOM_ERASURECODE_LIB=${CUSTOM_ERASURECODE_LIB}")
 endif (ERASURECODE_LIBRARY)
 
 
@@ -238,6 +234,7 @@ include_directories(
     ${ZLIB_INCLUDE_DIRS}
     ${BZIP2_INCLUDE_DIR}
     ${SNAPPY_INCLUDE_DIR}
+    ${D}/io/erasurecode/isa_l/include
     ${OPENSSL_INCLUDE_DIR}
     ${D}/util
 )
@@ -255,7 +252,8 @@ add_dual_library(hadoop
     ${D}/io/compress/lz4/Lz4Decompressor.c
     ${D}/io/compress/lz4/lz4.c
     ${D}/io/compress/lz4/lz4hc.c
-    ${ERASURECODE_SOURCE_FILES}
+    ${D}/io/erasurecode/isa_l/coder/isa_encoder_jni.c
+    ${D}/io/erasurecode/isa_l/coder/isa_decoder_jni.c
     ${SNAPPY_SOURCE_FILES}
     ${OPENSSL_SOURCE_FILES}
     ${D}/io/compress/zlib/ZlibCompressor.c

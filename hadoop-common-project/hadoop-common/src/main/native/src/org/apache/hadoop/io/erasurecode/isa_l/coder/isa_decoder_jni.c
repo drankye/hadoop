@@ -80,13 +80,13 @@ static void make_key(){
 
 
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_loadLib
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_loadLib
   (JNIEnv *env, jclass myclass) {
     // Load liberasure_code.so
-  void *libec = dlopen(HADOOP_ERASURECODE_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
+  void *libec = dlopen("liberasure_code.so", RTLD_LAZY | RTLD_GLOBAL);
   if (!libec) {
     char msg[1000];
-    snprintf(msg, 1000, "%s (%s)!", "Cannot load " HADOOP_ERASURECODE_LIBRARY, dlerror());
+    snprintf(msg, 1000, "%s (%s)!", "Cannot load " "liberasure_code.so", dlerror());
     THROW(env, "java/lang/UnsatisfiedLinkError", msg);
     return 0;
   }
@@ -97,7 +97,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_loa
   return 0;
 }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_init
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_init
 (JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
         fprintf(stdout, "[Decoder init]before init.\n");
         Codec_Parameter * pCodecParameter = NULL;
@@ -148,7 +148,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_ini
         return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_decode
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_decode
   (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize) {
       fprintf(stderr, "[Decoding]before decode.\n");
       Codec_Parameter * pCodecParameter = NULL;
@@ -287,7 +287,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_dec
       return 0;
  }
 
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_ec_rawcoder_IsaRSRawDecoder_destroy
+JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_destroy
   (JNIEnv *env, jclass myclass){
       fprintf(stdout, "[Decoder destory]before destory\n");
       Codec_Parameter * pCodecParameter = NULL;
