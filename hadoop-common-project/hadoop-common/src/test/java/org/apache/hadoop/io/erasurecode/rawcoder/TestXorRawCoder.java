@@ -20,8 +20,6 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Random;
-
 /**
  * Test XOR encoding and decoding.
  */
@@ -29,8 +27,8 @@ public class TestXorRawCoder extends TestRawCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = XorRawEncoder.class;
-    this.decoderClass = XorRawDecoder.class;
+    this.encoderClass = XORRawEncoder.class;
+    this.decoderClass = XORRawDecoder.class;
 
     this.numDataUnits = 10;
     this.numParityUnits = 1;

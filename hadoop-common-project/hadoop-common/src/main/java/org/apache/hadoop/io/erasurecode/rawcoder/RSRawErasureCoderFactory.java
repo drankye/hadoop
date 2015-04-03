@@ -20,15 +20,15 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 /**
  * A raw coder factory for raw Reed-Solomon coder in Java.
  */
-public class JRSRawErasureCoderFactory implements RawErasureCoderFactory {
+public class RSRawErasureCoderFactory implements RawErasureCoderFactory {
 
   @Override
   public RawErasureEncoder createEncoder() {
-    return new JRSRawEncoder();
+    return new RSRawEncoder();
   }
 
   @Override
   public RawErasureDecoder createDecoder() {
-    return new JRSRawDecoder();
+    return new RSRawDecoder();
   }
 }

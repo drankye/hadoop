@@ -20,15 +20,15 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 /**
  * A raw coder factory for raw XOR coder.
  */
-public class XorRawErasureCoderFactory implements RawErasureCoderFactory {
+public class XORRawErasureCoderFactory implements RawErasureCoderFactory {
 
   @Override
   public RawErasureEncoder createEncoder() {
-    return new XorRawEncoder();
+    return new XORRawEncoder();
   }
 
   @Override
   public RawErasureDecoder createDecoder() {
-    return new XorRawDecoder();
+    return new XORRawDecoder();
   }
 }

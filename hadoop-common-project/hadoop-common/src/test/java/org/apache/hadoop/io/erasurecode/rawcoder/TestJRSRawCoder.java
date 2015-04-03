@@ -40,8 +40,8 @@ public class TestJRSRawCoder extends TestRawCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = JRSRawEncoder.class;
-    this.decoderClass = JRSRawDecoder.class;
+    this.encoderClass = RSRawEncoder.class;
+    this.decoderClass = RSRawDecoder.class;
   }
 
   @Test

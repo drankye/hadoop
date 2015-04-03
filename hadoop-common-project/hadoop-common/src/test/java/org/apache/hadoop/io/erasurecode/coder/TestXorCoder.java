@@ -27,8 +27,8 @@ public class TestXorCoder extends TestErasureCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = XorErasureEncoder.class;
-    this.decoderClass = XorErasureDecoder.class;
+    this.encoderClass = XORErasureEncoder.class;
+    this.decoderClass = XORErasureDecoder.class;
 
     this.numDataUnits = 10;
     this.numParityUnits = 1;
