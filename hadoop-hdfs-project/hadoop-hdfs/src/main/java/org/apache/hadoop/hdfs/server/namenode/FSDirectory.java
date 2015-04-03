@@ -209,6 +209,9 @@ public class FSDirectory implements Closeable {
   @VisibleForTesting
   public final EncryptionZoneManager ezManager;
 
+  @VisibleForTesting
+  public final ErasureCodingZoneManager ecZoneManager;
+
   /**
    * Caches frequently used file names used in {@link INode} to reuse 
    * byte[] objects and reduce heap usage.
@@ -300,6 +303,7 @@ public class FSDirectory implements Closeable {
     namesystem = ns;
     this.editLog = ns.getEditLog();
     ezManager = new EncryptionZoneManager(this, conf);
+    ecZoneManager = new ErasureCodingZoneManager(this);
   }
     
   FSNamesystem getFSNamesystem() {
@@ -423,8 +427,7 @@ public class FSDirectory implements Closeable {
     writeLock();
     try {
       newiip = addINode(existing, newNode);
-      // TODO: we will no longer use storage policy for "Erasure Coding Zone"
-      if (newiip != null && newNode.isStriped()) {
+      if (newiip != null && getECPolicy(newiip)) {
         newNode.addStripedBlocksFeature();
       }
     } finally {
@@ -1315,6 +1318,25 @@ public class FSDirectory implements Closeable {
         throw new IOException("Could not parse file encryption info for " +
             "inode " + inode, e);
       }
+    } finally {
+      readUnlock();
+    }
+  }
+
+  XAttr createErasureCodingZone(String src)
+      throws IOException {
+    writeLock();
+    try {
+      return ecZoneManager.createErasureCodingZone(src);
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public boolean getECPolicy(INodesInPath iip) {
+    readLock();
+    try {
+      return ecZoneManager.getECPolicy(iip);
     } finally {
       readUnlock();
     }
