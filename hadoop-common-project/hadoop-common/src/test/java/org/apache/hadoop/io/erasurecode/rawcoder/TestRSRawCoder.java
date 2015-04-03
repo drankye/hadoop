@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 /**
  * Test raw Reed-solomon encoding and decoding.
  */
-public class TestJRSRawCoder extends TestRawCoderBase {
+public class TestRSRawCoder extends TestRawCoderBase {
 
   private static int symbolSize = 0;
   private static int symbolMax = 0;
