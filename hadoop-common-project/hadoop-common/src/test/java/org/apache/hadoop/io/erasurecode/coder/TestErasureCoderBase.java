@@ -22,6 +22,9 @@ import org.apache.hadoop.io.erasurecode.ECBlockGroup;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.TestCoderBase;
 
+import java.io.EOFException;
+import java.io.IOException;
+
 /**
  * Erasure coder test base with utilities.
  */
@@ -37,11 +40,23 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    */
   protected static class TestBlock extends ECBlock {
     private ECChunk[] chunks;
+    private int readIdx = 0;
 
     // For simple, just assume the block have the chunks already ready.
     // In practice we need to read/write chunks from/to the block via file IO.
     public TestBlock(ECChunk[] chunks) {
       this.chunks = chunks;
+    }
+
+    @Override
+    public void readChunk(ECChunk chunk) throws IOException {
+      if (readIdx < chunks.length) {
+        // Pretend reading a chunk into the specified chunk container
+        ECChunk gotChunk = chunks[readIdx ++];
+        chunk.setBuffer(gotChunk.getBuffer());
+      } else {
+        throw new EOFException("The block is exhausted !");
+      }
     }
   }
 
@@ -104,7 +119,13 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     for (int i = 0; i < numChunksInBlock; ++i) {
       // Pretend that we're reading input chunks from input blocks.
       for (int j = 0; j < inputBlocks.length; ++j) {
-        inputChunks[j] = ((TestBlock) inputBlocks[j]).chunks[i];
+        ECChunk inputChunk = new ECChunk(); // Allocate a chunk to read into
+        try {
+          ((TestBlock) inputBlocks[j]).readChunk(inputChunk);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+        inputChunks[j] = inputChunk;
       }
 
       // Pretend that we allocate and will write output results to the blocks.

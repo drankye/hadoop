@@ -17,13 +17,16 @@
  */
 package org.apache.hadoop.io.erasurecode;
 
+import java.io.EOFException;
+import java.io.IOException;
+
 /**
  * A wrapper of block level data source/output that {@link ECChunk}s can be
  * extracted from. For HDFS, it can be an HDFS block (250MB). Note it only cares
  * about erasure coding specific logic thus avoids coupling with any HDFS block
  * details. We can have something like HdfsBlock extend it.
  */
-public class ECBlock {
+public abstract class ECBlock {
 
   private boolean isParity;
   private boolean isErased;
@@ -77,4 +80,9 @@ public class ECBlock {
     return isErased;
   }
 
+  /**
+   * Read a chunk from this block.
+   * @param chunk
+   */
+  public abstract void readChunk(ECChunk chunk) throws IOException;
 }

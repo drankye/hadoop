@@ -27,6 +27,13 @@ public class ECChunk {
   private ByteBuffer chunkBuffer;
 
   /**
+   * A default constructor, serving as a data buffer container.
+   */
+  public ECChunk() {
+    chunkBuffer = null; // To be set.
+  }
+
+  /**
    * Wrapping a ByteBuffer
    * @param buffer
    */
@@ -48,6 +55,14 @@ public class ECChunk {
    */
   public ByteBuffer getBuffer() {
     return chunkBuffer;
+  }
+
+  /**
+   * Set a data buffer for this chunk.
+   * @param buffer
+   */
+  public void setBuffer(ByteBuffer buffer) {
+    this.chunkBuffer = buffer;
   }
 
   /**
