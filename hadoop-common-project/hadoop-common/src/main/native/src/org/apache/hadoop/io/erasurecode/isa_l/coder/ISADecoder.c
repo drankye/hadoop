@@ -98,7 +98,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDe
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_init(
   JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
-  fprintf(stdout, "[Decoder init]before init.\n");
+  //fprintf(stdout, "[Decoder init]before init.\n");
   Codec_Parameter * pCodecParameter = NULL;
   jint * jmatrix = NULL;
 
@@ -144,13 +144,13 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDe
     (void) pthread_setspecific(de_key, pCodecParameter);
   }
 
-  fprintf(stdout, "[Decoder init]init success.\n");
+  //fprintf(stdout, "[Decoder init]init success.\n");
   return 0;
  }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_decode
   (JNIEnv *env, jclass myclass, jobjectArray alldata, jintArray erasures, jint chunkSize) {
-  fprintf(stderr, "[Decoding]before decode.\n");
+  //fprintf(stderr, "[Decoding]before decode.\n");
   Codec_Parameter * pCodecParameter = NULL;
   pthread_once(&key_once, make_key);
   jboolean isCopy;
@@ -292,14 +292,14 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDe
     (*env)->ReleaseIntArrayElements(env, erasures, (jint *)tmp, JNI_ABORT);
   }
 
-  fprintf(stderr, "[Decoding]decode success.\n");
+  //fprintf(stderr, "[Decoding]decode success.\n");
 
   return 0;
  }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDecoder_destroy
   (JNIEnv *env, jclass myclass){
-  fprintf(stdout, "[Decoder destory]before destory\n");
+  //fprintf(stdout, "[Decoder destory]before destory\n");
   Codec_Parameter * pCodecParameter = NULL;
   if(NULL == (pCodecParameter = (Codec_Parameter *)pthread_getspecific(de_key))){
       fprintf(stderr, "[Decoder destory]ISA decoder not initilized!\n");
@@ -312,7 +312,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawDe
   free(pCodecParameter->erasured);
   free(pCodecParameter);
   (void)pthread_setspecific(de_key, NULL);
-  fprintf(stdout, "[Decoder destory]destory success.\n");
+  //fprintf(stdout, "[Decoder destory]destory success.\n");
 
   return 0;
 

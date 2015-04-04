@@ -75,12 +75,22 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
   /**
    * Create the raw erasure encoder to test
-   * @return
+   * @return encoder
    */
   protected RawErasureEncoder createEncoder() {
+    return createEncoder(encoderClass);
+  }
+
+  /**
+   * Create the raw erasure encoder to test
+   * @param encoderClassToCreate
+   * @return encoder
+   */
+  protected RawErasureEncoder createEncoder(
+      Class<? extends RawErasureEncoder> encoderClassToCreate) {
     RawErasureEncoder encoder;
     try {
-      encoder = encoderClass.newInstance();
+      encoder = encoderClassToCreate.newInstance();
     } catch (Exception e) {
       throw new RuntimeException("Failed to create encoder", e);
     }
@@ -91,12 +101,22 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
   /**
    * create the raw erasure decoder to test
-   * @return
+   * @return decoder
    */
   protected RawErasureDecoder createDecoder() {
+    return createDecoder(decoderClass);
+  }
+
+  /**
+   * create the raw erasure decoder to test
+   * @param decoderClassToCreate
+   * @return decoder
+   */
+  protected RawErasureDecoder createDecoder(
+      Class<? extends RawErasureDecoder> decoderClassToCreate) {
     RawErasureDecoder decoder;
     try {
-      decoder = decoderClass.newInstance();
+      decoder = decoderClassToCreate.newInstance();
     } catch (Exception e) {
       throw new RuntimeException("Failed to create decoder", e);
     }

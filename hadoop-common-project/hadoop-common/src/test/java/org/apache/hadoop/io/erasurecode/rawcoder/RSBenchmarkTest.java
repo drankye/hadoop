@@ -25,9 +25,9 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 /**
- * Test raw Reed-solomon encoding and decoding.
+ * Benchmark tests for different raw coder implementations of Reed-Solomon code.
  */
-public class TestISARSRawCoder extends TestRawCoderBase {
+public class RSBenchmarkTest extends BenchmarkTestBase {
 
   private static int symbolSize = 0;
   private static int symbolMax = 0;
@@ -40,44 +40,38 @@ public class TestISARSRawCoder extends TestRawCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = ISARSRawEncoder.class;
-    this.decoderClass = ISARSRawDecoder.class;
+    chunkSize = 2 * 1024 * 1024;
   }
 
-  //@Test
-  public void testCodingNoDirectBuffer_10x4() {
-    prepare(10, 4, null);
-    testCoding(false);
+  private RawErasureCoder[] createJavaRSCoders() {
+    return new RawErasureCoder[] {
+        createEncoder(JRSRawEncoder.class),
+        createDecoder(JRSRawDecoder.class)
+    };
   }
 
-  @Test
-  public void testCodingDirectBuffer_10x4() {
-    prepare(10, 4, null);
-    testCoding(true);
-  }
-
-  @Test
-  public void testCodingDirectBuffer_10x4_erasure_of_2_4() {
-    prepare(10, 4, new int[] {2, 4});
-    testCoding(true);
+  private RawErasureCoder[] createISARSCoders() {
+    return new RawErasureCoder[] {
+        createEncoder(ISARSRawEncoder.class),
+        createDecoder(ISARSRawDecoder.class)
+    };
   }
 
   @Test
-  public void testCodingDirectBuffer_10x4_erasing_all() {
-    prepare(10, 4, new int[] {0, 1, 2, 3});
-    testCoding(true);
-  }
+  public void testBenchmark_10x4_erasing_all() {
+    prepare(10, 4, new int[]{0, 1, 2, 3});
 
-  //@Test
-  public void testCodingNoDirectBuffer_3x3() {
-    prepare(3, 3, null);
-    testCoding(false);
-  }
+    RawErasureCoder[] javaRSCoders = createJavaRSCoders();
+    RawErasureCoder[] isaRSCoders = createISARSCoders();
 
-  @Test
-  public void testCodingDirectBuffer_3x3() {
-    prepare(3, 3, null);
-    testCoding(true);
+    int times = 20;
+
+    runBenchmark("JavaRSCoder", javaRSCoders, times);
+
+    runBenchmark("ISARSCoder", isaRSCoders, times);
+
+    // The first running may be unfair so run it again.
+    runBenchmark("JavaRSCoder", javaRSCoders, times);
   }
 
   @Override

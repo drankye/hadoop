@@ -129,7 +129,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEn
             for(i=stripeSize; i<totalSize; i++){
                 for(j=0; j<stripeSize; j++){
                    pCodecParameter->a[stripeSize*i+j] = jmatrix[stripeSize*(i-stripeSize)+j];
-           //        printf(".....=%d\n",pCodecParameter->a[stripeSize*i+j]);
+                  // printf(".....=%d\n",pCodecParameter->a[stripeSize*i+j]);
                 }
             }
                
@@ -137,13 +137,13 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEn
             
             (void) pthread_setspecific(en_key, pCodecParameter);
         }
-        fprintf(stdout, "[Encoder Init]init success.\n");
+        //fprintf(stdout, "[Encoder Init]init success.\n");
         return 0;
   }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_encode
   (JNIEnv *env, jclass myclass, jobjectArray data, jobjectArray code, jint chunkSize){
-        fprintf(stderr, "[Encoding]Before encoding...\n");
+        //fprintf(stderr, "[Encoding]Before encoding...\n");
         int dataLen, codeLen;
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
@@ -179,13 +179,13 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEn
         for(m = 0; m < codeLen; m++){
             (*env)->SetObjectArrayElement(env, code, m, pCodecParameter->codebuf[m]);
         }
-        fprintf(stderr, "[Encoding]encode success.\n");
+        //fprintf(stderr, "[Encoding]encode success.\n");
         return 0;
   }
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEncoder_destroy
   (JNIEnv *env, jclass myclass){
-        fprintf(stdout, "[Encoder destory]before destory\n");
+        //fprintf(stdout, "[Encoder destory]before destory\n");
         Codec_Parameter * pCodecParameter = NULL;
         pthread_once(&key_once, make_key);
 
@@ -199,7 +199,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_ISARSRawEn
         free(pCodecParameter->codebuf);
         free(pCodecParameter);
         (void)pthread_setspecific(en_key, NULL);
-        fprintf(stdout, "[Encoder destory]destory success.\n");
+        //fprintf(stdout, "[Encoder destory]destory success.\n");
         return 0;
   }
 
