@@ -14,15 +14,16 @@
 package org.apache.hadoop.security.authentication.util;
 
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
+import org.apache.hadoop.security.authentication.tokenauth.DefaultAuthToken;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestAuthToken {
+public class TestDefaultAuthToken {
 
   @Test
   public void testConstructor() throws Exception {
     try {
-      new AuthToken(null, "p", "t");
+      new DefaultAuthToken(null, "p", "t");
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
@@ -30,7 +31,7 @@ public class TestAuthToken {
       Assert.fail();
     }
     try {
-      new AuthToken("", "p", "t");
+      new DefaultAuthToken("", "p", "t");
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
@@ -38,7 +39,7 @@ public class TestAuthToken {
       Assert.fail();
     }
     try {
-      new AuthToken("u", null, "t");
+      new DefaultAuthToken("u", null, "t");
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
@@ -46,7 +47,7 @@ public class TestAuthToken {
       Assert.fail();
     }
     try {
-      new AuthToken("u", "", "t");
+      new DefaultAuthToken("u", "", "t");
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
@@ -54,7 +55,7 @@ public class TestAuthToken {
       Assert.fail();
     }
     try {
-      new AuthToken("u", "p", null);
+      new DefaultAuthToken("u", "p", null);
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
@@ -62,20 +63,20 @@ public class TestAuthToken {
       Assert.fail();
     }
     try {
-      new AuthToken("u", "p", "");
+      new DefaultAuthToken("u", "p", "");
       Assert.fail();
     } catch (IllegalArgumentException ex) {
       // Expected
     } catch (Throwable ex) {
       Assert.fail();
     }
-    new AuthToken("u", "p", "t");
+    new DefaultAuthToken("u", "p", "t");
   }
 
   @Test
   public void testGetters() throws Exception {
     long expires = System.currentTimeMillis() + 50;
-    AuthToken token = new AuthToken("u", "p", "t");
+    DefaultAuthToken token = new DefaultAuthToken("u", "p", "t");
     token.setExpires(expires);
     Assert.assertEquals("u", token.getUserName());
     Assert.assertEquals("p", token.getName());
@@ -89,10 +90,10 @@ public class TestAuthToken {
   @Test
   public void testToStringAndParse() throws Exception {
     long expires = System.currentTimeMillis() + 50;
-    AuthToken token = new AuthToken("u", "p", "t");
+    DefaultAuthToken token = new DefaultAuthToken("u", "p", "t");
     token.setExpires(expires);
     String str = token.toString();
-    token = AuthToken.parse(str);
+    token = DefaultAuthToken.parse(str);
     Assert.assertEquals("p", token.getName());
     Assert.assertEquals("t", token.getType());
     Assert.assertEquals(expires, token.getExpires());
@@ -104,19 +105,19 @@ public class TestAuthToken {
   @Test
   public void testParseValidAndInvalid() throws Exception {
     long expires = System.currentTimeMillis() + 50;
-    AuthToken token = new AuthToken("u", "p", "t");
+    DefaultAuthToken token = new DefaultAuthToken("u", "p", "t");
     token.setExpires(expires);
     String ostr = token.toString();
 
     String str1 = "\"" + ostr + "\"";
-    AuthToken.parse(str1);
+    DefaultAuthToken.parse(str1);
     
     String str2 = ostr + "&s=1234";
-    AuthToken.parse(str2);
+    DefaultAuthToken.parse(str2);
 
     String str = ostr.substring(0, ostr.indexOf("e="));
     try {
-      AuthToken.parse(str);
+      DefaultAuthToken.parse(str);
       Assert.fail();
     } catch (AuthenticationException ex) {
       // Expected

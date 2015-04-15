@@ -14,7 +14,7 @@
 package org.apache.hadoop.security.authentication.client;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.hadoop.security.authentication.util.AuthToken;
+import org.apache.hadoop.security.authentication.tokenauth.DefaultAuthToken;
 import org.apache.hadoop.security.authentication.util.KerberosUtil;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSManager;
@@ -237,7 +237,7 @@ public class KerberosAuthenticator implements Authenticator {
   private boolean isTokenKerberos(AuthenticatedURL.Token token)
       throws AuthenticationException {
     if (token.isSet()) {
-      AuthToken aToken = AuthToken.parse(token.toString());          
+      DefaultAuthToken aToken = DefaultAuthToken.parse(token.toString());
       if (aToken.getType().equals("kerberos") ||
           aToken.getType().equals("kerberos-dt")) {              
         return true;

@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-package org.apache.hadoop.security.authentication.util;
+package org.apache.hadoop.security.authentication.tokenauth;
 
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 
@@ -24,8 +24,9 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 /**
+ * Hadoop default AuthToken implementation to bridge Java Principal.
  */
-public class AuthToken implements Principal {
+public class DefaultAuthToken implements AuthToken, Principal {
 
   /**
    * Constant that identifies an anonymous request.
@@ -46,7 +47,7 @@ public class AuthToken implements Principal {
   private long expires;
   private String tokenStr;
 
-  protected AuthToken() {
+  protected DefaultAuthToken() {
     userName = null;
     principal = null;
     type = null;
@@ -66,7 +67,7 @@ public class AuthToken implements Principal {
    * @param type the authentication mechanism name.
    * (<code>System.currentTimeMillis() + validityPeriod</code>).
    */
-  public AuthToken(String userName, String principal, String type) {
+  public DefaultAuthToken(String userName, String principal, String type) {
     checkForIllegalArgument(userName, "userName");
     checkForIllegalArgument(principal, "principal");
     checkForIllegalArgument(type, "type");
@@ -93,6 +94,7 @@ public class AuthToken implements Principal {
    *
    * @param expires expiration time of the token in milliseconds since the epoch.
    */
+  @Override
   public void setExpires(long expires) {
     this.expires = expires;
       generateToken();
@@ -103,6 +105,7 @@ public class AuthToken implements Principal {
    *
    * @return true if the token has expired.
    */
+  @Override
   public boolean isExpired() {
     return getExpires() != -1 && System.currentTimeMillis() > getExpires();
   }
@@ -124,6 +127,7 @@ public class AuthToken implements Principal {
    *
    * @return the user name.
    */
+  @Override
   public String getUserName() {
     return userName;
   }
@@ -143,6 +147,7 @@ public class AuthToken implements Principal {
    *
    * @return the authentication mechanism of the token.
    */
+  @Override
   public String getType() {
     return type;
   }
@@ -152,6 +157,7 @@ public class AuthToken implements Principal {
    *
    * @return the expiration time of the token, in milliseconds since Epoc.
    */
+  @Override
   public long getExpires() {
     return expires;
   }
@@ -168,7 +174,7 @@ public class AuthToken implements Principal {
     return tokenStr;
   }
 
-  public static AuthToken parse(String tokenStr) throws AuthenticationException {
+  public static DefaultAuthToken parse(String tokenStr) throws AuthenticationException {
     if (tokenStr.length() >= 2) {
       // strip the \" at the two ends of the tokenStr
       if (tokenStr.charAt(0) == '\"' &&
@@ -184,7 +190,7 @@ public class AuthToken implements Principal {
       throw new AuthenticationException("Invalid token string, missing attributes");
     }
     long expires = Long.parseLong(map.get(EXPIRES));
-    AuthToken token = new AuthToken(map.get(USER_NAME), map.get(PRINCIPAL), map.get(TYPE));
+    DefaultAuthToken token = new DefaultAuthToken(map.get(USER_NAME), map.get(PRINCIPAL), map.get(TYPE));
     token.setExpires(expires);
     return token;
   }

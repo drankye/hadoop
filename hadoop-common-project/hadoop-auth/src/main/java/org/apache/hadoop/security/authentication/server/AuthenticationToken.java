@@ -14,7 +14,7 @@
 package org.apache.hadoop.security.authentication.server;
 
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
-import org.apache.hadoop.security.authentication.util.AuthToken;
+import org.apache.hadoop.security.authentication.tokenauth.DefaultAuthToken;
 
 import java.security.Principal;
 
@@ -29,7 +29,7 @@ import javax.servlet.http.HttpServletRequest;
  * and received in HTTP client responses and requests as a HTTP cookie (this is
  * done by the {@link AuthenticationFilter}).
  */
-public class AuthenticationToken extends AuthToken {
+public class AuthenticationToken extends DefaultAuthToken {
 
   /**
    * Constant that identifies an anonymous request.
@@ -40,7 +40,7 @@ public class AuthenticationToken extends AuthToken {
     super();
   }
 
-  private AuthenticationToken(AuthToken token) {
+  private AuthenticationToken(DefaultAuthToken token) {
     super(token.getUserName(), token.getName(), token.getType());
     setExpires(token.getExpires());
   }
@@ -89,6 +89,6 @@ public class AuthenticationToken extends AuthToken {
    * an authentication token.
    */
   public static AuthenticationToken parse(String tokenStr) throws AuthenticationException {
-    return new AuthenticationToken(AuthToken.parse(tokenStr));
+    return new AuthenticationToken(DefaultAuthToken.parse(tokenStr));
   }
 }
