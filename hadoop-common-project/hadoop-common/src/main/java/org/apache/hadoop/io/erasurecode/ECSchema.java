@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -118,8 +119,13 @@ public final class ECSchema {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
 
-    this.options = options != null ? Collections.unmodifiableMap(options) :
-        Collections.EMPTY_MAP;
+    if (options == null) {
+      options = new HashMap<>();
+    }
+    options.remove(CODEC_NAME_KEY);
+    options.remove(NUM_DATA_UNITS_KEY);
+    options.remove(NUM_PARITY_UNITS_KEY);
+    this.options = Collections.unmodifiableMap(options);
 
     this.chunkSize = DEFAULT_CHUNK_SIZE;
     try {
@@ -195,12 +201,14 @@ public final class ECSchema {
     StringBuilder sb = new StringBuilder("ECSchema=[");
 
     sb.append("Name=" + schemaName + ",");
+    sb.append("Codec=" + codecName + ",");
     sb.append(NUM_DATA_UNITS_KEY + "=" + numDataUnits + ",");
     sb.append(NUM_PARITY_UNITS_KEY + "=" + numParityUnits + ",");
     sb.append(CHUNK_SIZE_KEY + "=" + chunkSize + ",");
 
     for (String opt : options.keySet()) {
-      boolean skip = (opt.equals(NUM_DATA_UNITS_KEY) ||
+      boolean skip = (opt.equals(CODEC_NAME_KEY) ||
+          opt.equals(NUM_DATA_UNITS_KEY) ||
           opt.equals(NUM_PARITY_UNITS_KEY) ||
           opt.equals(CHUNK_SIZE_KEY));
       if (! skip) {

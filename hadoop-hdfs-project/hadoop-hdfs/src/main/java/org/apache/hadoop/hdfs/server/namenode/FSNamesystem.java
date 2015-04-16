@@ -429,6 +429,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private final BlockManager blockManager;
   private final SnapshotManager snapshotManager;
   private final CacheManager cacheManager;
+  private final ECSchemaManager schemaManager;
   private final DatanodeStatistics datanodeStatistics;
 
   private String nameserviceId;
@@ -608,6 +609,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     leaseManager.removeAllLeases();
     snapshotManager.clearSnapshottableDirs();
     cacheManager.clear();
+    schemaManager.clear();
     setImageLoaded(false);
     blockManager.clear();
   }
@@ -846,6 +848,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       this.dir = new FSDirectory(this, conf);
       this.snapshotManager = new SnapshotManager(dir);
       this.cacheManager = new CacheManager(this, conf, blockManager);
+      this.schemaManager = new ECSchemaManager(conf);
       this.safeMode = new SafeModeInfo(conf);
       this.topConf = new TopConf(conf);
       this.auditLoggers = initAuditLoggers(conf);
@@ -7208,14 +7211,21 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   public FSDirectory getFSDirectory() {
     return dir;
   }
+
   /** Set the FSDirectory. */
   @VisibleForTesting
   public void setFSDirectory(FSDirectory dir) {
     this.dir = dir;
   }
+
   /** @return the cache manager. */
   public CacheManager getCacheManager() {
     return cacheManager;
+  }
+
+  /** @return the schema manager. */
+  public ECSchemaManager getSchemaManager() {
+    return schemaManager;
   }
 
   @Override  // NameNodeMXBean
@@ -7830,8 +7840,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         throw new SafeModeException(
             "Cannot remove cache pool " + cachePoolName, safeMode);
       }
-      FSNDNCacheOp.removeCachePool(this, cacheManager, cachePoolName,
-          logRetryCache);
+      FSNDNCacheOp.removeCachePool(this, cacheManager, cachePoolName, logRetryCache);
       success = true;
     } finally {
       writeUnlock();
@@ -8006,8 +8015,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       }
       // If the provider supports pool for EDEKs, this will fill in the pool
       provider.warmUpEncryptedKeys(keyName);
-      createEncryptionZoneInt(src, metadata.getCipher(),
-          keyName, logRetryCache);
+      createEncryptionZoneInt(src, metadata.getCipher(), keyName, logRetryCache);
     } catch (AccessControlException e) {
       logAuditEvent(false, "createEncryptionZone", src);
       throw e;
@@ -8211,9 +8219,22 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     readLock();
     try {
       checkOperation(OperationCategory.READ);
-      // TODO HDFS-7866 Need to return all schemas maintained by Namenode
-      ECSchema defaultSchema = ECSchemaManager.getSystemDefaultSchema();
-      return new ECSchema[] { defaultSchema };
+      return schemaManager.getSchemas();
+    } finally {
+      readUnlock();
+    }
+  }
+
+  /**
+   * Get the ECSchema specified by the name
+   */
+  ECSchema getECSchema(String schemaName) throws IOException {
+    checkOperation(OperationCategory.READ);
+    waitForLoadingFSImage();
+    readLock();
+    try {
+      checkOperation(OperationCategory.READ);
+      return schemaManager.getSchema(schemaName);
     } finally {
       readUnlock();
     }

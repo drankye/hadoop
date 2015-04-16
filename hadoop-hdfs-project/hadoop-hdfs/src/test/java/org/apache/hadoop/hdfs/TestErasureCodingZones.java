@@ -21,6 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.ECInfo;
+import org.apache.hadoop.hdfs.server.namenode.ECSchemaManager;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.io.erasurecode.ECSchema;
@@ -171,7 +172,8 @@ public class TestErasureCodingZones {
     assertEquals(src, ecInfo.getSrc());
     ECSchema schema = ecInfo.getSchema();
     assertNotNull(schema);
-    assertEquals("Default schema should be returned", "RS-6-3",
+    assertEquals("Default schema should be returned",
+        ECSchemaManager.getSystemDefaultSchema().getSchemaName(),
         schema.getSchemaName());
     assertEquals("Default codec(rs) should be returned", "rs",
         schema.getCodecName());
