@@ -24,15 +24,13 @@ import org.apache.hadoop.util.NativeCodeLoader;
 
 import java.nio.ByteBuffer;
 
-public class NativeXorRawEncoder extends AbstractRawErasureEncoder {
+public class NativeXORRawEncoder extends AbstractRawErasureEncoder {
 
-  public static final Log LOG = LogFactory.getLog(NativeXorRawEncoder.class.getName());
+  public static final Log LOG = LogFactory.getLog(NativeXORRawEncoder.class.getName());
 
   static {
     if (NativeCodeLoader.isNativeCodeLoaded()) {
-      loadLib();
-    } else {
-      LOG.error("failed to load ISA_RS Encoder");
+      LOG.info("Load NativeXOR encoder");
     }
   }
 
@@ -53,8 +51,6 @@ public class NativeXorRawEncoder extends AbstractRawErasureEncoder {
     throw new RuntimeException(
         "To be implemented, please use chunk or bytebuffer versions");
   }
-
-  private static native int loadLib();
 
   private static native int init(int dataSize, int paritySize);
 

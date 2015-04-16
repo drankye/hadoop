@@ -19,19 +19,16 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.apache.hadoop.util.NativeCodeLoader;
 
 import java.nio.ByteBuffer;
 
-public class NativeXorRawDecoder extends AbstractRawErasureDecoder {
-  public static final Log LOG = LogFactory.getLog(NativeXorRawDecoder.class.getName());
+public class NativeXORRawDecoder extends AbstractRawErasureDecoder {
+  public static final Log LOG = LogFactory.getLog(NativeXORRawDecoder.class.getName());
 
   static {
     if (NativeCodeLoader.isNativeCodeLoaded()) {
-      loadLib();
-    } else {
-      LOG.error("failed to load ISA_RS Decoder");
+      LOG.info("Load NativeXOR decoder");
     }
   }
 
@@ -61,8 +58,6 @@ public class NativeXorRawDecoder extends AbstractRawErasureDecoder {
     throw new RuntimeException(
         "To be implemented, please use chunk or bytebuffer versions");
   }
-
-  private static native int loadLib();
 
   private native static int init(int dataSize, int paritySize);
 
