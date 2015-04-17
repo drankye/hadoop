@@ -7,13 +7,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- * Class:     org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder
- * Method:    loadLib
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_loadLib
-  (JNIEnv *, jclass);
 
 /*
  * Class:     org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder
@@ -21,7 +14,7 @@ JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORR
  * Signature: (II[I)I
  */
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_init
-  (JNIEnv *, jclass, jint, jint, jintArray);
+  (JNIEnv *, jclass, jint, jint);
 
 /*
  * Class:     org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder

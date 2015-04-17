@@ -147,8 +147,8 @@ find_library(ERASURECODE_LIBRARY
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ${STORED_CMAKE_FIND_LIBRARY_SUFFIXES})
 if (ERASURECODE_LIBRARY)
     set(ERASURECODE_SOURCE_FILES
-        "${D}/io/erasurecode/isa_l/coder/ISAEncoder.c"
-        "${D}/io/erasurecode/isa_l/coder/ISADecoder.c")
+        "${D}/io/erasurecode/coder/XOREncoder.c"
+        "${D}/io/erasurecode/coder/XORDecoder.c")
 endif (ERASURECODE_LIBRARY)
 
 
@@ -252,8 +252,8 @@ add_dual_library(hadoop
     ${D}/io/compress/lz4/Lz4Decompressor.c
     ${D}/io/compress/lz4/lz4.c
     ${D}/io/compress/lz4/lz4hc.c
-    ${D}/io/erasurecode/isa_l/coder/ISAEncoder.c
-    ${D}/io/erasurecode/isa_l/coder/ISADecoder.c
+    ${D}/io/erasurecode/coder/XOREncoder.c
+    ${D}/io/erasurecode/coder/XORDecoder.c
     ${SNAPPY_SOURCE_FILES}
     ${OPENSSL_SOURCE_FILES}
     ${D}/io/compress/zlib/ZlibCompressor.c

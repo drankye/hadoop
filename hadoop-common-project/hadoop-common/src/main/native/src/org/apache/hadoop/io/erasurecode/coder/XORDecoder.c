@@ -35,7 +35,7 @@ or Intel's suppliers or licensors in any way.
 #include <string.h>  // for memset, memcmp
 
 #include "org_apache_hadoop.h"
-#include "org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder.h"
+#include "org_apache_hadoop_io_erasurecode_rawcoder_XORRawDecoder.h"
 #include <jni.h>
 #include <pthread.h>
 #include <signal.h>
@@ -44,7 +44,7 @@ or Intel's suppliers or licensors in any way.
 
 
 JNIEXPORT jint JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_init(
-  JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize, jintArray matrix) {
+  JNIEnv *env, jclass myclass, jint stripeSize, jint paritySize) {
   fprintf(stdout, "[Decoder init]before init.\n");
 
   return 0;
