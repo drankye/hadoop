@@ -56,7 +56,7 @@ public final class ECSchema {
   private Map<String, String> extraOptions;
 
   /**
-   * Constructor with schema name and provided allOptions. Note the allOptions may
+   * Constructor with schema name and provided all options. Note the options may
    * contain additional information for the erasure codec to interpret further.
    * @param schemaName schema name
    * @param allOptions all schema options
@@ -99,7 +99,8 @@ public final class ECSchema {
     allOptions.remove(CODEC_NAME_KEY);
     allOptions.remove(NUM_DATA_UNITS_KEY);
     allOptions.remove(NUM_PARITY_UNITS_KEY);
-    Map<String, String> extraOptions = allOptions; //After some cleanup
+    //After some cleanup
+    Map<String, String> extraOptions = allOptions;
 
     initWith(codecName, dataUnits, parityUnits, extraOptions);
   }
