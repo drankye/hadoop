@@ -31,12 +31,29 @@ public final class ECSchema {
   public static final String CHUNK_SIZE_KEY = "chunkSize";
   public static final int DEFAULT_CHUNK_SIZE = 256 * 1024; // 256K
 
+  /**
+   * A friendly and understandable name that can mean what's it, also serves as
+   * the identifier that distinguish it from other schemas.
+   */
   private String schemaName;
+
+  /**
+   * The erasure codec name associated.
+   */
   private String codecName;
-  private Map<String, String> options;
+
+  /**
+   * The most common and general parameters found in typical erasure codes.
+   */
   private int numDataUnits;
   private int numParityUnits;
   private int chunkSize;
+
+  /*
+   * An erasure code can have its own specific advanced parameters, subject to
+   * itself to interpret these key-value settings.
+   */
+  private Map<String, String> options;
 
   /**
    * Constructor with schema name and provided options. Note the options may

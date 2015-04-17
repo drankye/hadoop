@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * This manages EC activeSchemas predefined and activated in the system.
+ * This manages EC schemas predefined and activated in the system.
  * It loads customized schemas and syncs with persisted ones in
  * NameNode image.
  *
@@ -38,26 +38,24 @@ import java.util.TreeMap;
 @InterfaceAudience.LimitedPrivate({"HDFS"})
 public final class ECSchemaManager {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(ECSchemaManager.class);
-
+  /**
+   * TODO: HDFS-8095
+   */
   private static final int DEFAULT_DATA_BLOCKS = 6;
   private static final int DEFAULT_PARITY_BLOCKS = 3;
   private static final String DEFAULT_CODEC_NAME = "rs";
-  private static final String DEFAULT_SCHEMA_NAME = "SYS-DEFAULT-RS-6-3";
-
-  private static ECSchema SYS_DEFAULT_SCHEMA = new ECSchema(DEFAULT_SCHEMA_NAME,
-            DEFAULT_CODEC_NAME, DEFAULT_DATA_BLOCKS, DEFAULT_PARITY_BLOCKS);
+  private static final String DEFAULT_SCHEMA_NAME = "RS-6-3";
+  private static final ECSchema SYS_DEFAULT_SCHEMA =
+      new ECSchema(DEFAULT_SCHEMA_NAME,
+               DEFAULT_CODEC_NAME, DEFAULT_DATA_BLOCKS, DEFAULT_PARITY_BLOCKS);
 
   //We may add more later.
   private static ECSchema[] SYS_SCHEMAS = new ECSchema[] {
-      new ECSchema("SYS-RS-10-4", "rs", 10, 4)
+      SYS_DEFAULT_SCHEMA,
+      new ECSchema("RS-10-4", "rs", 10, 4)
   };
 
   private final Configuration conf;
-
-  private final SchemaLoader schemaLoader;
-
 
   /**
    * All active EC activeSchemas maintained in NN memory for fast querying,
@@ -67,11 +65,8 @@ public final class ECSchemaManager {
 
   ECSchemaManager(Configuration conf) {
     this.conf = conf;
-    this.schemaLoader = new SchemaLoader();
 
     this.activeSchemas = new TreeMap<String, ECSchema>();
-
-    activeSchemas.put(DEFAULT_SCHEMA_NAME, SYS_DEFAULT_SCHEMA);
     for (ECSchema schema : SYS_SCHEMAS) {
       activeSchemas.put(schema.getSchemaName(), schema);
     }
@@ -81,6 +76,14 @@ public final class ECSchemaManager {
      * load persistent schemas from image and editlog, which is done only once
      * during NameNode startup. This can be done here or in a separate method.
      */
+  }
+
+  /**
+   * Get system defined schemas.
+   * @return system schemas
+   */
+  public static ECSchema[] getSystemSchemas() {
+    return SYS_SCHEMAS;
   }
 
   /**
@@ -111,7 +114,8 @@ public final class ECSchemaManager {
    * @return all EC schemas
    */
   public ECSchema[] getSchemas() {
-    return activeSchemas.values().toArray(new ECSchema[activeSchemas.size()]);
+    ECSchema[] results = new ECSchema[activeSchemas.size()];
+    return activeSchemas.values().toArray(results);
   }
 
   /**
