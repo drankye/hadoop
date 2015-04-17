@@ -7840,7 +7840,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         throw new SafeModeException(
             "Cannot remove cache pool " + cachePoolName, safeMode);
       }
-      FSNDNCacheOp.removeCachePool(this, cacheManager, cachePoolName, logRetryCache);
+      FSNDNCacheOp.removeCachePool(this, cacheManager, cachePoolName,
+          logRetryCache);
       success = true;
     } finally {
       writeUnlock();
@@ -8015,7 +8016,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       }
       // If the provider supports pool for EDEKs, this will fill in the pool
       provider.warmUpEncryptedKeys(keyName);
-      createEncryptionZoneInt(src, metadata.getCipher(), keyName, logRetryCache);
+      createEncryptionZoneInt(src, metadata.getCipher(),
+          keyName, logRetryCache);
     } catch (AccessControlException e) {
       logAuditEvent(false, "createEncryptionZone", src);
       throw e;
