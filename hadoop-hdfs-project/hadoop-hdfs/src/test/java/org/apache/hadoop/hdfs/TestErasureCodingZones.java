@@ -170,9 +170,10 @@ public class TestErasureCodingZones {
   @Test
   public void testGetErasureCodingInfo() throws Exception {
     ECSchema[] sysSchemas = ECSchemaManager.getSystemSchemas();
-    assertTrue("System schemas should be more than 1", sysSchemas.length > 1);
+    assertTrue("System schemas should be of only 1 for now",
+        sysSchemas.length == 1);
 
-    ECSchema usingSchema = sysSchemas[1];
+    ECSchema usingSchema = sysSchemas[0];
     String src = "/ec2";
     final Path ecDir = new Path(src);
     fs.mkdir(ecDir, FsPermission.getDirDefault());

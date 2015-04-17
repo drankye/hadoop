@@ -51,8 +51,7 @@ public final class ECSchemaManager {
 
   //We may add more later.
   private static ECSchema[] SYS_SCHEMAS = new ECSchema[] {
-      SYS_DEFAULT_SCHEMA,
-      new ECSchema("RS-10-4", "rs", 10, 4)
+      SYS_DEFAULT_SCHEMA
   };
 
   private final Configuration conf;
