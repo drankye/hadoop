@@ -53,50 +53,55 @@ public final class ECSchema {
    * An erasure code can have its own specific advanced parameters, subject to
    * itself to interpret these key-value settings.
    */
-  private Map<String, String> options;
+  private Map<String, String> extraOptions;
 
   /**
-   * Constructor with schema name and provided options. Note the options may
+   * Constructor with schema name and provided allOptions. Note the allOptions may
    * contain additional information for the erasure codec to interpret further.
    * @param schemaName schema name
-   * @param options schema options
+   * @param allOptions all schema options
    */
-  public ECSchema(String schemaName, Map<String, String> options) {
+  public ECSchema(String schemaName, Map<String, String> allOptions) {
     assert (schemaName != null && ! schemaName.isEmpty());
 
     this.schemaName = schemaName;
 
-    if (options == null || options.isEmpty()) {
-      throw new IllegalArgumentException("No schema options are provided");
+    if (allOptions == null || allOptions.isEmpty()) {
+      throw new IllegalArgumentException("No schema allOptions are provided");
     }
 
-    String codecName = options.get(CODEC_NAME_KEY);
+    String codecName = allOptions.get(CODEC_NAME_KEY);
     if (codecName == null || codecName.isEmpty()) {
       throw new IllegalArgumentException("No codec option is provided");
     }
 
     int dataUnits = 0, parityUnits = 0;
     try {
-      if (options.containsKey(NUM_DATA_UNITS_KEY)) {
-        dataUnits = Integer.parseInt(options.get(NUM_DATA_UNITS_KEY));
+      if (allOptions.containsKey(NUM_DATA_UNITS_KEY)) {
+        dataUnits = Integer.parseInt(allOptions.get(NUM_DATA_UNITS_KEY));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException("Option value " +
-          options.get(NUM_DATA_UNITS_KEY) + " for " + NUM_DATA_UNITS_KEY +
+          allOptions.get(NUM_DATA_UNITS_KEY) + " for " + NUM_DATA_UNITS_KEY +
           " is found. It should be an integer");
     }
 
     try {
-      if (options.containsKey(NUM_PARITY_UNITS_KEY)) {
-        parityUnits = Integer.parseInt(options.get(NUM_PARITY_UNITS_KEY));
+      if (allOptions.containsKey(NUM_PARITY_UNITS_KEY)) {
+        parityUnits = Integer.parseInt(allOptions.get(NUM_PARITY_UNITS_KEY));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException("Option value " +
-          options.get(NUM_PARITY_UNITS_KEY) + " for " + NUM_PARITY_UNITS_KEY +
+          allOptions.get(NUM_PARITY_UNITS_KEY) + " for " + NUM_PARITY_UNITS_KEY +
           " is found. It should be an integer");
     }
 
-    initWith(codecName, dataUnits, parityUnits, options);
+    allOptions.remove(CODEC_NAME_KEY);
+    allOptions.remove(NUM_DATA_UNITS_KEY);
+    allOptions.remove(NUM_PARITY_UNITS_KEY);
+    Map<String, String> extraOptions = allOptions; //After some cleanup
+
+    initWith(codecName, dataUnits, parityUnits, extraOptions);
   }
 
   /**
@@ -112,46 +117,44 @@ public final class ECSchema {
   }
 
   /**
-   * Constructor with key parameters provided. Note the options may contain
+   * Constructor with key parameters provided. Note the extraOptions may contain
    * additional information for the erasure codec to interpret further.
    * @param schemaName
    * @param codecName
    * @param numDataUnits
    * @param numParityUnits
-   * @param options
+   * @param extraOptions
    */
   public ECSchema(String schemaName, String codecName,
                   int numDataUnits, int numParityUnits,
-                  Map<String, String> options) {
+                  Map<String, String> extraOptions) {
     assert (schemaName != null && ! schemaName.isEmpty());
     assert (codecName != null && ! codecName.isEmpty());
 
     this.schemaName = schemaName;
-    initWith(codecName, numDataUnits, numParityUnits, options);
+    initWith(codecName, numDataUnits, numParityUnits, extraOptions);
   }
 
   private void initWith(String codecName, int numDataUnits, int numParityUnits,
-                        Map<String, String> options) {
+                        Map<String, String> extraOptions) {
     this.codecName = codecName;
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
 
-    if (options == null) {
-      options = new HashMap<>();
+    if (extraOptions == null) {
+      extraOptions = new HashMap<>();
     }
-    options.remove(CODEC_NAME_KEY);
-    options.remove(NUM_DATA_UNITS_KEY);
-    options.remove(NUM_PARITY_UNITS_KEY);
-    this.options = Collections.unmodifiableMap(options);
+
+    this.extraOptions = Collections.unmodifiableMap(extraOptions);
 
     this.chunkSize = DEFAULT_CHUNK_SIZE;
     try {
-      if (this.options.containsKey(CHUNK_SIZE_KEY)) {
-        this.chunkSize = Integer.parseInt(options.get(CHUNK_SIZE_KEY));
+      if (this.extraOptions.containsKey(CHUNK_SIZE_KEY)) {
+        this.chunkSize = Integer.parseInt(extraOptions.get(CHUNK_SIZE_KEY));
       }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException("Option value " +
-          this.options.get(CHUNK_SIZE_KEY) + " for " + CHUNK_SIZE_KEY +
+          this.extraOptions.get(CHUNK_SIZE_KEY) + " for " + CHUNK_SIZE_KEY +
           " is found. It should be an integer");
     }
 
@@ -178,11 +181,11 @@ public final class ECSchema {
   }
 
   /**
-   * Get erasure coding options
-   * @return encoding options
+   * Get extra options specific to a erasure code.
+   * @return extra options
    */
-  public Map<String, String> getOptions() {
-    return options;
+  public Map<String, String> getExtraOptions() {
+    return extraOptions;
   }
 
   /**
@@ -223,14 +226,8 @@ public final class ECSchema {
     sb.append(NUM_PARITY_UNITS_KEY + "=" + numParityUnits + ",");
     sb.append(CHUNK_SIZE_KEY + "=" + chunkSize + ",");
 
-    for (String opt : options.keySet()) {
-      boolean skip = (opt.equals(CODEC_NAME_KEY) ||
-          opt.equals(NUM_DATA_UNITS_KEY) ||
-          opt.equals(NUM_PARITY_UNITS_KEY) ||
-          opt.equals(CHUNK_SIZE_KEY));
-      if (! skip) {
-        sb.append(opt + "=" + options.get(opt) + ",");
-      }
+    for (String opt : extraOptions.keySet()) {
+      sb.append(opt + "=" + extraOptions.get(opt) + ",");
     }
 
     sb.append("]");
@@ -264,14 +261,14 @@ public final class ECSchema {
     if (!codecName.equals(ecSchema.codecName)) {
       return false;
     }
-    return options.equals(ecSchema.options);
+    return extraOptions.equals(ecSchema.extraOptions);
   }
 
   @Override
   public int hashCode() {
     int result = schemaName.hashCode();
     result = 31 * result + codecName.hashCode();
-    result = 31 * result + options.hashCode();
+    result = 31 * result + extraOptions.hashCode();
     result = 31 * result + numDataUnits;
     result = 31 * result + numParityUnits;
     result = 31 * result + chunkSize;
