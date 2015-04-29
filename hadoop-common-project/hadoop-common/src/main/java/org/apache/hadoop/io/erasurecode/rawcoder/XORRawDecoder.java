@@ -30,6 +30,11 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
     int bufSize = getChunkSize();
     int erasedIdx = erasedIndexes[0];
 
+    // Set the output to zeros.
+    for (int j = 0; j < bufSize; j++) {
+      outputs[0].put(j, (byte) 0);
+    }
+
     // Process the inputs.
     for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
