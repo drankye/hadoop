@@ -32,19 +32,39 @@ public class TestXORRawCoder extends TestRawCoderBase {
 
     this.numDataUnits = 10;
     this.numParityUnits = 1;
-
-    this.erasedDataIndexes = new int[] {0};
-    this.erasedParityIndexes = new int[0];
   }
 
   @Test
-  public void testCodingNoDirectBuffer() {
+  public void testCodingNoDirectBuffer_erasing_d0() {
+    prepare(null, 10, 1, new int[] {0}, new int[0]);
+
+    /**
+     * Doing twice to test if the coders can be repeatedly reused. This matters
+     * as the underlying coding buffers are shared, which may have bugs.
+     */
+    testCoding(false);
     testCoding(false);
   }
 
   @Test
-  public void testCodingDirectBuffer() {
+  public void testCodingDirectBuffer_erasing_p0() {
+    prepare(null, 10, 1, new int[0], new int[] {0});
+    testCoding(true);
     testCoding(true);
   }
 
+  @Test
+  public void testCodingBothBuffers_erasing_p0() {
+    prepare(null, 10, 1, new int[0], new int[] {0});
+
+    /**
+     * Doing in mixed buffer usage model to test if the coders can be repeatedly
+     * reused with different buffer usage model. This matters as the underlying
+     * coding buffers are shared, which may have bugs.
+     */
+    testCoding(true);
+    testCoding(false);
+    testCoding(true);
+    testCoding(false);
+  }
 }

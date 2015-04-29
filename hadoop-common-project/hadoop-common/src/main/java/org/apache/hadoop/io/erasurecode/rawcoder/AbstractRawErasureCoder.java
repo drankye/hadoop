@@ -71,7 +71,11 @@ public abstract class AbstractRawErasureCoder
    * @param input
    * @return direct ByteBuffer
    */
-  protected ByteBuffer convertInputToDirect(byte[] input) {
+  protected ByteBuffer convertInputBuffer(byte[] input) {
+    if (input == null) { // an input can be null, if erased or not to read
+      return null;
+    }
+
     ByteBuffer directBuffer = ByteBuffer.allocateDirect(input.length);
     directBuffer.put(input);
     directBuffer.flip();
@@ -83,7 +87,7 @@ public abstract class AbstractRawErasureCoder
    * @param output
    * @return direct ByteBuffer
    */
-  protected ByteBuffer convertOutputToDirect(byte[] output) {
+  protected ByteBuffer convertOutputBuffer(byte[] output) {
     ByteBuffer directBuffer = ByteBuffer.allocateDirect(output.length);
     return directBuffer;
   }

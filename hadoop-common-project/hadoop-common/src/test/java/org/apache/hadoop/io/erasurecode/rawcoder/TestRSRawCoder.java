@@ -35,12 +35,34 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
   public void testCodingNoDirectBuffer_10x4_erasing_d0_p0() {
     prepare(null, 10, 4, new int[] {0}, new int[] {0});
     testCoding(false);
+    testCoding(false);
   }
 
   @Test
   public void testCodingDirectBuffer_10x4_erasing_d0_p0() {
     prepare(null, 10, 4, new int[] {0}, new int[] {0});
+
+    /**
+     * Doing twice to test if the coders can be repeatedly reused. This matters
+     * as the underlying coding buffers are shared, which may have bugs.
+     */
     testCoding(true);
+    testCoding(true);
+  }
+
+  @Test
+  public void testCodingBothBuffers_10x4_erasing_d0_p0() {
+    prepare(null, 10, 4, new int[] {0}, new int[] {0});
+
+    /**
+     * Doing in mixed buffer usage model to test if the coders can be repeatedly
+     * reused with different buffer usage model. This matters as the underlying
+     * coding buffers are shared, which may have bugs.
+     */
+    testCoding(true);
+    testCoding(false);
+    testCoding(true);
+    testCoding(false);
   }
 
   @Test

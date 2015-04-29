@@ -42,8 +42,8 @@ public interface RawErasureDecoder extends RawErasureCoder {
    *    set as null to indicate no data will be used from them.
    *
    * For an example using RS (6, 3), assuming sources (d0, d1, d2, d3, d4, d5)
-   * and parities (p0, p1, p2), d2 be erased. We can and may want to use only 6
-   * units (d1, d3, d4, d5, p0, p2) to recover d2. We will have:
+   * and parities (p0, p1, p2), d2 being erased. We can and may want to use only
+   * 6 units like (d1, d3, d4, d5, p0, p2) to recover d2. We will have:
    *     inputs = [p0, null(p1), p2, null(d0), d1, null(d2), d3, d4, d5]
    *     erasedIndexes = [5] // index of d2 into inputs array
    *     outputs = [a-writable-buffer]
