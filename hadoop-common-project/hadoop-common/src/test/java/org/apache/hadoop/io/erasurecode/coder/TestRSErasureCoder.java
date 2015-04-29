@@ -40,52 +40,50 @@ public class TestRSErasureCoder extends TestErasureCoderBase {
   }
 
   @Test
-  public void testCodingNoDirectBuffer_10x4() {
-    prepare(null, 10, 4, null);
+  public void testCodingNoDirectBuffer_10x4_erasing_d0_p0() {
+    prepare(null, 10, 4, new int[] {0}, new int[] {0});
     testCoding(false);
   }
 
   @Test
-  public void testCodingDirectBuffer_10x4() {
-    prepare(null, 10, 4, null);
+  public void testCodingDirectBuffer_10x4_erasing_d0_p0() {
+    prepare(null, 10, 4, new int[] {0}, new int[] {0});
     testCoding(true);
   }
 
   @Test
-  public void testCodingDirectBufferWithConf_10x4() {
+  public void testCodingDirectBufferWithConf_10x4_erasing_d0_p0() {
     /**
      * This tests if the two configuration items work or not.
      */
     Configuration conf = new Configuration();
     conf.set(CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY,
         RSRawErasureCoderFactory.class.getCanonicalName());
-    conf.setBoolean(
-        CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_USEXOR_KEY, false);
-    prepare(conf, 10, 4, null);
+    prepare(conf, 10, 4, new int[] {0}, new int[] {0});
     testCoding(true);
   }
 
   @Test
-  public void testCodingDirectBuffer_10x4_erasure_of_2_4() {
-    prepare(null, 10, 4, new int[] {2, 4});
+  public void testCodingDirectBuffer_10x4_erasing_d2_d4_p0() {
+    prepare(null, 10, 4, new int[] {2, 4}, new int[] {0});
     testCoding(true);
   }
 
   @Test
-  public void testCodingDirectBuffer_10x4_erasing_all() {
-    prepare(null, 10, 4, new int[] {0, 1, 2, 3});
+  public void testCodingDirectBuffer_10x4__erasing_d0_d1_p1_p2() {
+    prepare(null, 10, 4, new int[] {0, 1}, new int[] {1, 2});
     testCoding(true);
   }
 
   @Test
-  public void testCodingNoDirectBuffer_3x3() {
-    prepare(null, 3, 3, null);
+  public void testCodingNoDirectBuffer_3x3_erasing_d0_p0() {
+    prepare(null, 3, 3, new int[] {0}, new int[] {0});
     testCoding(false);
   }
 
   @Test
-  public void testCodingDirectBuffer_3x3() {
-    prepare(null, 3, 3, null);
+  public void testCodingDirectBuffer_3x3_erasing_d0_p0() {
+    prepare(null, 3, 3, new int[] {0}, new int[] {0});
     testCoding(true);
   }
 

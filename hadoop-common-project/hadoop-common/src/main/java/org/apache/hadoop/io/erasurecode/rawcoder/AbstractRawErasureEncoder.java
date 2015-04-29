@@ -31,8 +31,7 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
 
   @Override
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    assert (inputs.length == getNumDataUnits());
-    assert (outputs.length == getNumParityUnits());
+    checkParameters(inputs, outputs);
 
     doEncode(inputs, outputs);
   }
@@ -46,8 +45,7 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
 
   @Override
   public void encode(byte[][] inputs, byte[][] outputs) {
-    assert (inputs.length == getNumDataUnits());
-    assert (outputs.length == getNumParityUnits());
+    checkParameters(inputs, outputs);
 
     doEncode(inputs, outputs);
   }
@@ -64,30 +62,35 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
     assert (inputs.length == getNumDataUnits());
     assert (outputs.length == getNumParityUnits());
 
-    doEncode(inputs, outputs);
-  }
-
-  /**
-   * Perform the real encoding work using chunks.
-   * @param inputs
-   * @param outputs
-   */
-  protected void doEncode(ECChunk[] inputs, ECChunk[] outputs) {
     /**
-     * Note callers may pass byte array, or ByteBuffer via ECChunk according
+     * Note callers may pass byte array, or direct buffer via ECChunk according
      * to how ECChunk is created. Some implementations of coder use byte array
-     * (ex: pure Java), some use native ByteBuffer (ex: ISA-L), all for the
-     * better performance.
+     * (ex: pure Java), some use direct buffer (ex: ISA-L), all for the better
+     * performance.
      */
-    if (inputs[0].getBuffer().hasArray()) {
-      byte[][] inputBytesArr = ECChunk.toArray(inputs);
-      byte[][] outputBytesArr = ECChunk.toArray(outputs);
-      doEncode(inputBytesArr, outputBytesArr);
+    boolean hasArray = inputs[0].getBuffer().hasArray();
+    if (hasArray) {
+      byte[][] inputBytesArr = ECChunk.toArrays(inputs);
+      byte[][] outputBytesArr = ECChunk.toArrays(outputs);
+      encode(inputBytesArr, outputBytesArr);
     } else {
       ByteBuffer[] inputBuffers = ECChunk.toBuffers(inputs);
       ByteBuffer[] outputBuffers = ECChunk.toBuffers(outputs);
-      doEncode(inputBuffers, outputBuffers);
+      encode(inputBuffers, outputBuffers);
     }
   }
 
+  /**
+   * Check and validate decoding parameters, throw exception accordingly.
+   * @param inputs
+   * @param outputs
+   */
+  protected void checkParameters(Object[] inputs, Object[] outputs) {
+    if (inputs.length != getNumDataUnits()) {
+      throw new IllegalArgumentException("Invalid inputs length");
+    }
+    if (outputs.length != getNumParityUnits()) {
+      throw new IllegalArgumentException("Invalid outputs length");
+    }
+  }
 }

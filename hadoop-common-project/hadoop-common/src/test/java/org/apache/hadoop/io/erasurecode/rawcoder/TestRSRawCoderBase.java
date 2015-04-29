@@ -17,34 +17,35 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.io.erasurecode.ECChunk;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+
 /**
- * Test XOR encoding and decoding.
+ * Test base for raw Reed-solomon coders.
  */
-public class TestXORRawCoder extends TestRawCoderBase {
+public abstract class TestRSRawCoderBase extends TestRawCoderBase {
 
-  @Before
-  public void setup() {
-    this.encoderClass = XORRawEncoder.class;
-    this.decoderClass = XORRawDecoder.class;
+  private static int symbolSize = 0;
+  private static int symbolMax = 0;
 
-    this.numDataUnits = 10;
-    this.numParityUnits = 1;
-
-    this.erasedDataIndexes = new int[] {0};
-    this.erasedParityIndexes = new int[0];
+  static {
+    symbolSize = (int) Math.round(Math.log(
+        RSUtil.GF.getFieldSize()) / Math.log(2));
+    symbolMax = (int) Math.pow(2, symbolSize);
   }
 
-  @Test
-  public void testCodingNoDirectBuffer() {
-    testCoding(false);
-  }
+  @Override
+  protected ECChunk generateDataChunk() {
+    ByteBuffer buffer = allocateOutputBuffer();
+    for (int i = 0; i < chunkSize; i++) {
+      buffer.put((byte) RAND.nextInt(symbolMax));
+    }
+    buffer.flip();
 
-  @Test
-  public void testCodingDirectBuffer() {
-    testCoding(true);
+    return new ECChunk(buffer);
   }
-
 }

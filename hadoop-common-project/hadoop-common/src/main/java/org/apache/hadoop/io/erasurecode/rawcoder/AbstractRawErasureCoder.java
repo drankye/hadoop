@@ -19,6 +19,8 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.conf.Configured;
 
+import java.nio.ByteBuffer;
+
 /**
  * A common class of basic facilities to be shared by encoder and decoder
  *
@@ -55,12 +57,34 @@ public abstract class AbstractRawErasureCoder
   }
 
   @Override
-  public boolean preferNativeBuffer() {
+  public boolean preferDirectBuffer() {
     return false;
   }
 
   @Override
   public void release() {
     // Nothing to do by default
+  }
+
+  /**
+   * Convert an input bytes array to direct ByteBuffer.
+   * @param input
+   * @return direct ByteBuffer
+   */
+  protected ByteBuffer convertInputToDirect(byte[] input) {
+    ByteBuffer directBuffer = ByteBuffer.allocateDirect(input.length);
+    directBuffer.put(input);
+    directBuffer.flip();
+    return directBuffer;
+  }
+
+  /**
+   * Convert an output bytes array buffer to direct ByteBuffer.
+   * @param output
+   * @return direct ByteBuffer
+   */
+  protected ByteBuffer convertOutputToDirect(byte[] output) {
+    ByteBuffer directBuffer = ByteBuffer.allocateDirect(output.length);
+    return directBuffer;
   }
 }

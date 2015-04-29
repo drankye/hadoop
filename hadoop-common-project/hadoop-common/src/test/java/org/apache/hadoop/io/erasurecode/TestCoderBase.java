@@ -37,9 +37,11 @@ public abstract class TestCoderBase {
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
 
-  // Indexes of erased data units. Will also support test of erasing
-  // parity units
+  // Indexes of erased data units.
   protected int[] erasedDataIndexes = new int[] {0};
+
+  // Indexes of erased parity units.
+  protected int[] erasedParityIndexes = new int[] {0};
 
   // Data buffers are either direct or on-heap, for performance the two cases
   // may go to different coding implementations.
@@ -49,15 +51,18 @@ public abstract class TestCoderBase {
    * Prepare before running the case.
    * @param numDataUnits
    * @param numParityUnits
-   * @param erasedIndexes
+   * @param erasedDataIndexes
    */
   protected void prepare(Configuration conf, int numDataUnits,
-                         int numParityUnits, int[] erasedIndexes) {
+                         int numParityUnits, int[] erasedDataIndexes,
+                         int[] erasedParityIndexes) {
     this.conf = conf;
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
-    this.erasedDataIndexes = erasedIndexes != null ?
-        erasedIndexes : new int[] {0};
+    this.erasedDataIndexes = erasedDataIndexes != null ?
+        erasedDataIndexes : new int[] {0};
+    this.erasedParityIndexes = erasedParityIndexes != null ?
+        erasedParityIndexes : new int[] {0};
   }
 
   /**
@@ -75,22 +80,31 @@ public abstract class TestCoderBase {
    */
   protected void compareAndVerify(ECChunk[] erasedChunks,
                                   ECChunk[] recoveredChunks) {
-    byte[][] erased = ECChunk.toArray(erasedChunks);
-    byte[][] recovered = ECChunk.toArray(recoveredChunks);
+    byte[][] erased = ECChunk.toArrays(erasedChunks);
+    byte[][] recovered = ECChunk.toArrays(recoveredChunks);
     boolean result = Arrays.deepEquals(erased, recovered);
     assertTrue("Decoding and comparing failed.", result);
   }
 
   /**
-   * Adjust and return erased indexes based on the array of the input chunks (
-   * parity chunks + data chunks).
-   * @return
+   * Adjust and return erased indexes altogether, including erased data indexes
+   * and parity indexes.
+   * @return erased indexes altogether
    */
   protected int[] getErasedIndexesForDecoding() {
-    int[] erasedIndexesForDecoding = new int[erasedDataIndexes.length];
-    for (int i = 0; i < erasedDataIndexes.length; i++) {
-      erasedIndexesForDecoding[i] = erasedDataIndexes[i] + numParityUnits;
+    int[] erasedIndexesForDecoding =
+        new int[erasedParityIndexes.length + erasedDataIndexes.length];
+
+    int idx = 0;
+
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      erasedIndexesForDecoding[idx ++] = erasedParityIndexes[i];
     }
+
+    for (int i = 0; i < erasedDataIndexes.length; i++) {
+      erasedIndexesForDecoding[idx ++] = erasedDataIndexes[i] + numParityUnits;
+    }
+
     return erasedIndexesForDecoding;
   }
 
@@ -105,9 +119,11 @@ public abstract class TestCoderBase {
     ECChunk[] inputChunks = new ECChunk[numParityUnits + numDataUnits];
     
     int idx = 0;
+
     for (int i = 0; i < numParityUnits; i++) {
       inputChunks[idx ++] = parityChunks[i];
     }
+
     for (int i = 0; i < numDataUnits; i++) {
       inputChunks[idx ++] = dataChunks[i];
     }
@@ -116,54 +132,40 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Have a copy of the data chunks that's to be erased thereafter. The copy
-   * will be used to compare and verify with the to be recovered chunks.
+   * Erase some data chunks to test the recovering of them. As they're erased,
+   * we don't need to read them and will not have the buffers at all, so just
+   * set them as null.
    * @param dataChunks
-   * @return
+   * @param parityChunks
    */
-  protected ECChunk[] copyDataChunksToErase(ECChunk[] dataChunks) {
-    ECChunk[] copiedChunks = new ECChunk[erasedDataIndexes.length];
+  protected ECChunk[] eraseAndReturnChunks(ECChunk[] dataChunks,
+                                      ECChunk[] parityChunks) {
+    ECChunk[] toEraseChunks = new ECChunk[erasedParityIndexes.length +
+        erasedDataIndexes.length];
 
-    int j = 0;
-    for (int i = 0; i < erasedDataIndexes.length; i++) {
-      copiedChunks[j ++] = cloneChunkWithData(dataChunks[erasedDataIndexes[i]]);
+    int idx = 0;
+
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      toEraseChunks[idx ++] = parityChunks[erasedParityIndexes[i]];
+      parityChunks[erasedParityIndexes[i]] = null;
     }
 
-    return copiedChunks;
+    for (int i = 0; i < erasedDataIndexes.length; i++) {
+      toEraseChunks[idx ++] = dataChunks[erasedDataIndexes[i]];
+      dataChunks[erasedDataIndexes[i]] = null;
+    }
+
+    return toEraseChunks;
   }
 
   /**
-   * Erase some data chunks to test the recovering of them
-   * @param dataChunks
-   */
-  protected void eraseSomeDataBlocks(ECChunk[] dataChunks) {
-    for (int i = 0; i < erasedDataIndexes.length; i++) {
-      eraseDataFromChunk(dataChunks[erasedDataIndexes[i]]);
-    }
-  }
-
-  /**
-   * Erase data from the specified chunks, putting ZERO bytes to the buffers.
+   * Erase data from the specified chunks, just setting them as null.
    * @param chunks
    */
   protected void eraseDataFromChunks(ECChunk[] chunks) {
     for (int i = 0; i < chunks.length; i++) {
-      eraseDataFromChunk(chunks[i]);
+      chunks[i] = null;
     }
-  }
-
-  /**
-   * Erase data from the specified chunk, putting ZERO bytes to the buffer.
-   * @param chunk
-   */
-  protected void eraseDataFromChunk(ECChunk chunk) {
-    ByteBuffer chunkBuffer = chunk.getBuffer();
-    // erase the data
-    chunkBuffer.position(0);
-    for (int i = 0; i < chunkSize; i++) {
-      chunkBuffer.put((byte) 0);
-    }
-    chunkBuffer.flip();
   }
 
   /**
@@ -276,7 +278,9 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk[] prepareOutputChunksForDecoding() {
-    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length];
+    ECChunk[] chunks = new ECChunk[erasedDataIndexes.length +
+        erasedParityIndexes.length];
+
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = allocateOutputChunk();
     }

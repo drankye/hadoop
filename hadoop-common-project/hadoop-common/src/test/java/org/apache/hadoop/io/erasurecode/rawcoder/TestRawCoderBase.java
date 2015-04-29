@@ -46,8 +46,6 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     // Backup all the source chunks for later recovering because some coders
     // may affect the source data.
     ECChunk[] clonedDataChunks = cloneChunksWithData(dataChunks);
-    // Make a copy of a strip for later comparing
-    ECChunk[] toEraseDataChunks = copyDataChunksToErase(clonedDataChunks);
 
     try {
       encoder.encode(dataChunks, parityChunks);
@@ -55,11 +53,15 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       encoder.release();
     }
     // Erase the copied sources
-    eraseSomeDataBlocks(clonedDataChunks);
+    ECChunk[] erasedChunks = eraseAndReturnChunks(clonedDataChunks, parityChunks);
 
-    //Decode
-    ECChunk[] inputChunks = prepareInputChunksForDecoding(clonedDataChunks,
-        parityChunks);
+    // Decode
+    ECChunk[] inputChunks = prepareInputChunksForDecoding(
+        clonedDataChunks, parityChunks);
+
+    // Remove unnecessary chunks, allowing only least required chunks to be read.
+    ensureOnlyLeastRequiredChunks(inputChunks);
+
     ECChunk[] recoveredChunks = prepareOutputChunksForDecoding();
     RawErasureDecoder decoder = createDecoder();
     try {
@@ -69,8 +71,22 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       decoder.release();
     }
 
-    //Compare
-    compareAndVerify(toEraseDataChunks, recoveredChunks);
+    // Compare
+    compareAndVerify(erasedChunks, recoveredChunks);
+  }
+
+  private void ensureOnlyLeastRequiredChunks(ECChunk[] inputChunks) {
+    int leastRequiredNum = numDataUnits;
+    int erasedNum = erasedDataIndexes.length + erasedParityIndexes.length;
+    int goodNum = inputChunks.length - erasedNum;
+    int redundantNum = goodNum - leastRequiredNum;
+
+    for (int i = 0; i < inputChunks.length && redundantNum > 0; i++) {
+      if (inputChunks[i] != null) {
+        inputChunks[i] = null; // Setting it null, not needing it actually
+        redundantNum--;
+      }
+    }
   }
 
   /**

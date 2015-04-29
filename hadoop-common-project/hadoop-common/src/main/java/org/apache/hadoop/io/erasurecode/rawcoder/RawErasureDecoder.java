@@ -31,17 +31,37 @@ import java.nio.ByteBuffer;
 public interface RawErasureDecoder extends RawErasureCoder {
 
   /**
-   * Decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
+   * Decode with inputs and erasedIndexes, generates outputs.
+   * How to prepare for inputs:
+   * 1. Create an array containing parity units + data units;
+   * 2. Set null in the array locations specified via erasedIndexes to indicate
+   *    they're erased and no data are to read from;
+   * 3. Set null in the array locations for extra redundant items, as they're not
+   *    necessary to read when decoding. For example in RS-6-3, if only 1 unit
+   *    is really erased, then we have 2 extra items as redundant. They can be
+   *    set as null to indicate no data will be used from them.
+   *
+   * For an example using RS (6, 3), assuming sources (d0, d1, d2, d3, d4, d5)
+   * and parities (p0, p1, p2), d2 be erased. We can and may want to use only 6
+   * units (d1, d3, d4, d5, p0, p2) to recover d2. We will have:
+   *     inputs = [p0, null(p1), p2, null(d0), d1, null(d2), d3, d4, d5]
+   *     erasedIndexes = [5] // index of d2 into inputs array
+   *     outputs = [a-writable-buffer]
+   *
+   * @param inputs inputs to read data from
+   * @param erasedIndexes indexes of erased units into inputs array
+   * @param outputs outputs to write into for data generated according to
+   *                erasedIndexes
    */
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs);
 
   /**
-   * Decode with inputs and erasedIndexes, generates outputs
-   * @param inputs
-   * @param outputs
+   * Decode with inputs and erasedIndexes, generates outputs. More see above.
+   * @param inputs inputs to read data from
+   * @param erasedIndexes indexes of erased units in the inputs array
+   * @param outputs outputs to write into for data generated according to
+   *                erasedIndexes
    */
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs);
 
@@ -51,5 +71,4 @@ public interface RawErasureDecoder extends RawErasureCoder {
    * @param outputs
    */
   public void decode(ECChunk[] inputs, int[] erasedIndexes, ECChunk[] outputs);
-
 }
