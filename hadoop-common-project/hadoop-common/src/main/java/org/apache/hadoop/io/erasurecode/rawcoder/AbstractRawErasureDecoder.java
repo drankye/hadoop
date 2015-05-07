@@ -34,6 +34,19 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
+    ECChunk goodChunk = inputs[0]; // Most often
+    if (goodChunk == null) {
+      for (int i = 0; i < inputs.length; ++i) {
+        if (inputs[i] != null) {
+          goodChunk = inputs[i];
+          break;
+        }
+      }
+    }
+    if (goodChunk == null) {
+      throw new IllegalArgumentException("No valid input provided");
+    }
+	
     boolean hasArray = inputs[0].hasArray();
     if (hasArray) {
       byte[][] newInputs = toArrays(inputs);
@@ -99,5 +112,39 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
       throw new IllegalArgumentException(
           "Too many erased, not recoverable");
     }
+
+    int validInputs = 0;
+    for (int i = 0; i < inputs.length; ++i) {
+      if (inputs[i] != null) {
+        validInputs += 1;
+      }
+    }
+
+    if (validInputs < getNumDataUnits()) {
+      throw new IllegalArgumentException(
+          "No enough valid inputs are provided, not recoverable");
+    }
+  }
+
+  /**
+   * Get indexes into inputs array for items marked as null, either erased or
+   * not to read.
+   * @return indexes into inputs array
+   */
+  protected int[] getErasedOrNotToReadIndexes(Object[] inputs) {
+    int[] invalidIndexes = new int[inputs.length];
+    int idx = 0;
+    for (int i = 0; i < inputs.length; i++) {
+      if (inputs[i] == null) {
+        invalidIndexes[idx++] = i;
+      }
+    }
+
+    return Arrays.copyOf(invalidIndexes, idx);
+  }
+
+  // parity units + data units
+  protected int getNumInputUnits() {
+    return getNumParityUnits() + getNumDataUnits();
   }
 }

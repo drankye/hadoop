@@ -130,8 +130,9 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Erase chunks to test the recovering of them. Before erasure clone them
-   * first so could return them.
+   * Erase some data chunks to test the recovering of them. As they're erased,
+   * we don't need to read them and will not have the buffers at all, so just
+   * set them as null.
    * @param dataChunks
    * @param parityChunks
    * @return clone of erased chunks
@@ -142,45 +143,28 @@ public abstract class TestCoderBase {
         erasedDataIndexes.length];
 
     int idx = 0;
-    ECChunk chunk;
 
     for (int i = 0; i < erasedParityIndexes.length; i++) {
-      chunk = parityChunks[erasedParityIndexes[i]];
-      toEraseChunks[idx ++] = cloneChunkWithData(chunk);
-      eraseDataFromChunk(chunk);
+      toEraseChunks[idx ++] = parityChunks[erasedParityIndexes[i]];
+      parityChunks[erasedParityIndexes[i]] = null;
     }
 
     for (int i = 0; i < erasedDataIndexes.length; i++) {
-      chunk = dataChunks[erasedDataIndexes[i]];
-      toEraseChunks[idx ++] = cloneChunkWithData(chunk);
-      eraseDataFromChunk(chunk);
+      toEraseChunks[idx ++] = dataChunks[erasedDataIndexes[i]];
+      dataChunks[erasedDataIndexes[i]] = null;
     }
 
     return toEraseChunks;
   }
 
   /**
-   * Erase data from the specified chunks, putting ZERO bytes to the buffers.
+   * Erase data from the specified chunks, just setting them as null.
    * @param chunks
    */
   protected void eraseDataFromChunks(ECChunk[] chunks) {
     for (int i = 0; i < chunks.length; i++) {
-      eraseDataFromChunk(chunks[i]);
+      chunks[i] = null;
     }
-  }
-
-  /**
-   * Erase data from the specified chunk, putting ZERO bytes to the buffer.
-   * @param chunk
-   */
-  protected void eraseDataFromChunk(ECChunk chunk) {
-    ByteBuffer chunkBuffer = chunk.getBuffer();
-    // erase the data
-    chunkBuffer.position(0);
-    for (int i = 0; i < chunkSize; i++) {
-      chunkBuffer.put((byte) 0);
-    }
-    chunkBuffer.flip();
   }
 
   /**

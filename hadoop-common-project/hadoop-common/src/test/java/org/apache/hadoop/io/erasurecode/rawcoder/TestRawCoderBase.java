@@ -58,6 +58,9 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     ECChunk[] inputChunks = prepareInputChunksForDecoding(
         clonedDataChunks, parityChunks);
 
+    // Remove unnecessary chunks, allowing only least required chunks to be read.
+    ensureOnlyLeastRequiredChunks(inputChunks);
+
     ECChunk[] recoveredChunks = prepareOutputChunksForDecoding();
 
     decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
@@ -73,6 +76,20 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     if (decoder == null) {
       decoder = createDecoder();
+    }
+  }
+
+  private void ensureOnlyLeastRequiredChunks(ECChunk[] inputChunks) {
+    int leastRequiredNum = numDataUnits;
+    int erasedNum = erasedDataIndexes.length + erasedParityIndexes.length;
+    int goodNum = inputChunks.length - erasedNum;
+    int redundantNum = goodNum - leastRequiredNum;
+
+    for (int i = 0; i < inputChunks.length && redundantNum > 0; i++) {
+      if (inputChunks[i] != null) {
+        inputChunks[i] = null; // Setting it null, not needing it actually
+        redundantNum--;
+      }
     }
   }
 

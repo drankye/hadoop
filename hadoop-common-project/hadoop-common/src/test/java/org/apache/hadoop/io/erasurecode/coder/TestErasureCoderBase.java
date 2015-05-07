@@ -126,6 +126,34 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     }
   }
 
+  private void ensureOnlyLeastRequiredBlocks(ECBlockGroup blockGroup) {
+    int leastRequiredNum = numDataUnits;
+    int erasedNum = erasedDataIndexes.length + erasedParityIndexes.length;
+    int goodNum = blockGroup.getAllBlocksCount() - erasedNum;
+    int redundantNum = goodNum - leastRequiredNum;
+
+    ECBlock[] blocks;
+
+    if (redundantNum > 1) { // Let's not-to-read one parity.
+      blocks = blockGroup.getParityBlocks();
+      for (int i = 0; i < blocks.length && redundantNum > 0; i++) {
+        if (blocks[i] != null) {
+          blocks[i] = null; // Setting it null, not needing it actually
+          redundantNum--;
+          break;
+        }
+      }
+    }
+
+    blocks = blockGroup.getDataBlocks();
+    for (int i = 0; i < blocks.length && redundantNum > 0; i++) {
+      if (blocks[i] != null) {
+        blocks[i] = null; // Setting it null, not needing it actually
+        redundantNum--;
+      }
+    }
+  }
+
   /**
    * Create erasure encoder for test.
    * @return

@@ -25,11 +25,42 @@ import java.nio.ByteBuffer;
  * A raw erasure decoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
  * when possible.
+ *
+ * TODO: HADOOP-11871
+ * currently this implementation will compute and decode not to read
+ * units unnecessarily due to the underlying implementation limit in GF.
+ *
  */
 public class RSRawDecoder extends AbstractRawErasureDecoder {
   // To describe and calculate the needed Vandermonde matrix
   private int[] errSignature;
   private int[] primitivePower;
+
+  /**
+   * We need a set of reusable buffers either for the bytes array
+   * decoding version or direct buffer decoding version. Normally not both.
+   *
+   * For both input and output, in addition to the valid buffers from the caller
+   * passed from above, we need to provide extra buffers for the internal decoding
+   * implementation. For input, the caller should provide at least numDataUnits
+   * valid buffers (non-NULL); for output, the caller should provide no more than
+   * numParityUnits but at least one  buffers. And the left buffers will be
+   * borrowed from either byteArrayBuffersForInput or byteArrayBuffersForOutput.
+   *
+   */
+  // Reused buffers for decoding with bytes arrays
+  private byte[][] byteArrayBuffersForInput;
+  private byte[][] adjustedByteArrayInputsParameter;
+
+  private byte[][] byteArrayBuffersForOutput;
+  private byte[][] adjustedByteArrayOutputsParameter;
+
+  // Reused buffers for decoding with direct ByteBuffers
+  private ByteBuffer[] directBuffersForInput;
+  private ByteBuffer[] adjustedDirectBufferInputsParameter;
+
+  private ByteBuffer[] adjustedDirectBufferOutputsParameter;
+  private ByteBuffer[] directBuffersForOutput;
 
   @Override
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
@@ -39,6 +70,12 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     this.errSignature = new int[getNumParityUnits()];
     this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
         getNumParityUnits());
+  }
+
+  @Override
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
+                     ByteBuffer[] outputs) {
+    decodeWith(inputs, erasedIndexes, outputs, true);
   }
 
   @Override
@@ -55,6 +92,70 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   }
 
   @Override
+  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    decodeWith(inputs, erasedIndexes, outputs, false);
+  }
+
+  private void decodeWith(Object[] inputs, int[] erasedIndexes,
+                          Object[] outputs, boolean usingDirectBuffer) {
+    checkParameters(inputs, erasedIndexes, outputs);
+
+    if (usingDirectBuffer) {
+      ensureDirectBuffers();
+    } else {
+      ensureArrayBuffers();
+    }
+
+    /**
+     * As passed parameters are friendly to callers but not to the underlying
+     * implementations, so we have to adjust them before calling doDecoder.
+     */
+
+    int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
+
+    Object[] adjustedInputsParameter = usingDirectBuffer ?
+        adjustedDirectBufferInputsParameter : adjustedByteArrayInputsParameter;
+    Object[] buffersForInput = usingDirectBuffer ?
+        directBuffersForInput : byteArrayBuffersForInput;
+    Object[] adjustedOutputsParameter = usingDirectBuffer ?
+        adjustedDirectBufferOutputsParameter : adjustedByteArrayOutputsParameter;
+    Object[] buffersForOutput = usingDirectBuffer ?
+        directBuffersForOutput : byteArrayBuffersForOutput;
+
+    // Prepare for adjustedInputsParameter
+    System.arraycopy(inputs, 0, adjustedInputsParameter, 0, inputs.length);
+    int idx = 0, erasedIdx;
+    for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
+      // Borrow it from byteArrayBuffersForInput for the temp usage.
+      erasedIdx = erasedOrNotToReadIndexes[i];
+      adjustedInputsParameter[erasedIdx] = resetBuffer(buffersForInput[idx++]);
+    }
+
+    // Prepare for adjustedOutputsParameter
+    for (int i = 0; i < adjustedOutputsParameter.length; i++) {
+      adjustedOutputsParameter[i] = resetBuffer(buffersForOutput[i]);
+    }
+    idx = 0;
+    for (int i = 0; i < erasedIndexes.length; i++) {
+      for (int j = 0; j < erasedOrNotToReadIndexes.length; j++) {
+        // If this index is one requested by the caller via erasedIndexes, then
+        // we use the passed output buffer to avoid copying data thereafter.
+        if (erasedIndexes[i] == erasedOrNotToReadIndexes[j]) {
+          adjustedOutputsParameter[j] = resetBuffer(outputs[idx++]);
+        }
+      }
+    }
+
+    if (usingDirectBuffer) {
+      doDecode(adjustedDirectBufferInputsParameter, erasedOrNotToReadIndexes,
+          adjustedDirectBufferOutputsParameter);
+    } else {
+      doDecode(adjustedByteArrayInputsParameter, erasedOrNotToReadIndexes,
+          adjustedByteArrayOutputsParameter);
+    }
+  }
+
+  @Override
   protected void doDecode(byte[][] inputs, int[] erasedIndexes,
                           byte[][] outputs) {
     for (int i = 0; i < erasedIndexes.length; i++) {
@@ -63,7 +164,88 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     int dataLen = inputs[0].length;
-    RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
-        erasedIndexes.length, dataLen);
+    RSUtil.GF.solveVandermondeSystem(errSignature,
+        outputs, erasedIndexes.length, dataLen);
+  }
+
+  private void ensureArrayBuffers() {
+    if (adjustedByteArrayInputsParameter == null) {
+      /**
+       * Create this set of buffers on demand, which is only needed at the first
+       * time running into this, using bytes array.
+       */
+      adjustedByteArrayInputsParameter =
+          new byte[getNumInputUnits()][];
+
+      // Erased or not to read
+      int maxInvalidUnits = getNumParityUnits();
+
+      adjustedByteArrayOutputsParameter = new byte[maxInvalidUnits][];
+
+      // These are temp buffers for bad inputs, maybe more than needed
+      byteArrayBuffersForInput = new byte[maxInvalidUnits][];
+      for (int i = 0; i < byteArrayBuffersForInput.length; ++i) {
+        byteArrayBuffersForInput[i] = new byte[getChunkSize()];
+      }
+
+      // These are temp buffers for recovering outputs, maybe more than needed
+      byteArrayBuffersForOutput = new byte[maxInvalidUnits][];
+      for (int i = 0; i < byteArrayBuffersForOutput.length; ++i) {
+        byteArrayBuffersForOutput[i] = new byte[getChunkSize()];
+      }
+    }
+  }
+
+  private void ensureDirectBuffers() {
+    if (adjustedDirectBufferInputsParameter == null) {
+      /**
+       * Create this set of buffers on demand, which is only needed at the first
+       * time running into this, using DirectBuffer.
+       */
+      adjustedDirectBufferInputsParameter = new ByteBuffer[getNumInputUnits()];
+
+      // Erased or not to read
+      int maxInvalidUnits = getNumParityUnits();
+
+      adjustedDirectBufferOutputsParameter = new ByteBuffer[maxInvalidUnits];
+
+      // These are temp buffers for invalid inputs, maybe more than needed
+      directBuffersForInput = new ByteBuffer[maxInvalidUnits];
+      for (int i = 0; i < directBuffersForInput.length; i++) {
+        directBuffersForInput[i] = ByteBuffer.allocateDirect(getChunkSize());
+      }
+
+      // These are temp buffers for recovering outputs, maybe more than needed
+      directBuffersForOutput = new ByteBuffer[maxInvalidUnits];
+      for (int i = 0; i < directBuffersForOutput.length; i++) {
+        directBuffersForOutput[i] =
+            ByteBuffer.allocateDirect(getChunkSize());
+      }
+    }
+  }
+
+  private Object resetBuffer(Object buffer) {
+    if (buffer instanceof byte[]) {
+      byte[] arrayBuffer = (byte[]) buffer;
+      resetArrayBuffer(arrayBuffer);
+    } else {
+      ByteBuffer byteBuffer = (ByteBuffer) buffer;
+      resetDirectBuffer(byteBuffer);
+    }
+
+    return buffer;
+  }
+
+  @Override
+  public void release() {
+    adjustedByteArrayInputsParameter = null;
+    byteArrayBuffersForInput = null;
+    adjustedByteArrayOutputsParameter = null;
+    byteArrayBuffersForOutput = null;
+
+    adjustedDirectBufferInputsParameter = null;
+    directBuffersForInput = null;
+    adjustedDirectBufferOutputsParameter = null;
+    directBuffersForOutput = null;
   }
 }
