@@ -71,15 +71,10 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     codingStep = encoder.calculateCoding(blockGroup);
     performCodingStep(codingStep);
     // Erase specified sources but return copies of them for later comparing
-    TestBlock[] backupBlocks =
-        backupAndEraseBlocks(clonedDataBlocks, parityBlocks);
-
-    // Remove unnecessary chunks, allowing only least required chunks to be read.
-    ensureOnlyLeastRequiredBlocks(blockGroup);
+    TestBlock[] backupBlocks = backupAndEraseBlocks(clonedDataBlocks, parityBlocks);
 
     // Decode
-    blockGroup = new ECBlockGroup(clonedDataBlocks,
-        blockGroup.getParityBlocks());
+    blockGroup = new ECBlockGroup(clonedDataBlocks, blockGroup.getParityBlocks());
     codingStep = decoder.calculateCoding(blockGroup);
     performCodingStep(codingStep);
 
@@ -124,37 +119,10 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param erasedBlocks
    * @param recoveredBlocks
    */
-  protected void compareAndVerify(ECBlock[] erasedBlocks, ECBlock[] recoveredBlocks) {
+  protected void compareAndVerify(ECBlock[] erasedBlocks,
+                                  ECBlock[] recoveredBlocks) {
     for (int i = 0; i < erasedBlocks.length; ++i) {
       compareAndVerify(((TestBlock) erasedBlocks[i]).chunks, ((TestBlock) recoveredBlocks[i]).chunks);
-    }
-  }
-
-  private void ensureOnlyLeastRequiredBlocks(ECBlockGroup blockGroup) {
-    int leastRequiredNum = numDataUnits;
-    int erasedNum = erasedDataIndexes.length + erasedParityIndexes.length;
-    int goodNum = blockGroup.getAllBlocksCount() - erasedNum;
-    int redundantNum = goodNum - leastRequiredNum;
-
-    ECBlock[] blocks;
-
-    if (redundantNum > 1) { // Let's not-to-read one parity.
-      blocks = blockGroup.getParityBlocks();
-      for (int i = 0; i < blocks.length && redundantNum > 0; i++) {
-        if (blocks[i] != null) {
-          blocks[i] = null; // Setting it null, not needing it actually
-          redundantNum--;
-          break;
-        }
-      }
-    }
-
-    blocks = blockGroup.getDataBlocks();
-    for (int i = 0; i < blocks.length && redundantNum > 0; i++) {
-      if (blocks[i] != null) {
-        blocks[i] = null; // Setting it null, not needing it actually
-        redundantNum--;
-      }
     }
   }
 
