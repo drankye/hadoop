@@ -22,8 +22,8 @@ package org.apache.hadoop.io.erasurecode;
  */
 public class ECBlockGroup {
 
-  private ECBlock[] dataBlocks;
-  private ECBlock[] parityBlocks;
+  private final ECBlock[] dataBlocks;
+  private final ECBlock[] parityBlocks;
 
   /**
    * A constructor specifying data blocks and parity blocks.
@@ -49,6 +49,10 @@ public class ECBlockGroup {
    */
   public ECBlock[] getParityBlocks() {
     return parityBlocks;
+  }
+
+  public int getAllBlocksCount() {
+    return dataBlocks.length + parityBlocks.length;
   }
 
   /**
@@ -96,5 +100,4 @@ public class ECBlockGroup {
 
     return erasedCount;
   }
-
 }

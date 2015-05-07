@@ -86,9 +86,8 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
       RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].remaining();
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
-        erasedIndexes.length, dataLen);
+        erasedIndexes.length, getChunkSize());
   }
 
   @Override
@@ -163,9 +162,8 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
       RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].length;
     RSUtil.GF.solveVandermondeSystem(errSignature,
-        outputs, erasedIndexes.length, dataLen);
+        outputs, erasedIndexes.length, getChunkSize());
   }
 
   private void ensureArrayBuffers() {
@@ -227,10 +225,10 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   private Object resetBuffer(Object buffer) {
     if (buffer instanceof byte[]) {
       byte[] arrayBuffer = (byte[]) buffer;
-      resetArrayBuffer(arrayBuffer);
+      resetBuffer(arrayBuffer);
     } else {
       ByteBuffer byteBuffer = (ByteBuffer) buffer;
-      resetDirectBuffer(byteBuffer);
+      resetBuffer(byteBuffer);
     }
 
     return buffer;

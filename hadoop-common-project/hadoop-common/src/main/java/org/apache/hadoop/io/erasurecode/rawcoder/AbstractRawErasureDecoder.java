@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * An abstract raw erasure decoder that's to be inherited by new decoders.
@@ -34,20 +35,20 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
-    ECChunk goodChunk = inputs[0]; // Most often
-    if (goodChunk == null) {
-      for (int i = 0; i < inputs.length; ++i) {
+    ByteBuffer goodBuffer = inputs[0]; // Most often
+    if (goodBuffer == null) {
+      for (int i = 1; i < inputs.length; ++i) {
         if (inputs[i] != null) {
-          goodChunk = inputs[i];
+          goodBuffer = inputs[i];
           break;
         }
       }
     }
-    if (goodChunk == null) {
+    if (goodBuffer == null) {
       throw new IllegalArgumentException("No valid input provided");
     }
-	
-    boolean hasArray = inputs[0].hasArray();
+
+    boolean hasArray = goodBuffer.hasArray();
     if (hasArray) {
       byte[][] newInputs = toArrays(inputs);
       byte[][] newOutputs = toArrays(outputs);
