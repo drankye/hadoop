@@ -35,26 +35,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
-    ByteBuffer goodBuffer = inputs[0]; // Most often
-    if (goodBuffer == null) {
-      for (int i = 1; i < inputs.length; ++i) {
-        if (inputs[i] != null) {
-          goodBuffer = inputs[i];
-          break;
-        }
-      }
-    }
-    if (goodBuffer == null) {
-      throw new IllegalArgumentException("No valid input provided");
-    }
-
-    boolean hasArray = goodBuffer.hasArray();
-    if (hasArray) {
+    if (usingDirectBuffer(inputs)) {
+      doDecode(inputs, erasedIndexes, outputs);
+    } else {
       byte[][] newInputs = toArrays(inputs);
       byte[][] newOutputs = toArrays(outputs);
       doDecode(newInputs, erasedIndexes, newOutputs);
-    } else {
-      doDecode(inputs, erasedIndexes, outputs);
     }
   }
 
@@ -147,5 +133,27 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   // parity units + data units
   protected int getNumInputUnits() {
     return getNumParityUnits() + getNumDataUnits();
+  }
+
+  /**
+   * Tell if using direct ByteBuffer.
+   * @param buffers
+   * @return
+   */
+  protected boolean usingDirectBuffer(ByteBuffer[] buffers) {
+    ByteBuffer goodBuffer = buffers[0]; // Most often
+    if (goodBuffer == null) {
+      for (int i = 1; i < buffers.length; ++i) {
+        if (buffers[i] != null) {
+          goodBuffer = buffers[i];
+          break;
+        }
+      }
+    }
+    if (goodBuffer == null) {
+      throw new IllegalArgumentException("No valid buffer provided");
+    }
+
+    return ! goodBuffer.hasArray();
   }
 }

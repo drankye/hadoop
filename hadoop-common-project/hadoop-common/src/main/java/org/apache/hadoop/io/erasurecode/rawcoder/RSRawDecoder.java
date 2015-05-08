@@ -75,7 +75,13 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   @Override
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs) {
-    decodeWith(inputs, erasedIndexes, outputs, true);
+    if (usingDirectBuffer(inputs)) {
+      decodeWith(inputs, erasedIndexes, outputs, true);
+    } else {
+      byte[][] newInputs = toArrays(inputs);
+      byte[][] newOutputs = toArrays(outputs);
+      decodeWith(newInputs, erasedIndexes, newOutputs, false);
+    }
   }
 
   @Override
