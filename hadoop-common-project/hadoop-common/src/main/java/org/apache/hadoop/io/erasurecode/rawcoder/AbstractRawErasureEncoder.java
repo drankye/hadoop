@@ -54,15 +54,22 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   public void encode(byte[][] inputs, byte[][] outputs) {
     checkParameters(inputs, outputs);
 
+    
     doEncode(inputs, outputs);
   }
 
   /**
-   * Perform the real encoding work using bytes array
+   * Perform the real encoding work using bytes array, supporting offsets
+   * and lengths.
    * @param inputs
+   * @param inputOffsets
+   * @param inputLen
    * @param outputs
+   * @param outputOffsets
    */
-  protected abstract void doEncode(byte[][] inputs, byte[][] outputs);
+  protected abstract void doEncode(byte[][] inputs, int[] inputOffsets,
+                                   int inputLen, byte[][] outputs,
+                                   int[] outputOffsets);
 
   @Override
   public void encode(ECChunk[] inputs, ECChunk[] outputs) {

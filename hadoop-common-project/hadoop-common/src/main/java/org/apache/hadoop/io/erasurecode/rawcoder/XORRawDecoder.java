@@ -30,11 +30,12 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
     ByteBuffer output = outputs[0];
     resetOutputBuffer(output);
 
-    int bufSize = getChunkSize();
+    int dataLen = inputs[0].remaining();
     int erasedIdx = erasedIndexes[0];
 
     // Process the inputs.
     int iPos, oPos = output.position();
+    int iInput, iOutput;
     for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
       if (i == erasedIdx) {
@@ -42,9 +43,10 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
       }
 
       iPos = inputs[i].position();
-      for (int j = 0; j < bufSize; j++) {
-        output.put(oPos + j,
-            (byte) (outputs[0].get(oPos + j) ^ inputs[i].get(iPos + j)));
+      for (iInput = iPos, iOutput = oPos;
+           iInput < iPos + dataLen; iInput++, iOutput++) {
+        output.put(iOutput,
+            (byte) (output.get(iOutput) ^ inputs[i].get(iInput)));
       }
     }
   }

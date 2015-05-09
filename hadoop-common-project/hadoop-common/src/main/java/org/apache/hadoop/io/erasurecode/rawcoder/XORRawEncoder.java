@@ -24,46 +24,49 @@ import java.nio.ByteBuffer;
  */
 public class XORRawEncoder extends AbstractRawErasureEncoder {
 
-  @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
     ByteBuffer output = outputs[0];
     resetOutputBuffer(output);
 
-    int bufSize = getChunkSize();
-    int iPos, oPos = output.position();
+    int dataLen = inputs[0].remaining();
+    int oPos = output.position();
 
     // Get the first buffer's data.
-    iPos = inputs[0].position();
-    for (int j = 0; j < bufSize; j++) {
-      output.put(oPos + j, inputs[0].get(iPos + j));
+    int iInput, iOutput;
+    int iPos = inputs[0].position();
+    for (iInput = iPos, iOutput = oPos;
+         iInput < iPos + dataLen; iInput++, iOutput++) {
+      output.put(iOutput, inputs[0].get(iInput));
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
       iPos = inputs[i].position();
-      for (int j = 0; j < bufSize; j++) {
-        output.put(oPos + j,
-            (byte) (output.get(oPos + j) ^ inputs[i].get(iPos + j)));
+      for (iInput = iPos, iOutput = oPos;
+           iInput < iPos + dataLen; iInput++, iOutput++) {
+        output.put(iOutput,
+            (byte) (output.get(iOutput) ^ inputs[i].get(iInput)));
       }
     }
   }
 
   @Override
-  protected void doEncode(byte[][] inputs, byte[][] outputs) {
+  protected void doEncode(byte[][] inputs, int[] inputOffsets,
+                          int inputLen, byte[][] outputs,
+                          int[] outputOffsets) {
     resetBuffer(outputs[0]);
 
-    int bufSize = getChunkSize();
+    int dataLen = inputLen;
     // Get the first buffer's data.
-    for (int j = 0; j < bufSize; j++) {
+    for (int j = 0; j < dataLen; j++) {
       outputs[0][j] = inputs[0][j];
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
-      for (int j = 0; j < bufSize; j++) {
+      for (int j = 0; j < dataLen; j++) {
         outputs[0][j] ^= inputs[i][j];
       }
     }
   }
-
 }
