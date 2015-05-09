@@ -29,23 +29,23 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
     resetOutputBuffer(output);
 
     int dataLen = inputs[0].remaining();
-    int oPos = output.position();
 
     // Get the first buffer's data.
-    int iInput, iOutput;
-    int iPos = inputs[0].position();
-    for (iInput = iPos, iOutput = oPos;
-         iInput < iPos + dataLen; iInput++, iOutput++) {
-      output.put(iOutput, inputs[0].get(iInput));
+    int iIdx, oIdx, iPos, oPos;
+    iPos = inputs[0].position();
+    oPos = output.position();
+    for (iIdx = iPos, oIdx = oPos;
+         iIdx < iPos + dataLen; iIdx++, oIdx++) {
+      output.put(oIdx, inputs[0].get(iIdx));
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
       iPos = inputs[i].position();
-      for (iInput = iPos, iOutput = oPos;
-           iInput < iPos + dataLen; iInput++, iOutput++) {
-        output.put(iOutput,
-            (byte) (output.get(iOutput) ^ inputs[i].get(iInput)));
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + dataLen; iIdx++, oIdx++) {
+        output.put(oIdx, (byte) (output.get(oIdx) ^ inputs[i].get
+            (iIdx)));
       }
     }
   }
@@ -54,18 +54,24 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
   protected void doEncode(byte[][] inputs, int[] inputOffsets,
                           int inputLen, byte[][] outputs,
                           int[] outputOffsets) {
-    resetBuffer(outputs[0]);
+    byte[] output = outputs[0];
+    resetBuffer(output);
 
-    int dataLen = inputLen;
     // Get the first buffer's data.
-    for (int j = 0; j < dataLen; j++) {
-      outputs[0][j] = inputs[0][j];
+    int iPos, iIdx, oPos, oIdx;
+    iPos = inputOffsets[0];
+    oPos = outputOffsets[0];
+    for (iIdx = iPos, oIdx = oPos;
+         iIdx < iPos + inputLen; iIdx++, oIdx++) {
+      output[oIdx] = inputs[0][iIdx];
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
-      for (int j = 0; j < dataLen; j++) {
-        outputs[0][j] ^= inputs[i][j];
+      iPos = inputOffsets[i];
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + inputLen; iIdx++, oIdx++) {
+        output[oIdx] ^= inputs[i][iIdx];
       }
     }
   }
