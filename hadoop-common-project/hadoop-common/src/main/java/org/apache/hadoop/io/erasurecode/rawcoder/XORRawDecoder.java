@@ -56,7 +56,7 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
                           int[] erasedIndexes, byte[][] outputs,
                           int[] outputOffsets) {
     byte[] output = outputs[0];
-    resetBuffer(output);
+    resetBuffer(output, outputOffsets[0], inputLen);
 
     int erasedIdx = erasedIndexes[0];
 

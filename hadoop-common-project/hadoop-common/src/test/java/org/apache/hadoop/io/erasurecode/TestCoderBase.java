@@ -254,7 +254,7 @@ public abstract class TestCoderBase {
      * and in the beginning, dummy data are prefixed, to simulate a buffer of
      * position > 0.
      */
-    int startOffset = startBufferWithZero ? 0 : 0;
+    int startOffset = startBufferWithZero ? 0 : 11;
     int bufferLen = startOffset + chunkSize + startOffset;
     ByteBuffer buffer = allocateOutputBuffer(bufferLen);
     byte[] dummy = new byte[startOffset];
