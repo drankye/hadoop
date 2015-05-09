@@ -51,9 +51,8 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
   }
 
   @Override
-  protected void doEncode(byte[][] inputs, int[] inputOffsets,
-                          int inputLen, byte[][] outputs,
-                          int[] outputOffsets) {
+  protected void doEncode(byte[][] inputs, int[] inputOffsets, int inputLen,
+                          byte[][] outputs, int[] outputOffsets) {
     byte[] output = outputs[0];
     resetBuffer(output);
 

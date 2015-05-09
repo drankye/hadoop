@@ -72,10 +72,6 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   public void encode(byte[][] inputs, byte[][] outputs) {
     checkParameters(inputs, outputs);
 
-    doEncode(inputs, outputs);
-  }
-
-  private void doEncode(byte[][] inputs, byte[][] outputs) {
     int[] inputOffsets = new int[inputs.length]; // ALL ZERO
     int inputLen = inputs[0].length;
     int[] outputOffsets = new int[outputs.length]; // ALL ZERO

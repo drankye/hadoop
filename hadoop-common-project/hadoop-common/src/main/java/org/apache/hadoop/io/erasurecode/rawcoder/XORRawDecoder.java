@@ -52,22 +52,27 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
   }
 
   @Override
-  protected void doDecode(byte[][] inputs,
-                          int[] erasedIndexes, byte[][] outputs) {
-    resetBuffer(outputs[0]);
+  protected void doDecode(byte[][] inputs, int[] inputOffsets, int inputLen,
+                          int[] erasedIndexes, byte[][] outputs,
+                          int[] outputOffsets) {
+    byte[] output = outputs[0];
+    resetBuffer(output);
 
-    int bufSize = getChunkSize();
     int erasedIdx = erasedIndexes[0];
 
     // Process the inputs.
+    int iPos, iIdx, oPos, oIdx;
+    oPos = outputOffsets[0];
     for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
       if (i == erasedIdx) {
         continue;
       }
 
-      for (int j = 0; j < bufSize; j++) {
-        outputs[0][j] ^= inputs[i][j];
+      iPos = inputOffsets[i];
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + inputLen; iIdx++, oIdx++) {
+        output[oIdx] ^= inputs[i][iIdx];
       }
     }
   }

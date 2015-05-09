@@ -378,16 +378,23 @@ public class GaloisField {
    * Tends to be 2X faster than the "int" substitute in a loop.
    *
    * @param p input polynomial
+   * @param offsets
+   * @param len
    * @param q store the return result
+   * @param offset
    * @param x input field
    */
-  public void substitute(byte[][] p, byte[] q, int x) {
+  public void substitute(byte[][] p, int[] offsets,
+                         int len, byte[] q, int offset, int x) {
     int y = 1;
     for (int i = 0; i < p.length; i++) {
       byte[] pi = p[i];
-      for (int j = 0; j < pi.length; j++) {
-        int pij = pi[j] & 0x000000FF;
-        q[j] = (byte) (q[j] ^ mulTable[pij][y]);
+      int pos = offsets[i];
+      int iIdx, oIdx;
+      for (iIdx = pos, oIdx = offset;
+           iIdx < pos + pi.length; iIdx++, oIdx++) {
+        int pij = pi[iIdx] & 0x000000FF;
+        q[oIdx] = (byte) (q[oIdx] ^ mulTable[pij][y]);
       }
       y = mulTable[x][y];
     }
