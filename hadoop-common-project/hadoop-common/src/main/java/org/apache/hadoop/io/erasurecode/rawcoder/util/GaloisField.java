@@ -418,13 +418,18 @@ public class GaloisField {
    * The "bulk" version of the remainder.
    * Warning: This function will modify the "dividend" inputs.
    */
-  public void remainder(byte[][] dividend, int[] divisor) {
+  public void remainder(byte[][] dividend, int[] offsets,
+                        int inputLen, int[] divisor) {
+    int pos1, pos2;
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
       for (int j = 0; j < divisor.length; j++) {
-        for (int k = 0; k < dividend[i].length; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1][k] &
+        pos1 = offsets[i + divisor.length - 1];
+        pos2 = offsets[j + i];
+        for (int k = 0; k < inputLen; k++) {
+          int ratio = divTable[dividend[i + divisor.length - 1][pos1 + k] &
               0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i][k] = (byte) ((dividend[j + i][k] & 0x00FF) ^
+          dividend[j + i][pos2 + k] =
+              (byte) ((dividend[j + i][pos2 + k] & 0x00FF) ^
               mulTable[ratio][divisor[j]]);
         }
       }
