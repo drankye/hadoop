@@ -64,30 +64,4 @@ public class ECChunk {
 
     return buffers;
   }
-
-  /**
-   * Convert an array of this chunks to an array of byte array.
-   * Note the chunk buffers are not affected.
-   * @param chunks
-   * @return an array of byte array
-   */
-  public static byte[][] toArrays(ECChunk[] chunks) {
-    byte[][] bytesArr = new byte[chunks.length][];
-
-    ByteBuffer buffer;
-    for (int i = 0; i < chunks.length; i++) {
-      buffer = chunks[i].getBuffer();
-      if (buffer.hasArray()) {
-        bytesArr[i] = buffer.array();
-      } else {
-        bytesArr[i] = new byte[buffer.remaining()];
-        // Avoid affecting the original one
-        buffer.mark();
-        buffer.get(bytesArr[i]);
-        buffer.reset();
-      }
-    }
-
-    return bytesArr;
-  }
 }

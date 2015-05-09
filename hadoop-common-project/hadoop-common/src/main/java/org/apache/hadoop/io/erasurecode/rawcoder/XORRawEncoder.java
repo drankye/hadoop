@@ -26,18 +26,24 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    resetBuffer(outputs[0]);
+    ByteBuffer output = outputs[0];
+    resetOutputBuffer(output);
 
     int bufSize = getChunkSize();
+    int iPos, oPos = output.position();
+
     // Get the first buffer's data.
+    iPos = inputs[0].position();
     for (int j = 0; j < bufSize; j++) {
-      outputs[0].put(j, inputs[0].get(j));
+      output.put(oPos + j, inputs[0].get(iPos + j));
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
+      iPos = inputs[i].position();
       for (int j = 0; j < bufSize; j++) {
-        outputs[0].put(j, (byte) (outputs[0].get(j) ^ inputs[i].get(j)));
+        output.put(oPos + j,
+            (byte) (output.get(oPos + j) ^ inputs[i].get(iPos + j)));
       }
     }
   }

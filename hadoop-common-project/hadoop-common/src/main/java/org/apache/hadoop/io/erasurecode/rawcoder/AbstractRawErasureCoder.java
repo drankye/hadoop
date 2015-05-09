@@ -76,7 +76,7 @@ public abstract class AbstractRawErasureCoder
    * @param buffers
    * @return an array of byte array
    */
-  protected static byte[][] toArrays(ByteBuffer[] buffers) {
+  protected byte[][] toArrays(ByteBuffer[] buffers) {
     byte[][] bytesArr = new byte[buffers.length][];
 
     ByteBuffer buffer;
@@ -87,11 +87,13 @@ public abstract class AbstractRawErasureCoder
         continue;
       }
 
-      if (buffer.hasArray()) {
+      if (buffer.hasArray() && buffer.position() == 0 &&
+          buffer.remaining() == getChunkSize()) {
+        // Try to avoid data copy as possible
         bytesArr[i] = buffer.array();
       } else {
-        throw new IllegalArgumentException("Invalid ByteBuffer passed, " +
-            "expecting heap buffer");
+        bytesArr[i] = new byte[buffer.remaining()];
+        buffer.get(bytesArr[i]);
       }
     }
 
@@ -99,15 +101,32 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Ensure the buffer (either input or output) ready to read or write with ZERO
-   * bytes fully in chunkSize.
-   * @param buffer
-   * @return the buffer itself
+   * Ensure output buffer filled with ZERO bytes fully in chunkSize.
+   * @param buffer a buffer ready to write chunk size bytes
+   * @return the buffer itself, with ZERO bytes written, remaining the original
+   * position
    */
-  protected ByteBuffer resetBuffer(ByteBuffer buffer) {
-    buffer.clear();
+  protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
+    int pos = buffer.position();
     buffer.put(zeroChunkBytes);
-    buffer.position(0);
+    buffer.position(pos);
+
+    return buffer;
+  }
+
+  /**
+   * Ensure input buffer filled with ZERO bytes fully in chunkSize.
+   * @param buffer a buffer ready to read chunk size bytes
+   * @return the buffer itself, with ZERO bytes written, remaining the original
+   * position
+   */
+  protected ByteBuffer resetInputBuffer(ByteBuffer buffer) {
+    int pos = buffer.position();
+    buffer.flip();
+    buffer.position(pos);
+    buffer.put(zeroChunkBytes);
+    buffer.flip();
+    buffer.position(pos);
 
     return buffer;
   }

@@ -37,6 +37,8 @@ public abstract class TestCoderBase {
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
 
+  private boolean startBufferWithZero = true;
+
   // Indexes of erased data units. Will also support test of erasing
   // parity units
   protected int[] erasedDataIndexes = new int[] {0};
@@ -75,8 +77,8 @@ public abstract class TestCoderBase {
    */
   protected void compareAndVerify(ECChunk[] erasedChunks,
                                   ECChunk[] recoveredChunks) {
-    byte[][] erased = ECChunk.toArrays(erasedChunks);
-    byte[][] recovered = ECChunk.toArrays(recoveredChunks);
+    byte[][] erased = toArrays(erasedChunks);
+    byte[][] recovered = toArrays(recoveredChunks);
     boolean result = Arrays.deepEquals(erased, recovered);
     assertTrue("Decoding and comparing failed.", result);
   }
@@ -211,18 +213,18 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk allocateOutputChunk() {
-    ByteBuffer buffer = allocateOutputBuffer();
+    ByteBuffer buffer = allocateOutputBuffer(chunkSize);
 
     return new ECChunk(buffer);
   }
 
   /**
    * Allocate a buffer for output or writing.
-   * @return
+   * @return a buffer ready to write
    */
-  protected ByteBuffer allocateOutputBuffer() {
+  protected ByteBuffer allocateOutputBuffer(int bufferLen) {
     ByteBuffer buffer = usingDirectBuffer ?
-        ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
+        ByteBuffer.allocateDirect(bufferLen) : ByteBuffer.allocate(bufferLen);
 
     return buffer;
   }
@@ -241,17 +243,35 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Generate data chunk by making random data.
+   * Generate data chunk by making random data. It can prepare for two kinds of
+   * data buffers: one with position as 0, the other with position > 0.
    * @return
    */
   protected ECChunk generateDataChunk() {
-    ByteBuffer buffer = allocateOutputBuffer();
+    /**
+     * When startBufferWithZero, will prepare a buffer as:--------------
+     * otherwise, the buffer will be like:             ___T-H-E--D-A-T-A___,
+     * and in the beginning, dummy data are prefixed, to simulate a buffer of
+     * position > 0.
+     */
+    int startOffset = startBufferWithZero ? 0 : 11;
+    int bufferLen = startOffset + chunkSize + startOffset;
+    ByteBuffer buffer = allocateOutputBuffer(bufferLen);
+    byte[] dummy = new byte[startOffset];
+    buffer.put(dummy);
+    startBufferWithZero = ! startBufferWithZero;
+
+    generateData(buffer);
+    buffer.flip();
+    buffer.position(startOffset);
+
+    return new ECChunk(buffer);
+  }
+
+  protected void generateData(ByteBuffer buffer) {
     for (int i = 0; i < chunkSize; i++) {
       buffer.put((byte) RAND.nextInt(256));
     }
-    buffer.flip();
-
-    return new ECChunk(buffer);
   }
 
   /**
@@ -282,4 +302,30 @@ public abstract class TestCoderBase {
     return chunks;
   }
 
+  /**
+   * Convert an array of this chunks to an array of byte array.
+   * Note the chunk buffers are not affected.
+   * @param chunks
+   * @return an array of byte array
+   */
+  protected byte[][] toArrays(ECChunk[] chunks) {
+    byte[][] bytesArr = new byte[chunks.length][];
+
+    ByteBuffer buffer;
+    for (int i = 0; i < chunks.length; i++) {
+      buffer = chunks[i].getBuffer();
+      if (buffer.hasArray() && buffer.position() == 0 &&
+          buffer.remaining() == chunkSize) {
+        bytesArr[i] = buffer.array();
+      } else {
+        bytesArr[i] = new byte[buffer.remaining()];
+        // Avoid affecting the original one
+        buffer.mark();
+        buffer.get(bytesArr[i]);
+        buffer.reset();
+      }
+    }
+
+    return bytesArr;
+  }
 }
