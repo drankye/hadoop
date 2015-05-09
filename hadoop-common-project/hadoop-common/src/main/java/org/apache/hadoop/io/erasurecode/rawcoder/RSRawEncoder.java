@@ -69,7 +69,7 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     // parity units + data units
     byte[][] all = new byte[outputs.length + inputs.length][];
     System.arraycopy(outputs, 0, all, 0, outputs.length);
-    System.arraycopy(inputs, 0, all, outputs.length, outputs.length);
+    System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
 
     int[] offsets = new int[inputOffsets.length + outputOffsets.length];
     System.arraycopy(outputOffsets, 0, offsets, 0, outputOffsets.length);
