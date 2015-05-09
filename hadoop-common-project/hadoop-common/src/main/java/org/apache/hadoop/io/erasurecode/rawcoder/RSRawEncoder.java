@@ -50,16 +50,13 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    ByteBuffer[] data = new ByteBuffer[getNumDataUnits() + getNumParityUnits()];
-    for (int i = 0; i < getNumParityUnits(); i++) {
-      data[i] = outputs[i];
-    }
-    for (int i = 0; i < getNumDataUnits(); i++) {
-      data[i + getNumParityUnits()] = inputs[i];
-    }
+    // parity units + data units
+    ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
+    System.arraycopy(outputs, 0, all, 0, outputs.length);
+    System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
 
     // Compute the remainder
-    RSUtil.GF.remainder(data, generatingPolynomial);
+    RSUtil.GF.remainder(all, generatingPolynomial);
   }
 
   @Override
