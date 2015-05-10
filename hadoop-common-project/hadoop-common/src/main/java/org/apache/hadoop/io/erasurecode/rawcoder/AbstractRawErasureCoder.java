@@ -72,35 +72,6 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Convert an array of heap ByteBuffers to an array of byte array.
-   * @param buffers
-   * @return an array of byte array
-   */
-  protected byte[][] toArrays(ByteBuffer[] buffers) {
-    byte[][] bytesArr = new byte[buffers.length][];
-
-    ByteBuffer buffer;
-    for (int i = 0; i < buffers.length; i++) {
-      buffer = buffers[i];
-      if (buffer == null) {
-        bytesArr[i] = null;
-        continue;
-      }
-
-      if (buffer.hasArray() && buffer.position() == 0 &&
-          buffer.remaining() == getChunkSize()) {
-        // Try to avoid data copy as possible
-        bytesArr[i] = buffer.array();
-      } else {
-        bytesArr[i] = new byte[buffer.remaining()];
-        buffer.get(bytesArr[i]);
-      }
-    }
-
-    return bytesArr;
-  }
-
-  /**
    * Ensure output buffer filled with ZERO bytes fully in chunkSize.
    * @param buffer a buffer ready to write chunk size bytes
    * @return the buffer itself, with ZERO bytes written, remaining the original
@@ -137,8 +108,8 @@ public abstract class AbstractRawErasureCoder
    * @param buffer bytes array buffer
    * @return the buffer itself
    */
-  protected byte[] resetBuffer(byte[] buffer) {
-    System.arraycopy(zeroChunkBytes, 0, buffer, 0, buffer.length);
+  protected byte[] resetBuffer(byte[] buffer, int offset, int len) {
+    System.arraycopy(zeroChunkBytes, 0, buffer, offset, len);
 
     return buffer;
   }
