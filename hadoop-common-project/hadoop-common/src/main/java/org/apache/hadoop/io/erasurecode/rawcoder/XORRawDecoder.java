@@ -27,41 +27,52 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
-    resetBuffer(outputs[0]);
+    ByteBuffer output = outputs[0];
+    resetOutputBuffer(output);
 
-    int bufSize = getChunkSize();
+    int dataLen = inputs[0].remaining();
     int erasedIdx = erasedIndexes[0];
 
     // Process the inputs.
+    int iPos, oPos, iIdx, oIdx;
+    oPos = output.position();
     for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
       if (i == erasedIdx) {
         continue;
       }
 
-      for (int j = 0; j < bufSize; j++) {
-        outputs[0].put(j, (byte) (outputs[0].get(j) ^ inputs[i].get(j)));
+      iPos = inputs[i].position();
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + dataLen; iIdx++, oIdx++) {
+        output.put(oIdx,
+            (byte) (output.get(oIdx) ^ inputs[i].get(iIdx)));
       }
     }
   }
 
   @Override
-  protected void doDecode(byte[][] inputs,
-                          int[] erasedIndexes, byte[][] outputs) {
-    resetBuffer(outputs[0]);
+  protected void doDecode(byte[][] inputs, int[] inputOffsets, int inputLen,
+                          int[] erasedIndexes, byte[][] outputs,
+                          int[] outputOffsets) {
+    byte[] output = outputs[0];
+    resetBuffer(output, outputOffsets[0], inputLen);
 
-    int bufSize = getChunkSize();
     int erasedIdx = erasedIndexes[0];
 
     // Process the inputs.
+    int iPos, iIdx, oPos, oIdx;
+    oPos = outputOffsets[0];
     for (int i = 0; i < inputs.length; i++) {
       // Skip the erased location.
       if (i == erasedIdx) {
         continue;
       }
 
-      for (int j = 0; j < bufSize; j++) {
-        outputs[0][j] ^= inputs[i][j];
+      iPos = inputOffsets[i];
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + inputLen; iIdx++, oIdx++) {
+        output[oIdx] ^= inputs[i][iIdx];
       }
     }
   }

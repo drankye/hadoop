@@ -55,11 +55,13 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] erasedIndexes,
-                          byte[][] outputs) {
+  protected void doDecode(byte[][] inputs, int[] inputOffsets,
+                          int inputLen, int[] erasedIndexes,
+                          byte[][] outputs, int[] outputOffsets) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
+      RSUtil.GF.substitute(inputs, inputOffsets, inputLen, outputs[i],
+          outputOffsets[i], primitivePower[i]);
     }
 
     int dataLen = inputs[0].length;

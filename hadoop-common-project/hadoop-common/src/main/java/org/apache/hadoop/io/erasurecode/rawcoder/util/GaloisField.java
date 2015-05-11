@@ -378,16 +378,23 @@ public class GaloisField {
    * Tends to be 2X faster than the "int" substitute in a loop.
    *
    * @param p input polynomial
+   * @param offsets
+   * @param len
    * @param q store the return result
+   * @param offset
    * @param x input field
    */
-  public void substitute(byte[][] p, byte[] q, int x) {
+  public void substitute(byte[][] p, int[] offsets,
+                         int len, byte[] q, int offset, int x) {
     int y = 1;
+    int pos, iIdx, oIdx;
     for (int i = 0; i < p.length; i++) {
       byte[] pi = p[i];
-      for (int j = 0; j < pi.length; j++) {
-        int pij = pi[j] & 0x000000FF;
-        q[j] = (byte) (q[j] ^ mulTable[pij][y]);
+      pos = offsets[i];
+      for (iIdx = pos, oIdx = offset;
+           iIdx < pos + len; iIdx++, oIdx++) {
+        int pij = pi[iIdx] & 0x000000FF;
+        q[oIdx] = (byte) (q[oIdx] ^ mulTable[pij][y]);
       }
       y = mulTable[x][y];
     }
@@ -403,12 +410,16 @@ public class GaloisField {
    */
   public void substitute(ByteBuffer[] p, ByteBuffer q, int x) {
     int y = 1;
+    int iPos, oPos, iIdx, oIdx;
+    int len = p[0].remaining();
+    oPos = q.position();
     for (int i = 0; i < p.length; i++) {
       ByteBuffer pi = p[i];
-      int len = pi.remaining();
-      for (int j = 0; j < len; j++) {
-        int pij = pi.get(j) & 0x000000FF;
-        q.put(j, (byte) (q.get(j) ^ mulTable[pij][y]));
+      iPos = pi.position();
+      for (iIdx = iPos, oIdx = oPos;
+           iIdx < iPos + len; iIdx++, oIdx++) {
+        int pij = pi.get(iIdx) & 0x000000FF;
+        q.put(oIdx, (byte) (q.get(oIdx) ^ mulTable[pij][y]));
       }
       y = mulTable[x][y];
     }
@@ -418,13 +429,18 @@ public class GaloisField {
    * The "bulk" version of the remainder.
    * Warning: This function will modify the "dividend" inputs.
    */
-  public void remainder(byte[][] dividend, int[] divisor) {
+  public void remainder(byte[][] dividend, int[] offsets,
+                        int len, int[] divisor) {
+    int pos1, pos2;
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
       for (int j = 0; j < divisor.length; j++) {
-        for (int k = 0; k < dividend[i].length; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1][k] &
+        pos1 = offsets[i + divisor.length - 1];
+        pos2 = offsets[j + i];
+        for (int k = 0; k < len; k++) {
+          int ratio = divTable[dividend[i + divisor.length - 1][pos1 + k] &
               0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i][k] = (byte) ((dividend[j + i][k] & 0x00FF) ^
+          dividend[j + i][pos2 + k] =
+              (byte) ((dividend[j + i][pos2 + k] & 0x00FF) ^
               mulTable[ratio][divisor[j]]);
         }
       }
@@ -436,13 +452,17 @@ public class GaloisField {
    * Warning: This function will modify the "dividend" inputs.
    */
   public void remainder(ByteBuffer[] dividend, int[] divisor) {
+    int pos1, pos2, len;
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
-      int width = dividend[i].remaining();
+      len = dividend[i].remaining();
       for (int j = 0; j < divisor.length; j++) {
-        for (int k = 0; k < width; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1].get(k) &
+        pos1 = dividend[i + divisor.length - 1].position();
+        pos2 = dividend[j + i].position();
+        for (int k = 0; k < len; k++) {
+          int ratio = divTable[dividend[i + divisor.length - 1].get(pos1 + k) &
               0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i].put(k, (byte) ((dividend[j + i].get(k) & 0x00FF) ^
+          dividend[j + i].put(pos2 + k,
+              (byte) ((dividend[j + i].get(pos2 + k) & 0x00FF) ^
               mulTable[ratio][divisor[j]]));
         }
       }

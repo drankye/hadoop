@@ -33,14 +33,32 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
     checkParameters(inputs, outputs);
 
-    boolean hasArray = inputs[0].hasArray();
-    if (hasArray) {
-      byte[][] newInputs = toArrays(inputs);
-      byte[][] newOutputs = toArrays(outputs);
-      doEncode(newInputs, newOutputs);
-    } else {
+    boolean usingDirectBuffer = ! inputs[0].hasArray();
+    if (usingDirectBuffer) {
       doEncode(inputs, outputs);
+      return;
     }
+
+    int[] inputOffsets = new int[inputs.length];
+    int inputLen = inputs[0].remaining();
+    int[] outputOffsets = new int[outputs.length];
+    byte[][] newInputs = new byte[inputs.length][];
+    byte[][] newOutputs = new byte[outputs.length][];
+
+    ByteBuffer buffer;
+    for (int i = 0; i < inputs.length; ++i) {
+      buffer = inputs[i];
+      inputOffsets[i] = buffer.position();
+      newInputs[i] = buffer.array();
+    }
+
+    for (int i = 0; i < outputs.length; ++i) {
+      buffer = outputs[i];
+      outputOffsets[i] = buffer.position();
+      newOutputs[i] = buffer.array();
+    }
+
+    doEncode(newInputs, inputOffsets, inputLen, newOutputs, outputOffsets);
   }
 
   /**
@@ -54,15 +72,25 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   public void encode(byte[][] inputs, byte[][] outputs) {
     checkParameters(inputs, outputs);
 
-    doEncode(inputs, outputs);
+    int[] inputOffsets = new int[inputs.length]; // ALL ZERO
+    int inputLen = inputs[0].length;
+    int[] outputOffsets = new int[outputs.length]; // ALL ZERO
+
+    doEncode(inputs, inputOffsets, inputLen, outputs, outputOffsets);
   }
 
   /**
-   * Perform the real encoding work using bytes array
+   * Perform the real encoding work using bytes array, supporting offsets
+   * and lengths.
    * @param inputs
+   * @param inputOffsets
+   * @param inputLen
    * @param outputs
+   * @param outputOffsets
    */
-  protected abstract void doEncode(byte[][] inputs, byte[][] outputs);
+  protected abstract void doEncode(byte[][] inputs, int[] inputOffsets,
+                                   int inputLen, byte[][] outputs,
+                                   int[] outputOffsets);
 
   @Override
   public void encode(ECChunk[] inputs, ECChunk[] outputs) {

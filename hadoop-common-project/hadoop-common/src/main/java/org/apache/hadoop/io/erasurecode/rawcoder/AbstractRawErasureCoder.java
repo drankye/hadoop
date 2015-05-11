@@ -72,42 +72,32 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Convert an array of heap ByteBuffers to an array of byte array.
-   * @param buffers
-   * @return an array of byte array
+   * Ensure output buffer filled with ZERO bytes fully in chunkSize.
+   * @param buffer a buffer ready to write chunk size bytes
+   * @return the buffer itself, with ZERO bytes written, remaining the original
+   * position
    */
-  protected static byte[][] toArrays(ByteBuffer[] buffers) {
-    byte[][] bytesArr = new byte[buffers.length][];
+  protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
+    int pos = buffer.position();
+    buffer.put(zeroChunkBytes);
+    buffer.position(pos);
 
-    ByteBuffer buffer;
-    for (int i = 0; i < buffers.length; i++) {
-      buffer = buffers[i];
-      if (buffer == null) {
-        bytesArr[i] = null;
-        continue;
-      }
-
-      if (buffer.hasArray()) {
-        bytesArr[i] = buffer.array();
-      } else {
-        throw new IllegalArgumentException("Invalid ByteBuffer passed, " +
-            "expecting heap buffer");
-      }
-    }
-
-    return bytesArr;
+    return buffer;
   }
 
   /**
-   * Ensure the buffer (either input or output) ready to read or write with ZERO
-   * bytes fully in chunkSize.
-   * @param buffer
-   * @return the buffer itself
+   * Ensure input buffer filled with ZERO bytes fully in chunkSize.
+   * @param buffer a buffer ready to read chunk size bytes
+   * @return the buffer itself, with ZERO bytes written, remaining the original
+   * position
    */
-  protected ByteBuffer resetBuffer(ByteBuffer buffer) {
-    buffer.clear();
+  protected ByteBuffer resetInputBuffer(ByteBuffer buffer) {
+    int pos = buffer.position();
+    buffer.flip();
+    buffer.position(pos);
     buffer.put(zeroChunkBytes);
-    buffer.position(0);
+    buffer.flip();
+    buffer.position(pos);
 
     return buffer;
   }
@@ -118,8 +108,8 @@ public abstract class AbstractRawErasureCoder
    * @param buffer bytes array buffer
    * @return the buffer itself
    */
-  protected byte[] resetBuffer(byte[] buffer) {
-    System.arraycopy(zeroChunkBytes, 0, buffer, 0, buffer.length);
+  protected byte[] resetBuffer(byte[] buffer, int offset, int len) {
+    System.arraycopy(zeroChunkBytes, 0, buffer, offset, len);
 
     return buffer;
   }
