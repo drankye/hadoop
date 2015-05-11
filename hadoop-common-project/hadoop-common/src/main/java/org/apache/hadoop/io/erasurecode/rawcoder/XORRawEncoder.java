@@ -51,17 +51,17 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
   }
 
   @Override
-  protected void doEncode(byte[][] inputs, int[] inputOffsets, int inputLen,
+  protected void doEncode(byte[][] inputs, int[] inputOffsets, int dataLen,
                           byte[][] outputs, int[] outputOffsets) {
     byte[] output = outputs[0];
-    resetBuffer(output, outputOffsets[0], inputLen);
+    resetBuffer(output, outputOffsets[0], dataLen);
 
     // Get the first buffer's data.
     int iPos, iIdx, oPos, oIdx;
     iPos = inputOffsets[0];
     oPos = outputOffsets[0];
     for (iIdx = iPos, oIdx = oPos;
-         iIdx < iPos + inputLen; iIdx++, oIdx++) {
+         iIdx < iPos + dataLen; iIdx++, oIdx++) {
       output[oIdx] = inputs[0][iIdx];
     }
 
@@ -69,7 +69,7 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
     for (int i = 1; i < inputs.length; i++) {
       iPos = inputOffsets[i];
       for (iIdx = iPos, oIdx = oPos;
-           iIdx < iPos + inputLen; iIdx++, oIdx++) {
+           iIdx < iPos + dataLen; iIdx++, oIdx++) {
         output[oIdx] ^= inputs[i][iIdx];
       }
     }

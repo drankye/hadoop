@@ -41,7 +41,7 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     }
 
     int[] inputOffsets = new int[inputs.length];
-    int inputLen = inputs[0].remaining();
+    int dataLen = inputs[0].remaining();
     int[] outputOffsets = new int[outputs.length];
     byte[][] newInputs = new byte[inputs.length][];
     byte[][] newOutputs = new byte[outputs.length][];
@@ -59,8 +59,21 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
       newOutputs[i] = buffer.array();
     }
 
-    doDecode(newInputs, inputOffsets, inputLen,
+    doDecode(newInputs, inputOffsets, dataLen,
         erasedIndexes, newOutputs, outputOffsets);
+
+    for (int i = 0; i < inputs.length; ++i) {
+      buffer = inputs[i];
+      buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
+    }
+
+    for (int i = 0; i < outputs.length; ++i) {
+      buffer = outputs[i];
+      // to be ready for read dataLen bytes
+      buffer.flip();
+      buffer.position(outputOffsets[i]);
+      buffer.limit(outputOffsets[i] + dataLen);
+    }
   }
 
   /**
@@ -88,13 +101,13 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
    * Perform the real decoding using bytes array, supporting offsets and lengths.
    * @param inputs
    * @param inputOffsets
-   * @param inputLen
+   * @param dataLen
    * @param erasedIndexes
    * @param outputs
    * @param outputOffsets
    */
   protected abstract void doDecode(byte[][] inputs, int[] inputOffsets,
-                                   int inputLen, int[] erasedIndexes,
+                                   int dataLen, int[] erasedIndexes,
                                    byte[][] outputs, int[] outputOffsets);
 
   @Override

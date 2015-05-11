@@ -45,18 +45,17 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
       iPos = inputs[i].position();
       for (iIdx = iPos, oIdx = oPos;
            iIdx < iPos + dataLen; iIdx++, oIdx++) {
-        output.put(oIdx,
-            (byte) (output.get(oIdx) ^ inputs[i].get(iIdx)));
+        output.put(oIdx, (byte) (output.get(oIdx) ^ inputs[i].get(iIdx)));
       }
     }
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] inputOffsets, int inputLen,
+  protected void doDecode(byte[][] inputs, int[] inputOffsets, int dataLen,
                           int[] erasedIndexes, byte[][] outputs,
                           int[] outputOffsets) {
     byte[] output = outputs[0];
-    resetBuffer(output, outputOffsets[0], inputLen);
+    resetBuffer(output, outputOffsets[0], dataLen);
 
     int erasedIdx = erasedIndexes[0];
 
@@ -71,7 +70,7 @@ public class XORRawDecoder extends AbstractRawErasureDecoder {
 
       iPos = inputOffsets[i];
       for (iIdx = iPos, oIdx = oPos;
-           iIdx < iPos + inputLen; iIdx++, oIdx++) {
+           iIdx < iPos + dataLen; iIdx++, oIdx++) {
         output[oIdx] ^= inputs[i][iIdx];
       }
     }

@@ -265,24 +265,39 @@ public class GaloisField {
    */
   public void solveVandermondeSystem(int[] x, ByteBuffer[] y,
                                      int len, int dataLen) {
+    ByteBuffer p, prev, after;
+    int pos1, idx1, pos2, idx2;
     for (int i = 0; i < len - 1; i++) {
       for (int j = len - 1; j > i; j--) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j].put(k, (byte) (y[j].get(k) ^ mulTable[x[i]][y[j - 1].get(k) &
+        p = y[j];
+        prev = y[j-1];
+        pos1 = p.position();
+        pos2 = prev.position();
+        for (idx1 = pos1, idx2 = pos2;
+             idx1 < pos1 + dataLen; idx1++, idx2++) {
+          p.put(idx1, (byte) (p.get(idx1) ^ mulTable[x[i]][prev.get(idx2) &
               0x000000FF]));
         }
       }
     }
+
     for (int i = len - 1; i >= 0; i--) {
       for (int j = i + 1; j < len; j++) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j].put(k, (byte) (divTable[y[j].get(k) & 0x000000FF][x[j] ^
-              x[j - i - 1]]));
+        p = y[j];
+        pos1 = p.position();
+        for (idx1 = pos1; idx1 < pos1 + dataLen; idx1++) {
+          p.put(idx1, (byte) (divTable[p.get(idx1) & 0x000000FF][x[j] ^ x[j - i - 1]]));
         }
       }
+
       for (int j = i; j < len - 1; j++) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j].put(k, (byte) (y[j].get(k) ^ y[j + 1].get(k)));
+        p = y[j];
+        after = y[j+1];
+        pos1 = p.position();
+        pos2 = after.position();
+        for (idx1 = pos1, idx2 = pos2;
+             idx1 < pos1 + dataLen; idx1++, idx2++) {
+          p.put(idx1, (byte) (p.get(idx1) ^ after.get(idx2)));
         }
       }
     }
@@ -451,19 +466,19 @@ public class GaloisField {
    * The "bulk" version of the remainder, using ByteBuffer.
    * Warning: This function will modify the "dividend" inputs.
    */
-  public void remainder(ByteBuffer[] dividend, int[] divisor) {
-    int pos1, pos2, len;
+  public void remainder(ByteBuffer[] dividend, int len, int[] divisor) {
+    int pos1, pos2;
+    ByteBuffer b1, b2;
     for (int i = dividend.length - divisor.length; i >= 0; i--) {
-      len = dividend[i].remaining();
       for (int j = 0; j < divisor.length; j++) {
-        pos1 = dividend[i + divisor.length - 1].position();
-        pos2 = dividend[j + i].position();
+        b1 = dividend[i + divisor.length - 1];
+        b2 = dividend[j + i];
+        pos1 = b1.position();
+        pos2 = b2.position();
         for (int k = 0; k < len; k++) {
-          int ratio = divTable[dividend[i + divisor.length - 1].get(pos1 + k) &
+          int ratio = divTable[b1.get(pos1 + k) &
               0x00FF][divisor[divisor.length - 1]];
-          dividend[j + i].put(pos2 + k,
-              (byte) ((dividend[j + i].get(pos2 + k) & 0x00FF) ^
-              mulTable[ratio][divisor[j]]));
+          b2.put(pos2 + k, (byte) ((b2.get(pos2 + k) & 0x00FF) ^ mulTable[ratio][divisor[j]]));
         }
       }
     }

@@ -254,7 +254,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param blocks
    * @return
    */
-  protected static TestBlock[] cloneBlocksWithData(TestBlock[] blocks) {
+  protected TestBlock[] cloneBlocksWithData(TestBlock[] blocks) {
     TestBlock[] results = new TestBlock[blocks.length];
     for (int i = 0; i < blocks.length; ++i) {
       results[i] = cloneBlockWithData(blocks[i]);
@@ -268,7 +268,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param block
    * @return a new block
    */
-  protected static TestBlock cloneBlockWithData(TestBlock block) {
+  protected TestBlock cloneBlockWithData(TestBlock block) {
     ECChunk[] newChunks = cloneChunksWithData(block.chunks);
 
     return new TestBlock(newChunks);

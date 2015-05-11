@@ -40,7 +40,7 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
     }
 
     int[] inputOffsets = new int[inputs.length];
-    int inputLen = inputs[0].remaining();
+    int dataLen = inputs[0].remaining();
     int[] outputOffsets = new int[outputs.length];
     byte[][] newInputs = new byte[inputs.length][];
     byte[][] newOutputs = new byte[outputs.length][];
@@ -58,7 +58,20 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
       newOutputs[i] = buffer.array();
     }
 
-    doEncode(newInputs, inputOffsets, inputLen, newOutputs, outputOffsets);
+    doEncode(newInputs, inputOffsets, dataLen, newOutputs, outputOffsets);
+
+    for (int i = 0; i < inputs.length; ++i) {
+      buffer = inputs[i];
+      buffer.position(buffer.position() + dataLen); // dataLen bytes consumed
+    }
+
+    for (int i = 0; i < outputs.length; ++i) {
+      buffer = outputs[i];
+      // to be ready for read dataLen bytes
+      buffer.flip();
+      buffer.position(outputOffsets[i]);
+      buffer.limit(outputOffsets[i] + dataLen);
+    }
   }
 
   /**
@@ -84,12 +97,12 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
    * and lengths.
    * @param inputs
    * @param inputOffsets
-   * @param inputLen
+   * @param dataLen
    * @param outputs
    * @param outputOffsets
    */
   protected abstract void doEncode(byte[][] inputs, int[] inputOffsets,
-                                   int inputLen, byte[][] outputs,
+                                   int dataLen, byte[][] outputs,
                                    int[] outputOffsets);
 
   @Override

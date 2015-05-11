@@ -37,6 +37,8 @@ public abstract class TestCoderBase {
   protected int numParityUnits;
   protected int chunkSize = 16 * 1024;
 
+  private byte[] zeroChunkBytes;
+
   private boolean startBufferWithZero = true;
 
   // Indexes of erased data units. Will also support test of erasing
@@ -60,6 +62,7 @@ public abstract class TestCoderBase {
     this.numParityUnits = numParityUnits;
     this.erasedDataIndexes = erasedDataIndexes != null ?
         erasedDataIndexes : new int[] {0};
+    this.zeroChunkBytes = new byte[chunkSize]; // With ZERO by default
   }
 
   /**
@@ -153,16 +156,20 @@ public abstract class TestCoderBase {
 
   /**
    * Erase data from the specified chunk, putting ZERO bytes to the buffer.
-   * @param chunk
+   * @param chunk with a buffer ready to read at the current position
    */
   protected void eraseDataFromChunk(ECChunk chunk) {
     ByteBuffer chunkBuffer = chunk.getBuffer();
-    // erase the data
-    chunkBuffer.position(0);
-    for (int i = 0; i < chunkSize; i++) {
-      chunkBuffer.put((byte) 0);
-    }
+    // erase the data at the position, and restore the buffer ready for reading
+    // chunkSize bytes but all ZERO.
+    int pos = chunkBuffer.position();
     chunkBuffer.flip();
+    chunkBuffer.position(pos);
+    chunkBuffer.limit(pos + chunkSize);
+    chunkBuffer.put(zeroChunkBytes);
+    chunkBuffer.flip();
+    chunkBuffer.position(pos);
+    chunkBuffer.limit(pos + chunkSize);
   }
 
   /**
@@ -172,7 +179,7 @@ public abstract class TestCoderBase {
    * @param chunks
    * @return
    */
-  protected static ECChunk[] cloneChunksWithData(ECChunk[] chunks) {
+  protected ECChunk[] cloneChunksWithData(ECChunk[] chunks) {
     ECChunk[] results = new ECChunk[chunks.length];
     for (int i = 0; i < chunks.length; i++) {
       results[i] = cloneChunkWithData(chunks[i]);
@@ -188,22 +195,19 @@ public abstract class TestCoderBase {
    * @param chunk
    * @return a new chunk
    */
-  protected static ECChunk cloneChunkWithData(ECChunk chunk) {
+  protected ECChunk cloneChunkWithData(ECChunk chunk) {
     ByteBuffer srcBuffer = chunk.getBuffer();
-    ByteBuffer destBuffer;
+    ByteBuffer destBuffer = allocateOutputChunkBuffer();
 
-    byte[] bytesArr = new byte[srcBuffer.remaining()];
+    byte[] bytesArr = new byte[chunkSize];
     srcBuffer.mark();
     srcBuffer.get(bytesArr);
     srcBuffer.reset();
 
-    if (srcBuffer.hasArray()) {
-      destBuffer = ByteBuffer.wrap(bytesArr);
-    } else {
-      destBuffer = ByteBuffer.allocateDirect(srcBuffer.remaining());
-      destBuffer.put(bytesArr);
-      destBuffer.flip();
-    }
+    int pos = destBuffer.position();
+    destBuffer.put(bytesArr);
+    destBuffer.flip();
+    destBuffer.position(pos);
 
     return new ECChunk(destBuffer);
   }
@@ -213,18 +217,30 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk allocateOutputChunk() {
-    ByteBuffer buffer = allocateOutputBuffer(chunkSize);
+    ByteBuffer buffer = allocateOutputChunkBuffer();
 
     return new ECChunk(buffer);
   }
 
   /**
-   * Allocate a buffer for output or writing.
-   * @return a buffer ready to write
+   * Allocate a buffer for output or writing. It can prepare for two kinds of
+   * data buffers: one with position as 0, the other with position > 0
+   * @return a buffer ready to write chunkSize bytes from current position
    */
-  protected ByteBuffer allocateOutputBuffer(int bufferLen) {
+  protected ByteBuffer allocateOutputChunkBuffer() {
+    /**
+     * When startBufferWithZero, will prepare a buffer as:---------------
+     * otherwise, the buffer will be like:             ___TO--BE--WRITTEN___,
+     * and in the beginning, dummy data are prefixed, to simulate a buffer of
+     * position > 0.
+     */
+    int startOffset = startBufferWithZero ? 0 : 11; // 11 is arbitrary
+    int allocLen = startOffset + chunkSize + startOffset;
     ByteBuffer buffer = usingDirectBuffer ?
-        ByteBuffer.allocateDirect(bufferLen) : ByteBuffer.allocate(bufferLen);
+        ByteBuffer.allocateDirect(allocLen) : ByteBuffer.allocate(allocLen);
+    buffer.limit(startOffset + chunkSize);
+    fillDummyData(buffer, startOffset);
+    startBufferWithZero = ! startBufferWithZero;
 
     return buffer;
   }
@@ -243,29 +259,28 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Generate data chunk by making random data. It can prepare for two kinds of
-   * data buffers: one with position as 0, the other with position > 0.
+   * Generate data chunk by making random data.
    * @return
    */
   protected ECChunk generateDataChunk() {
-    /**
-     * When startBufferWithZero, will prepare a buffer as:--------------
-     * otherwise, the buffer will be like:             ___T-H-E--D-A-T-A___,
-     * and in the beginning, dummy data are prefixed, to simulate a buffer of
-     * position > 0.
-     */
-    int startOffset = startBufferWithZero ? 0 : 11;
-    int bufferLen = startOffset + chunkSize + startOffset;
-    ByteBuffer buffer = allocateOutputBuffer(bufferLen);
-    byte[] dummy = new byte[startOffset];
-    buffer.put(dummy);
-    startBufferWithZero = ! startBufferWithZero;
-
+    ByteBuffer buffer = allocateOutputChunkBuffer();
+    int pos = buffer.position();
     generateData(buffer);
     buffer.flip();
-    buffer.position(startOffset);
+    buffer.position(pos);
 
     return new ECChunk(buffer);
+  }
+
+  /**
+   * Fill len of dummy data in the buffer at the current position.
+   * @param buffer
+   * @param len
+   */
+  protected void fillDummyData(ByteBuffer buffer, int len) {
+    byte[] dummy = new byte[len];
+    RAND.nextBytes(dummy);
+    buffer.put(dummy);
   }
 
   protected void generateData(ByteBuffer buffer) {

@@ -44,27 +44,26 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
+    int dataLen = inputs[0].remaining();
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
       RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].remaining();
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }
 
   @Override
   protected void doDecode(byte[][] inputs, int[] inputOffsets,
-                          int inputLen, int[] erasedIndexes,
+                          int dataLen, int[] erasedIndexes,
                           byte[][] outputs, int[] outputOffsets) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      RSUtil.GF.substitute(inputs, inputOffsets, inputLen, outputs[i],
+      RSUtil.GF.substitute(inputs, inputOffsets, dataLen, outputs[i],
           outputOffsets[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].length;
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }
