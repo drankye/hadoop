@@ -32,7 +32,7 @@ public interface RawErasureEncoder extends RawErasureCoder {
 
   /**
    * Encode with inputs and generates outputs
-   * @param inputs
+   * @param inputs 
    * @param outputs
    */
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs);

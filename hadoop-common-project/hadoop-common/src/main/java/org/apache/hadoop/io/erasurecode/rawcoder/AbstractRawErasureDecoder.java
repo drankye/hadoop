@@ -34,7 +34,7 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
-    boolean usingDirectBuffer = ! inputs[0].hasArray();
+    boolean usingDirectBuffer = !inputs[0].hasArray();
     if (usingDirectBuffer) {
       doDecode(inputs, erasedIndexes, outputs);
       return;
@@ -98,7 +98,8 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   }
 
   /**
-   * Perform the real decoding using bytes array, supporting offsets and lengths.
+   * Perform the real decoding using bytes array, supporting offsets and
+   * lengths.
    * @param inputs
    * @param inputOffsets
    * @param dataLen

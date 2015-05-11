@@ -44,8 +44,7 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
       iPos = inputs[i].position();
       for (iIdx = iPos, oIdx = oPos;
            iIdx < iPos + dataLen; iIdx++, oIdx++) {
-        output.put(oIdx, (byte) (output.get(oIdx) ^ inputs[i].get
-            (iIdx)));
+        output.put(oIdx, (byte) (output.get(oIdx) ^ inputs[i].get(iIdx)));
       }
     }
   }

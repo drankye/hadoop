@@ -33,7 +33,7 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
   public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
     checkParameters(inputs, outputs);
 
-    boolean usingDirectBuffer = ! inputs[0].hasArray();
+    boolean usingDirectBuffer = !inputs[0].hasArray();
     if (usingDirectBuffer) {
       doEncode(inputs, outputs);
       return;
