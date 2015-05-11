@@ -33,15 +33,17 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
+    int dataLen = inputs[0].remaining();
+    ensureLength(inputs, dataLen);
+    ensureLength(outputs, dataLen);
 
-    boolean usingDirectBuffer = !inputs[0].hasArray();
+    boolean usingDirectBuffer = inputs[0].isDirect();
     if (usingDirectBuffer) {
       doDecode(inputs, erasedIndexes, outputs);
       return;
     }
 
     int[] inputOffsets = new int[inputs.length];
-    int dataLen = inputs[0].remaining();
     int[] outputOffsets = new int[outputs.length];
     byte[][] newInputs = new byte[inputs.length][];
     byte[][] newOutputs = new byte[outputs.length][];
@@ -66,14 +68,6 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
       buffer = inputs[i];
       buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
     }
-
-    for (int i = 0; i < outputs.length; ++i) {
-      buffer = outputs[i];
-      // to be ready for read dataLen bytes
-      buffer.flip();
-      buffer.position(outputOffsets[i]);
-      buffer.limit(outputOffsets[i] + dataLen);
-    }
   }
 
   /**
@@ -88,12 +82,14 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
+    int dataLen = inputs[0].length;
+    ensureLength(inputs, dataLen);
+    ensureLength(outputs, dataLen);
 
     int[] inputOffsets = new int[inputs.length]; // ALL ZERO
-    int inputLen = inputs[0].length;
     int[] outputOffsets = new int[outputs.length]; // ALL ZERO
 
-    doDecode(inputs, inputOffsets, inputLen, erasedIndexes, outputs,
+    doDecode(inputs, inputOffsets, dataLen, erasedIndexes, outputs,
         outputOffsets);
   }
 

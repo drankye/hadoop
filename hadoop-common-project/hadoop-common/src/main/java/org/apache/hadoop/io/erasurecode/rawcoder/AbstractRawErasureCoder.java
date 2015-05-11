@@ -79,24 +79,7 @@ public abstract class AbstractRawErasureCoder
    */
   protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
     int pos = buffer.position();
-    buffer.put(zeroChunkBytes);
-    buffer.position(pos);
-
-    return buffer;
-  }
-
-  /**
-   * Ensure input buffer filled with ZERO bytes fully in chunkSize.
-   * @param buffer a buffer ready to read chunk size bytes
-   * @return the buffer itself, with ZERO bytes written, remaining the original
-   * position
-   */
-  protected ByteBuffer resetInputBuffer(ByteBuffer buffer) {
-    int pos = buffer.position();
-    buffer.flip();
-    buffer.position(pos);
-    buffer.put(zeroChunkBytes);
-    buffer.flip();
+    buffer.put(zeroChunkBytes, 0, buffer.remaining());
     buffer.position(pos);
 
     return buffer;
@@ -112,5 +95,33 @@ public abstract class AbstractRawErasureCoder
     System.arraycopy(zeroChunkBytes, 0, buffer, offset, len);
 
     return buffer;
+  }
+
+  /**
+   * Check and ensure the buffers are of the length specified by dataLen.
+   * @param buffers
+   * @param dataLen
+   */
+  protected void ensureLength(ByteBuffer[] buffers, int dataLen) {
+    for (int i = 0; i < buffers.length; ++i) {
+      if (buffers[i].remaining() != dataLen) {
+        throw new IllegalArgumentException("Invalid buffer not of length "
+            + dataLen);
+      }
+    }
+  }
+
+  /**
+   * Check and ensure the buffers are of the length specified by dataLen.
+   * @param buffers
+   * @param dataLen
+   */
+  protected void ensureLength(byte[][] buffers, int dataLen) {
+    for (int i = 0; i < buffers.length; ++i) {
+      if (buffers[i].length != dataLen) {
+        throw new IllegalArgumentException("Invalid buffer not of length "
+            + dataLen);
+      }
+    }
   }
 }

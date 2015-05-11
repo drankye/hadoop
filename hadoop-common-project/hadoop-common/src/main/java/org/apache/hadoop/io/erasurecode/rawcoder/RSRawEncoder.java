@@ -34,12 +34,12 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
-    int[] primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
-        getNumParityUnits());
+    int[] primitivePower = RSUtil.getPrimitivePower(numDataUnits,
+        numParityUnits);
     // compute generating polynomial
     int[] gen = {1};
     int[] poly = new int[2];
-    for (int i = 0; i < getNumParityUnits(); i++) {
+    for (int i = 0; i < numParityUnits; i++) {
       poly[0] = primitivePower[i];
       poly[1] = 1;
       gen = RSUtil.GF.multiply(gen, poly);

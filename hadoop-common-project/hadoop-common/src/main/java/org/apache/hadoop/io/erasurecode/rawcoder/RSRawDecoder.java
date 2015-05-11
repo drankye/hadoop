@@ -36,9 +36,9 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
-    this.errSignature = new int[getNumParityUnits()];
-    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
-        getNumParityUnits());
+    this.errSignature = new int[numParityUnits];
+    this.primitivePower = RSUtil.getPrimitivePower(numDataUnits,
+        numParityUnits);
   }
 
   @Override
