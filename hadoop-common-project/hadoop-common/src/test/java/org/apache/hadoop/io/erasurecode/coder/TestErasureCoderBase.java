@@ -59,6 +59,19 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
     this.usingDirectBuffer = usingDirectBuffer;
     prepareCoders();
 
+    /**
+     * The following runs will use 3 different chunkSize for inputs and outputs,
+     * to verify the same encoder/decoder can process variable width of data.
+     */
+    performTestCoding(baseChunkSize);
+    performTestCoding(baseChunkSize - 17);
+    performTestCoding(baseChunkSize + 16);
+  }
+
+  private void performTestCoding(int chunkSize) {
+    setChunkSize(chunkSize);
+
+
     // Generate data and encode
     ECBlockGroup blockGroup = prepareBlockGroupForEncoding();
     // Backup all the source chunks for later recovering because some coders

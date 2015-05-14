@@ -54,10 +54,9 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
     System.arraycopy(outputs, 0, all, 0, outputs.length);
     System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
-    int inputLen = inputs[0].remaining();
 
     // Compute the remainder
-    RSUtil.GF.remainder(all, inputLen, generatingPolynomial);
+    RSUtil.GF.remainder(all, generatingPolynomial);
   }
 
   @Override

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
@@ -135,12 +136,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     }
 
     if (erasedIndexes.length != outputs.length) {
-      throw new IllegalArgumentException(
+      throw new HadoopIllegalArgumentException(
           "erasedIndexes and outputs mismatch in length");
     }
 
     if (erasedIndexes.length > getNumParityUnits()) {
-      throw new IllegalArgumentException(
+      throw new HadoopIllegalArgumentException(
           "Too many erased, not recoverable");
     }
   }

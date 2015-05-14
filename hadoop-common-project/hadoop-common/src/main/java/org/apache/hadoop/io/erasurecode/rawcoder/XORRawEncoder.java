@@ -21,6 +21,10 @@ import java.nio.ByteBuffer;
 
 /**
  * A raw encoder in XOR code scheme in pure Java, adapted from HDFS-RAID.
+ *
+ * XOR code is an important primitive code scheme in erasure coding and often
+ * used in advanced codes, like HitchHiker and LRC, though itself is rarely
+ * deployed independently.
  */
 public class XORRawEncoder extends AbstractRawErasureEncoder {
 
@@ -31,14 +35,14 @@ public class XORRawEncoder extends AbstractRawErasureEncoder {
     // Get the first buffer's data.
     int iIdx, oIdx;
     for (iIdx = inputs[0].position(), oIdx = output.position();
-         iIdx < inputs[0].position() + inputs[0].remaining(); iIdx++, oIdx++) {
+         iIdx < inputs[0].limit(); iIdx++, oIdx++) {
       output.put(oIdx, inputs[0].get(iIdx));
     }
 
     // XOR with everything else.
     for (int i = 1; i < inputs.length; i++) {
       for (iIdx = inputs[i].position(), oIdx = output.position();
-           iIdx < inputs[i].position() + inputs[0].remaining();
+           iIdx < inputs[i].limit();
            iIdx++, oIdx++) {
         output.put(oIdx, (byte) (output.get(oIdx) ^ inputs[i].get(iIdx)));
       }

@@ -106,9 +106,9 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
   public void testCodingNegative_10x4_erasing_d2_d4() {
     prepare(null, 10, 4, new int[]{2, 4}, new int[0]);
 
-    testCodingNegative(true);
-    testCodingNegative(false);
-    testCodingNegative(true);
-    testCodingNegative(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
   }
 }

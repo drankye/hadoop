@@ -70,4 +70,18 @@ public class ECChunk {
 
     return buffers;
   }
+
+  /**
+   * Convert to a bytes array, just for test usage.
+   * @return bytes array
+   */
+  public byte[] toBytesArray() {
+    byte[] bytesArr = new byte[chunkBuffer.remaining()];
+    // Avoid affecting the original one
+    chunkBuffer.mark();
+    chunkBuffer.get(bytesArr);
+    chunkBuffer.reset();
+
+    return bytesArr;
+  }
 }
