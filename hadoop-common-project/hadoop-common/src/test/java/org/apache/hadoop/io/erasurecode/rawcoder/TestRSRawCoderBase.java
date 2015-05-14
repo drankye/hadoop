@@ -38,10 +38,13 @@ public abstract class TestRSRawCoderBase extends TestRawCoderBase {
     symbolMax = (int) Math.pow(2, symbolSize);
   }
 
+  /*
   @Override
-  protected void generateData(ByteBuffer buffer) {
-    for (int i = 0; i < getChunkSize(); i++) {
-      buffer.put((byte) RAND.nextInt(symbolMax));
+  protected byte[] generateData(int len) {
+    byte[] buffer = new byte[len];
+    for (int i = 0; i < buffer.length; i++) {
+      buffer[i] = (byte) RAND.nextInt(symbolMax);
     }
-  }
+    return buffer;
+  }*/
 }

@@ -35,7 +35,7 @@ public abstract class TestCoderBase {
   private Configuration conf;
   protected int numDataUnits;
   protected int numParityUnits;
-  protected int baseChunkSize = 16 * 1024;
+  protected int baseChunkSize = 513;
   private int chunkSize = baseChunkSize;
 
   private byte[] zeroChunkBytes;
@@ -52,6 +52,12 @@ public abstract class TestCoderBase {
   // may go to different coding implementations.
   protected boolean usingDirectBuffer = true;
 
+  protected boolean usingFixedData = false;
+  // Using this the generated data can be repeatable across multiple calls to
+  // encode(), in order for troubleshooting.
+  private static int FIXED_DATA_GENERATOR = 0;
+  protected byte[][] fixedData;
+
   protected int getChunkSize() {
     return chunkSize;
   }
@@ -61,15 +67,35 @@ public abstract class TestCoderBase {
     this.zeroChunkBytes = new byte[chunkSize]; // With ZERO by default
   }
 
+  protected void dumpSetting() {
+    StringBuilder sb = new StringBuilder("Erasure coder test settings:\n");
+    sb.append(" numDataUnits=").append(numDataUnits);
+    sb.append(" numParityUnits=").append(numParityUnits);
+    sb.append(" chunkSize=").append(chunkSize).append("\n");
+
+    sb.append(" erasedDataIndexes=").
+        append(Arrays.toString(erasedDataIndexes));
+    sb.append(" erasedParityIndexes=").
+        append(Arrays.toString(erasedParityIndexes));
+    sb.append(" usingDirectBuffer=").append(usingDirectBuffer);
+    sb.append(" usingFixedData=").append(usingFixedData).append("\n");
+
+    System.out.println(sb.toString());
+  }
+
   /**
    * Prepare before running the case.
+   * @param conf
    * @param numDataUnits
    * @param numParityUnits
    * @param erasedDataIndexes
+   * @param erasedParityIndexes
+   * @param usingFixedData Using fixed or pre-generated data to test instead of
+   *                       generating data
    */
   protected void prepare(Configuration conf, int numDataUnits,
                          int numParityUnits, int[] erasedDataIndexes,
-                         int[] erasedParityIndexes) {
+                         int[] erasedParityIndexes, boolean usingFixedData) {
     this.conf = conf;
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
@@ -77,6 +103,38 @@ public abstract class TestCoderBase {
         erasedDataIndexes : new int[] {0};
     this.erasedParityIndexes = erasedParityIndexes != null ?
         erasedParityIndexes : new int[] {0};
+    this.usingFixedData = usingFixedData;
+    if (usingFixedData) {
+      prepareFixedData();
+    }
+  }
+
+  /**
+   * Prepare before running the case.
+   * @param conf
+   * @param numDataUnits
+   * @param numParityUnits
+   * @param erasedDataIndexes
+   * @param erasedParityIndexes
+   */
+  protected void prepare(Configuration conf, int numDataUnits,
+                         int numParityUnits, int[] erasedDataIndexes,
+                         int[] erasedParityIndexes) {
+    prepare(conf, numDataUnits, numParityUnits, erasedDataIndexes,
+        erasedParityIndexes, false);
+  }
+
+  /**
+   * Prepare before running the case.
+   * @param numDataUnits
+   * @param numParityUnits
+   * @param erasedDataIndexes
+   * @param erasedParityIndexes
+   */
+  protected void prepare(int numDataUnits, int numParityUnits,
+                         int[] erasedDataIndexes, int[] erasedParityIndexes) {
+    prepare(null, numDataUnits, numParityUnits, erasedDataIndexes,
+        erasedParityIndexes, false);
   }
 
   /**
@@ -189,16 +247,19 @@ public abstract class TestCoderBase {
    */
   protected void eraseDataFromChunk(ECChunk chunk) {
     ByteBuffer chunkBuffer = chunk.getBuffer();
-    // erase the data at the position, and restore the buffer ready for reading
+    // Erase the data at the position, and restore the buffer ready for reading
     // chunkSize bytes but all ZERO.
     int pos = chunkBuffer.position();
+    int len = chunkBuffer.remaining();
+    // From readable to writable
     chunkBuffer.flip();
     chunkBuffer.position(pos);
-    chunkBuffer.limit(pos + chunkSize);
-    chunkBuffer.put(zeroChunkBytes);
+    chunkBuffer.limit(pos + len);
+    chunkBuffer.put(zeroChunkBytes, 0, len);
+    // Back to readable again after data erased
     chunkBuffer.flip();
     chunkBuffer.position(pos);
-    chunkBuffer.limit(pos + chunkSize);
+    chunkBuffer.limit(pos + len);
   }
 
   /**
@@ -226,13 +287,13 @@ public abstract class TestCoderBase {
    */
   protected ECChunk cloneChunkWithData(ECChunk chunk) {
     ByteBuffer srcBuffer = chunk.getBuffer();
-    ByteBuffer destBuffer = allocateOutputChunkBuffer();
 
-    byte[] bytesArr = new byte[chunkSize];
+    byte[] bytesArr = new byte[srcBuffer.remaining()];
     srcBuffer.mark();
-    srcBuffer.get(bytesArr);
+    srcBuffer.get(bytesArr, 0, bytesArr.length);
     srcBuffer.reset();
 
+    ByteBuffer destBuffer = allocateOutputBuffer(bytesArr.length);
     int pos = destBuffer.position();
     destBuffer.put(bytesArr);
     destBuffer.flip();
@@ -246,7 +307,7 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk allocateOutputChunk() {
-    ByteBuffer buffer = allocateOutputChunkBuffer();
+    ByteBuffer buffer = allocateOutputBuffer(chunkSize);
 
     return new ECChunk(buffer);
   }
@@ -256,7 +317,7 @@ public abstract class TestCoderBase {
    * data buffers: one with position as 0, the other with position > 0
    * @return a buffer ready to write chunkSize bytes from current position
    */
-  protected ByteBuffer allocateOutputChunkBuffer() {
+  protected ByteBuffer allocateOutputBuffer(int bufferLen) {
     /**
      * When startBufferWithZero, will prepare a buffer as:---------------
      * otherwise, the buffer will be like:             ___TO--BE--WRITTEN___,
@@ -264,10 +325,10 @@ public abstract class TestCoderBase {
      * position > 0.
      */
     int startOffset = startBufferWithZero ? 0 : 11; // 11 is arbitrary
-    int allocLen = startOffset + chunkSize + startOffset;
+    int allocLen = startOffset + bufferLen + startOffset;
     ByteBuffer buffer = usingDirectBuffer ?
         ByteBuffer.allocateDirect(allocLen) : ByteBuffer.allocate(allocLen);
-    buffer.limit(startOffset + chunkSize);
+    buffer.limit(startOffset + bufferLen);
     fillDummyData(buffer, startOffset);
     startBufferWithZero = ! startBufferWithZero;
 
@@ -279,6 +340,29 @@ public abstract class TestCoderBase {
    * @return
    */
   protected ECChunk[] prepareDataChunksForEncoding() {
+    if (usingFixedData) {
+      ECChunk[] chunks = new ECChunk[numDataUnits];
+      for (int i = 0; i < chunks.length; i++) {
+        chunks[i] = makeChunkUsingData(fixedData[i]);
+      }
+      return chunks;
+    }
+
+    return generateDataChunks();
+  }
+
+  private ECChunk makeChunkUsingData(byte[] data) {
+    ECChunk chunk = allocateOutputChunk();
+    ByteBuffer buffer = chunk.getBuffer();
+    int pos = buffer.position();
+    buffer.put(data, 0, chunkSize);
+    buffer.flip();
+    buffer.position(pos);
+
+    return chunk;
+  }
+
+  private ECChunk[] generateDataChunks() {
     ECChunk[] chunks = new ECChunk[numDataUnits];
     for (int i = 0; i < chunks.length; i++) {
       chunks[i] = generateDataChunk();
@@ -287,14 +371,23 @@ public abstract class TestCoderBase {
     return chunks;
   }
 
+  private void prepareFixedData() {
+    // We may load test data from a resource, or just generate randomly.
+    // The generated data will be used across subsequent encode/decode calls.
+    this.fixedData = new byte[numDataUnits][];
+    for (int i = 0; i < numDataUnits; i++) {
+      fixedData[i] = generateFixedData(baseChunkSize * 2);
+    }
+  }
+
   /**
    * Generate data chunk by making random data.
    * @return
    */
   protected ECChunk generateDataChunk() {
-    ByteBuffer buffer = allocateOutputChunkBuffer();
+    ByteBuffer buffer = allocateOutputBuffer(chunkSize);
     int pos = buffer.position();
-    generateData(buffer);
+    buffer.put(generateData(chunkSize));
     buffer.flip();
     buffer.position(pos);
 
@@ -312,10 +405,23 @@ public abstract class TestCoderBase {
     buffer.put(dummy);
   }
 
-  protected void generateData(ByteBuffer buffer) {
-    for (int i = 0; i < chunkSize; i++) {
-      buffer.put((byte) RAND.nextInt(256));
+  protected byte[] generateData(int len) {
+    byte[] buffer = new byte[len];
+    for (int i = 0; i < buffer.length; i++) {
+      buffer[i] = (byte) RAND.nextInt(256);
     }
+    return buffer;
+  }
+
+  protected byte[] generateFixedData(int len) {
+    byte[] buffer = new byte[len];
+    for (int i = 0; i < buffer.length; i++) {
+      buffer[i] = (byte) FIXED_DATA_GENERATOR++;
+      if (FIXED_DATA_GENERATOR == 256) {
+        FIXED_DATA_GENERATOR = 0;
+      }
+    }
+    return buffer;
   }
 
   /**
@@ -356,22 +462,26 @@ public abstract class TestCoderBase {
   protected byte[][] toArrays(ECChunk[] chunks) {
     byte[][] bytesArr = new byte[chunks.length][];
 
-    ByteBuffer buffer;
     for (int i = 0; i < chunks.length; i++) {
-      buffer = chunks[i].getBuffer();
-      if (buffer.hasArray() && buffer.position() == 0 &&
-          buffer.remaining() == chunkSize) {
-        bytesArr[i] = buffer.array();
-      } else {
-        bytesArr[i] = new byte[buffer.remaining()];
-        // Avoid affecting the original one
-        buffer.mark();
-        buffer.get(bytesArr[i]);
-        buffer.reset();
-      }
+      bytesArr[i] = chunks[i].toBytesArray();
     }
 
     return bytesArr;
+  }
+
+  protected void dump(String header, ECChunk[] chunks) {
+    System.out.println();
+    System.out.println(header);
+    for (int i = 0; i < chunks.length; i++) {
+      dump(chunks[i]);
+    }
+    System.out.println();
+  }
+
+  protected void dump(ECChunk chunk) {
+    byte[] bytes = chunk.toBytesArray();
+    String str = BytesUtil.bytesToHex(bytes, 64);
+    System.out.println(str);
   }
 
   /**

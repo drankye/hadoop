@@ -104,7 +104,7 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(ByteBuffer[] buffers, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
       if (buffers[i].remaining() != dataLen) {
-        throw new IllegalArgumentException("Invalid buffer not of length "
+        throw new IllegalArgumentException("Invalid buffer, not of length "
             + dataLen);
       }
     }
