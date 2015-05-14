@@ -249,7 +249,8 @@ public class GaloisField {
     }
     for (int i = len - 1; i >= 0; i--) {
       for (int j = i + 1; j < len; j++) {
-        for (idx1 = outputOffsets[j]; idx1 < outputOffsets[j] + dataLen; idx1++) {
+        for (idx1 = outputOffsets[j];
+             idx1 < outputOffsets[j] + dataLen; idx1++) {
           y[j][idx1] = (byte) (divTable[y[j][idx1] & 0x000000FF][x[j] ^
               x[j - i - 1]]);
         }
