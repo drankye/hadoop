@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configured;
 
 import java.nio.ByteBuffer;
@@ -69,8 +70,8 @@ public abstract class AbstractRawErasureCoder
   /**
    * Ensure output buffer filled with ZERO bytes fully in chunkSize.
    * @param buffer a buffer ready to write chunk size bytes
-   * @return the buffer itself, with ZERO bytes written, remaining the original
-   * position
+   * @return the buffer itself, with ZERO bytes written, the position and limit
+   *         are not changed after the call
    */
   protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
     int pos = buffer.position();
@@ -104,8 +105,8 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(ByteBuffer[] buffers, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
       if (buffers[i].remaining() != dataLen) {
-        throw new IllegalArgumentException("Invalid buffer, not of length "
-            + dataLen);
+        throw new HadoopIllegalArgumentException(
+            "Invalid buffer, not of length " + dataLen);
       }
     }
   }
@@ -118,8 +119,8 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(byte[][] buffers, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
       if (buffers[i].length != dataLen) {
-        throw new IllegalArgumentException("Invalid buffer not of length "
-            + dataLen);
+        throw new HadoopIllegalArgumentException(
+            "Invalid buffer not of length " + dataLen);
       }
     }
   }

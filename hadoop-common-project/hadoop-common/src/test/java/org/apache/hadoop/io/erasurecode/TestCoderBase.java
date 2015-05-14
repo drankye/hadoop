@@ -248,13 +248,9 @@ public abstract class TestCoderBase {
   protected void eraseDataFromChunk(ECChunk chunk) {
     ByteBuffer chunkBuffer = chunk.getBuffer();
     // Erase the data at the position, and restore the buffer ready for reading
-    // chunkSize bytes but all ZERO.
+    // same many bytes but all ZERO.
     int pos = chunkBuffer.position();
     int len = chunkBuffer.remaining();
-    // From readable to writable
-    chunkBuffer.flip();
-    chunkBuffer.position(pos);
-    chunkBuffer.limit(pos + len);
     chunkBuffer.put(zeroChunkBytes, 0, len);
     // Back to readable again after data erased
     chunkBuffer.flip();
@@ -480,7 +476,7 @@ public abstract class TestCoderBase {
 
   protected void dump(ECChunk chunk) {
     byte[] bytes = chunk.toBytesArray();
-    String str = BytesUtil.bytesToHex(bytes, 64);
+    String str = BytesUtil.bytesToHex(bytes, 16);
     System.out.println(str);
   }
 

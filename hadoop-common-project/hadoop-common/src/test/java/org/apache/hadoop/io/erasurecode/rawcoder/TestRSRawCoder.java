@@ -31,7 +31,7 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
     this.decoderClass = RSRawDecoder.class;
   }
 
-  //@Test
+  @Test
   public void testCodingNoDirectBuffer_10x4_erasing_d0_p0() {
     prepare(null, 10, 4, new int[] {0}, new int[] {0});
     /**
@@ -42,28 +42,28 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
     testCoding(false);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4_erasing_p1() {
     prepare(null, 10, 4, new int[0], new int[] {1});
     testCoding(true);
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4_erasing_d2() {
-    prepare(null, 10, 4, new int[] {2}, new int[] {});
+    prepare(null, 10, 4, new int[]{2}, new int[]{});
     testCoding(true);
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4_erasing_d0_p0() {
-    prepare(null, 10, 4, new int[] {0}, new int[] {0});
+    prepare(null, 10, 4, new int[]{0}, new int[]{0});
     testCoding(true);
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingBothBuffers_10x4_erasing_d0_p0() {
     prepare(null, 10, 4, new int[] {0}, new int[] {0});
 
@@ -84,41 +84,41 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
 
     testCoding(true);
     testCoding(false);
-    //testCoding(true);
-    //testCoding(false);
+    testCoding(true);
+    testCoding(false);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4_erasure_of_d2_d4_p0() {
     prepare(null, 10, 4, new int[] {2, 4}, new int[] {0});
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_10x4_erasing_d0_d1_p0_p1() {
     prepare(null, 10, 4, new int[] {0, 1}, new int[] {0, 1});
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingNoDirectBuffer_3x3_erasing_d0_p0() {
     prepare(null, 3, 3, new int[] {0}, new int[] {0});
     testCoding(false);
   }
 
-  //@Test
+  @Test
   public void testCodingDirectBuffer_3x3_erasing_d0_p0() {
     prepare(null, 3, 3, new int[] {0}, new int[] {0});
     testCoding(true);
   }
 
-  //@Test
+  @Test
   public void testCodingNegative_10x4_erasing_d2_d4() {
     prepare(null, 10, 4, new int[]{2, 4}, new int[0]);
 
-    testCodingNegative(true);
-    testCodingNegative(false);
-    testCodingNegative(true);
-    testCodingNegative(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
   }
 }

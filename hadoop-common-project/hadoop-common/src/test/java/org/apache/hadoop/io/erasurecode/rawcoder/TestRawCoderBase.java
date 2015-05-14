@@ -43,37 +43,40 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     prepareCoders();
 
     performTestCoding(baseChunkSize, false, false);
-    //performTestCoding(baseChunkSize - 17, false, false);
-    //performTestCoding(baseChunkSize + 16, false, false);
+    performTestCoding(baseChunkSize - 17, false, false);
+    performTestCoding(baseChunkSize + 16, false, false);
   }
 
   /**
-   * Similar to above, but perform negative cases.
+   * Similar to above, but perform negative cases using bad input for encoding.
    * @param usingDirectBuffer
    */
-  protected void testCodingNegative(boolean usingDirectBuffer) {
+  protected void testCodingWithBadInput(boolean usingDirectBuffer) {
     this.usingDirectBuffer = usingDirectBuffer;
     prepareCoders();
 
-    performTestCoding(0, false, false);
-
-    boolean isOK1;
     try {
       performTestCoding(baseChunkSize, true, false);
-      isOK1 = false;
+      Assert.fail("Encoding test with bad input passed");
     } catch (Exception e) {
-      isOK1 = true;
+      // Expected
     }
+  }
 
-    boolean isOK2;
+  /**
+   * Similar to above, but perform negative cases using bad output for decoding.
+   * @param usingDirectBuffer
+   */
+  protected void testCodingWithBadOutput(boolean usingDirectBuffer) {
+    this.usingDirectBuffer = usingDirectBuffer;
+    prepareCoders();
+
     try {
       performTestCoding(baseChunkSize, false, true);
-      isOK2 = false;
+      Assert.fail("Decoding test with bad output passed");
     } catch (Exception e) {
-      isOK2 = true;
+      // Expected
     }
-
-    Assert.assertTrue("Negative tests passed", isOK1 && isOK2);
   }
 
   private void performTestCoding(int chunkSize,

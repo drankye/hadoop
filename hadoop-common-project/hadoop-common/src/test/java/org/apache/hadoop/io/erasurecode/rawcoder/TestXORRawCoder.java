@@ -81,9 +81,9 @@ public class TestXORRawCoder extends TestRawCoderBase {
   public void testCodingNegative_erasing_d5() {
     prepare(null, 10, 1, new int[]{5}, new int[0]);
 
-    testCodingNegative(true);
-    testCodingNegative(false);
-    testCodingNegative(true);
-    testCodingNegative(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
   }
 }

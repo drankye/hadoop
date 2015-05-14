@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
@@ -121,10 +122,10 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
    */
   protected void checkParameters(Object[] inputs, Object[] outputs) {
     if (inputs.length != getNumDataUnits()) {
-      throw new IllegalArgumentException("Invalid inputs length");
+      throw new HadoopIllegalArgumentException("Invalid inputs length");
     }
     if (outputs.length != getNumParityUnits()) {
-      throw new IllegalArgumentException("Invalid outputs length");
+      throw new HadoopIllegalArgumentException("Invalid outputs length");
     }
   }
 }
