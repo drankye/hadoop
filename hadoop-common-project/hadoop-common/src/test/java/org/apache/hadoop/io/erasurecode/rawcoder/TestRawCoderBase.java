@@ -42,6 +42,10 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     this.usingDirectBuffer = usingDirectBuffer;
     prepareCoders();
 
+    /**
+     * The following runs will use 3 different chunkSize for inputs and outputs,
+     * to verify the same encoder/decoder can process variable width of data.
+     */
     performTestCoding(baseChunkSize, false, false);
     performTestCoding(baseChunkSize - 17, false, false);
     performTestCoding(baseChunkSize + 16, false, false);
