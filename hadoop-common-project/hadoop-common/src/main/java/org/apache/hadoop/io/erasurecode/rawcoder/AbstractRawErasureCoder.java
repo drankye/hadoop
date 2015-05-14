@@ -74,8 +74,8 @@ public abstract class AbstractRawErasureCoder
    */
   protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
     int pos = buffer.position();
-    for (int i = pos; i < buffer.remaining(); ++i) {
-      buffer.put(i, (byte) 0);
+    for (int i = pos; i < buffer.limit(); ++i) {
+      buffer.put((byte) 0);
     }
     buffer.position(pos);
 

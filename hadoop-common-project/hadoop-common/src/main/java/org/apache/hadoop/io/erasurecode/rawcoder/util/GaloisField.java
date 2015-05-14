@@ -235,26 +235,29 @@ public class GaloisField {
   /**
    * A "bulk" version to the solving of Vandermonde System
    */
-  public void solveVandermondeSystem(int[] x, byte[][] y,
+  public void solveVandermondeSystem(int[] x, byte[][] y, int[] outputOffsets,
                                      int len, int dataLen) {
+    int idx1, idx2;
     for (int i = 0; i < len - 1; i++) {
       for (int j = len - 1; j > i; j--) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j][k] = (byte) (y[j][k] ^ mulTable[x[i]][y[j - 1][k] &
+        for (idx2 = outputOffsets[j-1], idx1 = outputOffsets[j];
+             idx1 < outputOffsets[j] + dataLen; idx1++, idx2++) {
+          y[j][idx1] = (byte) (y[j][idx1] ^ mulTable[x[i]][y[j - 1][idx2] &
               0x000000FF]);
         }
       }
     }
     for (int i = len - 1; i >= 0; i--) {
       for (int j = i + 1; j < len; j++) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j][k] = (byte) (divTable[y[j][k] & 0x000000FF][x[j] ^
+        for (idx1 = outputOffsets[j]; idx1 < outputOffsets[j] + dataLen; idx1++) {
+          y[j][idx1] = (byte) (divTable[y[j][idx1] & 0x000000FF][x[j] ^
               x[j - i - 1]]);
         }
       }
       for (int j = i; j < len - 1; j++) {
-        for (int k = 0; k < dataLen; k++) {
-          y[j][k] = (byte) (y[j][k] ^ y[j + 1][k]);
+        for (idx2 = outputOffsets[j+1], idx1 = outputOffsets[j];
+             idx1 < outputOffsets[j] + dataLen; idx1++, idx2++) {
+          y[j][idx1] = (byte) (y[j][idx1] ^ y[j + 1][idx2]);
         }
       }
     }

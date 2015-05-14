@@ -64,7 +64,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
           outputOffsets[i], primitivePower[i]);
     }
 
-    RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
+    RSUtil.GF.solveVandermondeSystem(errSignature, outputs, outputOffsets,
         erasedIndexes.length, dataLen);
   }
 }

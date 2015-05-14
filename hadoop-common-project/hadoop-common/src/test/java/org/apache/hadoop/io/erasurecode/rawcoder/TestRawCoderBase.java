@@ -110,6 +110,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       corruptSomeChunk(recoveredChunks);
     }
 
+    dump("Decoding input chunks", inputChunks);
     decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
     dump("Decoded/recovered chunks", recoveredChunks);
 
