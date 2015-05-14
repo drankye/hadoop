@@ -19,6 +19,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.TestCoderBase;
+import org.junit.Assert;
 
 /**
  * Raw coder test base with utilities.
@@ -41,8 +42,49 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     this.usingDirectBuffer = usingDirectBuffer;
     prepareCoders();
 
+    performTestCoding(0, false, false);
+    performTestCoding(baseChunkSize - 17, false, false);
+    performTestCoding(baseChunkSize + 16, false, false);
+  }
+
+  /**
+   * Similar to above, but perform negative cases.
+   * @param usingDirectBuffer
+   */
+  protected void testCodingNegative(boolean usingDirectBuffer) {
+    this.usingDirectBuffer = usingDirectBuffer;
+    prepareCoders();
+
+    boolean isOK1;
+    try {
+      performTestCoding(baseChunkSize, true, false);
+      isOK1 = false;
+    } catch (Exception e) {
+      isOK1 = true;
+    }
+
+    boolean isOK2;
+    try {
+      performTestCoding(baseChunkSize, false, true);
+      isOK2 = false;
+    } catch (Exception e) {
+      isOK2 = true;
+    }
+
+    Assert.assertTrue("Negative tests passed", isOK1 && isOK2);
+  }
+
+  private void performTestCoding(int chunkSize,
+                                 boolean useBadInput, boolean useBadOutput) {
+    setChunkSize(chunkSize);
+
     // Generate data and encode
     ECChunk[] dataChunks = prepareDataChunksForEncoding();
+
+    if (useBadInput) {
+      corruptSomeChunk(dataChunks);
+    }
+
     ECChunk[] parityChunks = prepareParityChunksForEncoding();
 
     // Backup all the source chunks for later recovering because some coders
@@ -59,6 +101,9 @@ public abstract class TestRawCoderBase extends TestCoderBase {
         clonedDataChunks, parityChunks);
 
     ECChunk[] recoveredChunks = prepareOutputChunksForDecoding();
+    if (useBadOutput) {
+      corruptSomeChunk(recoveredChunks);
+    }
 
     decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
 
@@ -88,7 +133,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create encoder", e);
     }
 
-    encoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    encoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     encoder.setConf(getConf());
     return encoder;
   }
@@ -105,7 +150,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create decoder", e);
     }
 
-    decoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    decoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     decoder.setConf(getConf());
     return decoder;
   }

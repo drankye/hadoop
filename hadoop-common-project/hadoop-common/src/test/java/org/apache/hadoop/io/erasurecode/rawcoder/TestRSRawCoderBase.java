@@ -39,13 +39,9 @@ public abstract class TestRSRawCoderBase extends TestRawCoderBase {
   }
 
   @Override
-  protected ECChunk generateDataChunk() {
-    ByteBuffer buffer = allocateOutputBuffer();
-    for (int i = 0; i < chunkSize; i++) {
+  protected void generateData(ByteBuffer buffer) {
+    for (int i = 0; i < getChunkSize(); i++) {
       buffer.put((byte) RAND.nextInt(symbolMax));
     }
-    buffer.flip();
-
-    return new ECChunk(buffer);
   }
 }

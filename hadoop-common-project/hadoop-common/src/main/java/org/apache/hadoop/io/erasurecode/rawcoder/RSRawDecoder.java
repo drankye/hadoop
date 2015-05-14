@@ -36,33 +36,34 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
-    this.errSignature = new int[getNumParityUnits()];
-    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
-        getNumParityUnits());
+    this.errSignature = new int[numParityUnits];
+    this.primitivePower = RSUtil.getPrimitivePower(numDataUnits,
+        numParityUnits);
   }
 
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
+    int dataLen = inputs[0].remaining();
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
       RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].remaining();
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] erasedIndexes,
-                          byte[][] outputs) {
+  protected void doDecode(byte[][] inputs, int[] inputOffsets,
+                          int dataLen, int[] erasedIndexes,
+                          byte[][] outputs, int[] outputOffsets) {
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
+      RSUtil.GF.substitute(inputs, inputOffsets, dataLen, outputs[i],
+          outputOffsets[i], primitivePower[i]);
     }
 
-    int dataLen = inputs[0].length;
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
         erasedIndexes.length, dataLen);
   }

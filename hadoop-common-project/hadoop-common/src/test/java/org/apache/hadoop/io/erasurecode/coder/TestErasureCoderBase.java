@@ -138,7 +138,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create encoder", e);
     }
 
-    encoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    encoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     encoder.setConf(getConf());
     return encoder;
   }
@@ -165,7 +165,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create decoder", e);
     }
 
-    decoder.initialize(numDataUnits, numParityUnits, chunkSize);
+    decoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     decoder.setConf(getConf());
     return decoder;
   }
@@ -249,7 +249,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param blocks
    * @return
    */
-  protected static TestBlock[] cloneBlocksWithData(TestBlock[] blocks) {
+  protected TestBlock[] cloneBlocksWithData(TestBlock[] blocks) {
     TestBlock[] results = new TestBlock[blocks.length];
     for (int i = 0; i < blocks.length; ++i) {
       results[i] = cloneBlockWithData(blocks[i]);
@@ -263,7 +263,7 @@ public abstract class TestErasureCoderBase extends TestCoderBase {
    * @param block
    * @return a new block
    */
-  protected static TestBlock cloneBlockWithData(TestBlock block) {
+  protected TestBlock cloneBlockWithData(TestBlock block) {
     ECChunk[] newChunks = cloneChunksWithData(block.chunks);
 
     return new TestBlock(newChunks);
