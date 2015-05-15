@@ -67,9 +67,9 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
     assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
 
-    this.errSignature = new int[getNumParityUnits()];
-    this.primitivePower = RSUtil.getPrimitivePower(getNumDataUnits(),
-        getNumParityUnits());
+    this.errSignature = new int[numParityUnits];
+    this.primitivePower = RSUtil.getPrimitivePower(numDataUnits,
+        numParityUnits);
   }
 
   @Override
@@ -92,10 +92,24 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
       RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
     }
 
-    RSUtil.GF.solveVandermondeSystem(errSignature, outputs,
-        erasedIndexes.length, getChunkSize());
+    RSUtil.GF.solveVandermondeSystem(errSignature,
+        outputs, erasedIndexes.length);
   }
 
+  @Override
+  protected void doDecode(byte[][] inputs, int[] inputOffsets,
+                          int dataLen, int[] erasedIndexes,
+                          byte[][] outputs, int[] outputOffsets) {
+    for (int i = 0; i < erasedIndexes.length; i++) {
+      errSignature[i] = primitivePower[erasedIndexes[i]];
+      RSUtil.GF.substitute(inputs, inputOffsets, dataLen, outputs[i],
+          outputOffsets[i], primitivePower[i]);
+    }
+
+    RSUtil.GF.solveVandermondeSystem(errSignature, outputs, outputOffsets,
+        erasedIndexes.length, dataLen);
+  }
+  
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     decodeWith(inputs, erasedIndexes, outputs, false);
