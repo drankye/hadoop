@@ -61,7 +61,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     try {
       performTestCoding(baseChunkSize, true, false);
-      Assert.fail("Encoding test with bad input passed");
+      Assert.fail("Encoding test with bad input should fail");
     } catch (Exception e) {
       // Expected
     }
@@ -77,7 +77,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     try {
       performTestCoding(baseChunkSize, false, true);
-      Assert.fail("Decoding test with bad output passed");
+      Assert.fail("Decoding test with bad output should fail");
     } catch (Exception e) {
       // Expected
     }
