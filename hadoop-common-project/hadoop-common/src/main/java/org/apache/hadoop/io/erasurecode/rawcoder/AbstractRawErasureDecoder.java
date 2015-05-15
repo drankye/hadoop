@@ -21,6 +21,7 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * An abstract raw erasure decoder that's to be inherited by new decoders.
@@ -34,14 +35,16 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
-    int dataLen = inputs[0].remaining();
+
+    ByteBuffer goodInput = (ByteBuffer) findGoodInput(inputs);
+    int dataLen = goodInput.remaining();
     if (dataLen == 0) {
       return;
     }
-    ensureLength(inputs, dataLen);
-    ensureLength(outputs, dataLen);
+    ensureLength(inputs, true, dataLen);
+    ensureLength(outputs, false, dataLen);
 
-    boolean usingDirectBuffer = inputs[0].isDirect();
+    boolean usingDirectBuffer = goodInput.isDirect();
     if (usingDirectBuffer) {
       doDecode(inputs, erasedIndexes, outputs);
       return;
@@ -55,8 +58,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     ByteBuffer buffer;
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      inputOffsets[i] = buffer.position();
-      newInputs[i] = buffer.array();
+      if (buffer != null) {
+        inputOffsets[i] = buffer.position();
+        newInputs[i] = buffer.array();
+      }
     }
 
     for (int i = 0; i < outputs.length; ++i) {
@@ -86,12 +91,14 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
-    int dataLen = inputs[0].length;
+
+    byte[] goodInput = (byte[]) findGoodInput(inputs);
+    int dataLen = goodInput.length;
     if (dataLen == 0) {
       return;
     }
-    ensureLength(inputs, dataLen);
-    ensureLength(outputs, dataLen);
+    ensureLength(inputs, true, dataLen);
+    ensureLength(outputs, false, dataLen);
 
     int[] inputOffsets = new int[inputs.length]; // ALL ZERO
     int[] outputOffsets = new int[outputs.length]; // ALL ZERO
@@ -181,24 +188,22 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   }
 
   /**
-   * Tell if using direct ByteBuffer.
-   * @param buffers
-   * @return
+   * Find a good input from all the inputs.
+   * @param inputs
+   * @return a good input
    */
-  protected boolean usingDirectBuffer(ByteBuffer[] buffers) {
-    ByteBuffer goodBuffer = buffers[0]; // Most often
-    if (goodBuffer == null) {
-      for (int i = 1; i < buffers.length; ++i) {
-        if (buffers[i] != null) {
-          goodBuffer = buffers[i];
-          break;
-        }
-      }
-    }
-    if (goodBuffer == null) {
-      throw new IllegalArgumentException("No valid buffer provided");
+  protected Object findGoodInput(Object[] inputs) {
+    if (inputs[0] != null) {
+      return inputs[0];
     }
 
-    return ! goodBuffer.hasArray();
+    for (int i = 1; i < inputs.length; i++) {
+      if (inputs[i] != null) {
+        return inputs[i];
+      }
+    }
+
+    throw new HadoopIllegalArgumentException(
+        "Invalid inputs are found, all being null");
   }
 }
