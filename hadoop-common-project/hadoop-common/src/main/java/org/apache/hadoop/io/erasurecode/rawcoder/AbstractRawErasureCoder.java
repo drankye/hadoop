@@ -68,7 +68,7 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Ensure a buffer filled with ZERO bytes fully in chunkSize.
+   * Ensure a buffer filled with ZERO bytes from current readable/writable area.
    * @param buffer a buffer ready to read / write certain size bytes
    * @return the buffer itself, with ZERO bytes written, the position and limit
    *         are not changed after the call
@@ -106,10 +106,13 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(ByteBuffer[] buffers,
                               boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
-      if (buffers[i] == null && !allowNull) {
-        throw new HadoopIllegalArgumentException(
-            "Invalid buffer found, not allowing null");
+      if (buffers[i] == null) {
+        if (allowNull) {
+          continue;
+        }
+        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
       }
+
       if (buffers[i].remaining() != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer, not of length " + dataLen);
@@ -126,10 +129,13 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(byte[][] buffers,
                               boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
-      if (buffers[i] == null && !allowNull) {
-        throw new HadoopIllegalArgumentException(
-            "Invalid buffer found, not allowing null");
+      if (buffers[i] == null) {
+        if (allowNull) {
+          continue;
+        }
+        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
       }
+
       if (buffers[i].length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);

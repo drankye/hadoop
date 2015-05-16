@@ -75,7 +75,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
 
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
+      if (buffer != null) {
+        // dataLen bytes consumed
+        buffer.position(inputOffsets[i] + dataLen);
+      }
     }
   }
 

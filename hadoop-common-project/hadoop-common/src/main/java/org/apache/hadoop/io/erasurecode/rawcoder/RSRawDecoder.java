@@ -141,16 +141,17 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
       }
     }
 
-    doDecodeImpl(adjustedByteArrayInputsParameter, inputOffsets,
+    doDecodeImpl(adjustedByteArrayInputsParameter, adjustedInputOffsets,
         dataLen, erasedOrNotToReadIndexes,
-        adjustedByteArrayOutputsParameter, outputOffsets);
+        adjustedByteArrayOutputsParameter, adjustedOutputOffsets);
   }
 
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
     ByteBuffer goodInput = (ByteBuffer) findGoodInput(inputs);
-    ensureDirectBuffers(goodInput.remaining());
+    int dataLen = goodInput.remaining();
+    ensureDirectBuffers(dataLen);
 
     /**
      * As passed parameters are friendly to callers but not to the underlying
@@ -159,6 +160,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
 
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
     int bufferIdx = 0, erasedIdx;
+    ByteBuffer buffer;
 
     // Prepare for adjustedDirectBufferInputsParameter
     System.arraycopy(inputs, 0, adjustedDirectBufferInputsParameter,
@@ -166,14 +168,16 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
       // Borrow it from bytesArrayBuffers for the temp usage.
       erasedIdx = erasedOrNotToReadIndexes[i];
-      adjustedDirectBufferInputsParameter[erasedIdx] =
-          resetBuffer(directBuffers[bufferIdx++]);
+      buffer = directBuffers[bufferIdx++];
+      buffer.limit(dataLen);
+      adjustedDirectBufferInputsParameter[erasedIdx] = resetBuffer(buffer);
     }
 
     // Prepare for adjustedDirectBufferOutputsParameter
     for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
-      adjustedDirectBufferOutputsParameter[i] =
-          resetBuffer(directBuffers[bufferIdx++]);
+      buffer = directBuffers[bufferIdx++];
+      buffer.limit(dataLen);
+      adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer);
     }
 
     for (int outputIdx = 0, i = 0; i < erasedIndexes.length; i++) {

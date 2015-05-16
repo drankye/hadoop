@@ -445,7 +445,11 @@ public class GaloisField {
       for (iIdx = pi.position(), oIdx = q.position();
            iIdx < pi.limit(); iIdx++, oIdx++) {
         int pij = pi.get(iIdx) & 0x000000FF;
-        q.put(oIdx, (byte) (q.get(oIdx) ^ mulTable[pij][y]));
+        try {
+          q.put(oIdx, (byte) (q.get(oIdx) ^ mulTable[pij][y]));
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
       y = mulTable[x][y];
     }

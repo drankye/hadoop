@@ -54,6 +54,14 @@ public class TestXORRawCoder extends TestRawCoderBase {
   }
 
   @Test
+  public void testCodingDirectBuffer_erasing_d0() {
+    prepare(null, 10, 1, new int[] {0}, new int[0]);
+
+    testCoding(true);
+    testCoding(true);
+  }
+
+  @Test
   public void testCodingBothBuffers_erasing_d5() {
     prepare(null, 10, 1, new int[]{5}, new int[0]);
 
@@ -66,5 +74,15 @@ public class TestXORRawCoder extends TestRawCoderBase {
     testCoding(false);
     testCoding(true);
     testCoding(false);
+  }
+
+  @Test
+  public void testCodingNegative_erasing_d5() {
+    prepare(null, 10, 1, new int[]{5}, new int[0]);
+
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
+    testCodingWithBadInput(true);
+    testCodingWithBadOutput(false);
   }
 }
