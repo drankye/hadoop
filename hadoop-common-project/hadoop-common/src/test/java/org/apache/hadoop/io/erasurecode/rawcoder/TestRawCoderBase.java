@@ -36,8 +36,8 @@ public abstract class TestRawCoderBase extends TestCoderBase {
    * as the underlying coding buffers are shared, which may have bugs.
    */
   protected void testCodingDoMixAndTwice() {
-    testCodingDoMixed(true);
-    testCodingDoMixed(false);
+    testCodingDoMixed();
+    testCodingDoMixed();
   }
 
   /**
@@ -45,9 +45,9 @@ public abstract class TestRawCoderBase extends TestCoderBase {
    * reused with different buffer usage model. This matters as the underlying
    * coding buffers are shared, which may have bugs.
    */
-  protected void testCodingDoMixed(boolean usingDirectBuffer) {
-    testCoding(usingDirectBuffer);
-    testCoding(!usingDirectBuffer);
+  protected void testCodingDoMixed() {
+    testCoding(true);
+    testCoding(false);
   }
 
   /**

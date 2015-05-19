@@ -62,7 +62,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   @Override
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
     super.initialize(numDataUnits, numParityUnits, chunkSize);
-    if (numDataUnits + numParityUnits < RSUtil.GF.getFieldSize()) {
+    if (numDataUnits + numParityUnits >= RSUtil.GF.getFieldSize()) {
       throw new HadoopIllegalArgumentException(
           "Invalid numDataUnits and numParityUnits");
     }
@@ -74,9 +74,11 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
 
   private void doDecodeImpl(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
+    ByteBuffer valid = findFirstValidInput(inputs);
+    int dataLen = valid.remaining();
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      RSUtil.GF.substitute(inputs, outputs[i], primitivePower[i]);
+      RSUtil.GF.substitute(inputs, dataLen, outputs[i], primitivePower[i]);
     }
 
     RSUtil.GF.solveVandermondeSystem(errSignature,
