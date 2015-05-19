@@ -1195,7 +1195,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       if (fileInfo != null) {
         ECSchema schema = fileInfo.getECSchema();
         if (schema != null) {
-          return new DFSStripedInputStream(this, src, verifyChecksum, schema);
+          return new DFSStripedInputStream(this, src, verifyChecksum, schema,
+              fileInfo.getStripeCellSize());
         }
       }
       return new DFSInputStream(this, src, verifyChecksum);
@@ -3007,12 +3008,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     return new EncryptionZoneIterator(namenode, traceSampler);
   }
 
-  public void createErasureCodingZone(String src, ECSchema schema)
+  public void createErasureCodingZone(String src, ECSchema schema, int cellSize)
       throws IOException {
     checkOpen();
     TraceScope scope = getPathTraceScope("createErasureCodingZone", src);
     try {
-      namenode.createErasureCodingZone(src, schema);
+      namenode.createErasureCodingZone(src, schema, cellSize);
     } catch (RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
           SafeModeException.class,
