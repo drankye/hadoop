@@ -69,12 +69,12 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Ensure output buffer filled with ZERO bytes fully in chunkSize.
-   * @param buffer a buffer ready to write chunk size bytes
+   * Ensure a buffer filled with ZERO bytes from current readable/writable area.
+   * @param buffer a buffer ready to read / write certain size bytes
    * @return the buffer itself, with ZERO bytes written, the position and limit
    *         are not changed after the call
    */
-  protected ByteBuffer resetOutputBuffer(ByteBuffer buffer) {
+  protected ByteBuffer resetBuffer(ByteBuffer buffer) {
     int pos = buffer.position();
     for (int i = pos; i < buffer.limit(); ++i) {
       buffer.put((byte) 0);
@@ -101,10 +101,19 @@ public abstract class AbstractRawErasureCoder
   /**
    * Check and ensure the buffers are of the length specified by dataLen.
    * @param buffers
+   * @param allowNull
    * @param dataLen
    */
-  protected void ensureLength(ByteBuffer[] buffers, int dataLen) {
+  protected void ensureLength(ByteBuffer[] buffers,
+                              boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
+      if (buffers[i] == null) {
+        if (allowNull) {
+          continue;
+        }
+        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
+      }
+
       if (buffers[i].remaining() != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer, not of length " + dataLen);
@@ -115,10 +124,19 @@ public abstract class AbstractRawErasureCoder
   /**
    * Check and ensure the buffers are of the length specified by dataLen.
    * @param buffers
+   * @param allowNull
    * @param dataLen
    */
-  protected void ensureLength(byte[][] buffers, int dataLen) {
+  protected void ensureLength(byte[][] buffers,
+                              boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
+      if (buffers[i] == null) {
+        if (allowNull) {
+          continue;
+        }
+        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
+      }
+
       if (buffers[i].length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);

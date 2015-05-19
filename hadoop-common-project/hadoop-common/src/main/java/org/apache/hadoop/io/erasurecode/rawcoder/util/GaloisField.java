@@ -423,7 +423,7 @@ public class GaloisField {
       byte[] pi = p[i];
       for (iIdx = offsets[i], oIdx = offset;
            iIdx < offsets[i] + len; iIdx++, oIdx++) {
-        int pij = pi[iIdx] & 0x000000FF;
+        int pij = pi != null ? (pi[iIdx] & 0x000000FF) : 0;
         q[oIdx] = (byte) (q[oIdx] ^ mulTable[pij][y]);
       }
       y = mulTable[x][y];
