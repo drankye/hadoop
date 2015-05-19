@@ -41,13 +41,11 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
    * We need a set of reusable buffers either for the bytes array
    * decoding version or direct buffer decoding version. Normally not both.
    *
-   * For both input and output, in addition to the valid buffers from the caller
+   * For output, in addition to the valid buffers from the caller
    * passed from above, we need to provide extra buffers for the internal
-   * decoding implementation. For input, the caller should provide at least
-   * numDataUnits valid buffers (non-NULL); for output, the caller should 
-   * provide no more than numParityUnits but at least one buffers. And the left
-   * buffers will be borrowed from either bytesArrayBuffersForInput or 
-   * bytesArrayBuffersForOutput, for the bytes array version.
+   * decoding implementation. For output, the caller should provide no more
+   * than numParityUnits but at least one buffers. And the left buffers will be
+   * borrowed from either bytesArrayBuffers, for the bytes array version.
    *
    */
   // Reused buffers for decoding with bytes arrays
@@ -106,7 +104,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
 
     /**
      * As passed parameters are friendly to callers but not to the underlying
-     * implementations, so we have to adjust them before calling doDecoder.
+     * implementations, so we have to adjust them before calling doDecodeImpl.
      */
 
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
@@ -139,13 +137,13 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
-    ByteBuffer goodInput = (ByteBuffer) findFirstValidInput(inputs);
-    int dataLen = goodInput.remaining();
+    ByteBuffer validInput = findFirstValidInput(inputs);
+    int dataLen = validInput.remaining();
     ensureDirectBuffers(dataLen);
 
     /**
      * As passed parameters are friendly to callers but not to the underlying
-     * implementations, so we have to adjust them before calling doDecoder.
+     * implementations, so we have to adjust them before calling doDecodeImpl.
      */
 
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);

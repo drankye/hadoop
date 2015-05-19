@@ -69,7 +69,8 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
-   * Ensure a buffer filled with ZERO bytes from current readable/writable area.
+   * Ensure a buffer filled with ZERO bytes from current readable/writable
+   * position.
    * @param buffer a buffer ready to read / write certain size bytes
    * @return the buffer itself, with ZERO bytes written, the position and limit
    *         are not changed after the call
@@ -86,7 +87,7 @@ public abstract class AbstractRawErasureCoder
 
   /**
    * Ensure the buffer (either input or output) ready to read or write with ZERO
-   * bytes fully in chunkSize.
+   * bytes fully in specified length of len.
    * @param buffer bytes array buffer
    * @return the buffer itself
    */
