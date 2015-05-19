@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.TestCoderBase;
 import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Raw coder test base with utilities.
@@ -29,6 +30,25 @@ public abstract class TestRawCoderBase extends TestCoderBase {
   protected Class<? extends RawErasureDecoder> decoderClass;
   private RawErasureEncoder encoder;
   private RawErasureDecoder decoder;
+
+  /**
+   * Doing twice to test if the coders can be repeatedly reused. This matters
+   * as the underlying coding buffers are shared, which may have bugs.
+   */
+  protected void testCodingDoMixAndTwice() {
+    testCodingDoMixed(true);
+    testCodingDoMixed(false);
+  }
+
+  /**
+   * Doing in mixed buffer usage model to test if the coders can be repeatedly
+   * reused with different buffer usage model. This matters as the underlying
+   * coding buffers are shared, which may have bugs.
+   */
+  protected void testCodingDoMixed(boolean usingDirectBuffer) {
+    testCoding(usingDirectBuffer);
+    testCoding(!usingDirectBuffer);
+  }
 
   /**
    * Generating source data, encoding, recovering and then verifying.
@@ -78,6 +98,23 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     try {
       performTestCoding(baseChunkSize, false, true);
       Assert.fail("Decoding test with bad output should fail");
+    } catch (Exception e) {
+      // Expected
+    }
+  }
+
+  @Test
+  public void testCodingWithErasingTooMany() {
+    try {
+      testCoding(true);
+      Assert.fail("Decoding test erasing too many should fail");
+    } catch (Exception e) {
+      // Expected
+    }
+
+    try {
+      testCoding(false);
+      Assert.fail("Decoding test erasing too many should fail");
     } catch (Exception e) {
       // Expected
     }

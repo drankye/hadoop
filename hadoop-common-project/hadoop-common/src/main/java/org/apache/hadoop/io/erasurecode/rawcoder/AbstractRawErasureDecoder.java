@@ -36,7 +36,7 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
-    ByteBuffer goodInput = (ByteBuffer) findGoodInput(inputs);
+    ByteBuffer goodInput = findFirstValidInput(inputs);
     int dataLen = goodInput.remaining();
     if (dataLen == 0) {
       return;
@@ -95,7 +95,7 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
 
-    byte[] goodInput = (byte[]) findGoodInput(inputs);
+    byte[] goodInput = findFirstValidInput(inputs);
     int dataLen = goodInput.length;
     if (dataLen == 0) {
       return;
@@ -185,17 +185,12 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     return Arrays.copyOf(invalidIndexes, idx);
   }
 
-  // parity units + data units
-  protected int getNumInputUnits() {
-    return getNumParityUnits() + getNumDataUnits();
-  }
-
   /**
-   * Find a good input from all the inputs.
+   * Find the valid input from all the inputs.
    * @param inputs
-   * @return a good input
+   * @return the first valid input
    */
-  protected Object findGoodInput(Object[] inputs) {
+  protected static <T> T findFirstValidInput(T[] inputs) {
     if (inputs[0] != null) {
       return inputs[0];
     }

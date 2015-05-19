@@ -107,14 +107,10 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(ByteBuffer[] buffers,
                               boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
-      if (buffers[i] == null) {
-        if (allowNull) {
-          continue;
-        }
-        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
-      }
-
-      if (buffers[i].remaining() != dataLen) {
+      if (buffers[i] == null && !allowNull) {
+        throw new HadoopIllegalArgumentException(
+            "Invalid buffer found, not allowing null");
+      } else if (buffers[i] != null && buffers[i].remaining() != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer, not of length " + dataLen);
       }
@@ -130,14 +126,10 @@ public abstract class AbstractRawErasureCoder
   protected void ensureLength(byte[][] buffers,
                               boolean allowNull, int dataLen) {
     for (int i = 0; i < buffers.length; ++i) {
-      if (buffers[i] == null) {
-        if (allowNull) {
-          continue;
-        }
-        throw new HadoopIllegalArgumentException("Invalid buffer found, not allowing null");
-      }
-
-      if (buffers[i].length != dataLen) {
+      if (buffers[i] == null && !allowNull) {
+        throw new HadoopIllegalArgumentException(
+            "Invalid buffer found, not allowing null");
+      } else if (buffers[i] != null && buffers[i].length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);
       }

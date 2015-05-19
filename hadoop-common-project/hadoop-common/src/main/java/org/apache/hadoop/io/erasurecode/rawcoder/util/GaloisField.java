@@ -423,7 +423,7 @@ public class GaloisField {
       byte[] pi = p[i];
       for (iIdx = offsets[i], oIdx = offset;
            iIdx < offsets[i] + len; iIdx++, oIdx++) {
-        int pij = pi != null ? (pi[iIdx] & 0x000000FF) : 0;
+        int pij = pi != null ? pi[iIdx] & 0x000000FF : 0;
         q[oIdx] = (byte) (q[oIdx] ^ mulTable[pij][y]);
       }
       y = mulTable[x][y];
@@ -442,9 +442,11 @@ public class GaloisField {
     int y = 1, iIdx, oIdx;
     for (int i = 0; i < p.length; i++) {
       ByteBuffer pi = p[i];
-      for (iIdx = pi.position(), oIdx = q.position();
-           iIdx < pi.limit(); iIdx++, oIdx++) {
-        int pij = pi.get(iIdx) & 0x000000FF;
+      int pos = pi != null ? pi.position() : 0;
+      int len = q.limit();
+      for (oIdx = q.position(), iIdx = pos;
+           iIdx < len; iIdx++, oIdx++) {
+        int pij = pi != null ? pi.get(iIdx) & 0x000000FF : 0;
         q.put(oIdx, (byte) (q.get(oIdx) ^ mulTable[pij][y]));
       }
       y = mulTable[x][y];
