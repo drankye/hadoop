@@ -57,9 +57,9 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   private ByteBuffer[] directBuffers;
   private ByteBuffer[] adjustedDirectBufferOutputsParameter;
 
-  @Override
-  public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
-    super.initialize(numDataUnits, numParityUnits, chunkSize);
+  public RSRawDecoder(int numDataUnits, int numParityUnits) {
+    super(numDataUnits, numParityUnits);
+
     if (numDataUnits + numParityUnits >= RSUtil.GF.getFieldSize()) {
       throw new HadoopIllegalArgumentException(
           "Invalid numDataUnits and numParityUnits");

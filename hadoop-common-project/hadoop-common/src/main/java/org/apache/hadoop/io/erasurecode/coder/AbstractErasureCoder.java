@@ -42,9 +42,10 @@ public abstract class AbstractErasureCoder
    * @param rawCoderFactoryKey
    * @return raw decoder
    */
-  protected RawErasureDecoder createRawDecoder(String rawCoderFactoryKey) {
+  protected RawErasureDecoder createRawDecoder(
+          String rawCoderFactoryKey, int numDataUnits, int numParityUnits) {
     RawErasureCoder rawCoder = createRawCoder(getConf(),
-        rawCoderFactoryKey, false);
+        rawCoderFactoryKey, false, numDataUnits, numParityUnits);
     return (RawErasureDecoder) rawCoder;
   }
 
@@ -53,9 +54,10 @@ public abstract class AbstractErasureCoder
    * @param rawCoderFactoryKey
    * @return raw encoder
    */
-  protected RawErasureEncoder createRawEncoder(String rawCoderFactoryKey) {
+  protected RawErasureEncoder createRawEncoder(
+          String rawCoderFactoryKey, int numDataUnits, int numParityUnits) {
     RawErasureCoder rawCoder = createRawCoder(getConf(),
-        rawCoderFactoryKey, true);
+        rawCoderFactoryKey, true, numDataUnits, numParityUnits);
     return (RawErasureEncoder) rawCoder;
   }
 
@@ -67,7 +69,8 @@ public abstract class AbstractErasureCoder
    * @return raw coder
    */
   public static RawErasureCoder createRawCoder(Configuration conf,
-      String rawCoderFactoryKey, boolean isEncoder) {
+      String rawCoderFactoryKey, boolean isEncoder, int numDataUnits,
+                                               int numParityUnits) {
 
     if (conf == null) {
       return null;
@@ -90,7 +93,8 @@ public abstract class AbstractErasureCoder
       throw new RuntimeException("Failed to create raw coder", e);
     }
 
-    return isEncoder ? fact.createEncoder() : fact.createDecoder();
+    return isEncoder ? fact.createEncoder(numDataUnits, numParityUnits) :
+            fact.createDecoder(numDataUnits, numParityUnits);
   }
 
   @Override

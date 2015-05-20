@@ -32,9 +32,8 @@ public class XORErasureDecoder extends AbstractErasureDecoder {
   @Override
   protected ErasureCodingStep prepareDecodingStep(final ECBlockGroup blockGroup) {
     // May be configured
-    RawErasureDecoder rawDecoder = new XORRawDecoder();
-    rawDecoder.initialize(getNumDataUnits(),
-        getNumParityUnits(), getChunkSize());
+    RawErasureDecoder rawDecoder = new XORRawDecoder(
+            getNumDataUnits(), getNumParityUnits());
 
     ECBlock[] inputBlocks = getInputBlocks(blockGroup);
 

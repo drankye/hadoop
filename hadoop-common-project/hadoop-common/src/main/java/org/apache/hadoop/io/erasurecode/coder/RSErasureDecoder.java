@@ -45,12 +45,11 @@ public class RSErasureDecoder extends AbstractErasureDecoder {
   private RawErasureDecoder checkCreateRSRawDecoder() {
     if (rsRawDecoder == null) {
       rsRawDecoder = createRawDecoder(
-          CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY);
+          CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY,
+              getNumDataUnits(), getNumParityUnits());
       if (rsRawDecoder == null) {
-        rsRawDecoder = new RSRawDecoder();
+        rsRawDecoder = new RSRawDecoder(getNumDataUnits(), getNumParityUnits());
       }
-      rsRawDecoder.initialize(getNumDataUnits(),
-          getNumParityUnits(), getChunkSize());
     }
     return rsRawDecoder;
   }

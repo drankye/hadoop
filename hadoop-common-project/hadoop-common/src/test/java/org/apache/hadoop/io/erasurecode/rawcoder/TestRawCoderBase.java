@@ -22,6 +22,8 @@ import org.apache.hadoop.io.erasurecode.TestCoderBase;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
+
 /**
  * Raw coder test base with utilities.
  */
@@ -190,12 +192,14 @@ public abstract class TestRawCoderBase extends TestCoderBase {
   protected RawErasureEncoder createEncoder() {
     RawErasureEncoder encoder;
     try {
-      encoder = encoderClass.newInstance();
+      Constructor<RawErasureEncoder> constructor =
+              (Constructor<RawErasureEncoder>)
+              encoderClass.getConstructor(int.class, int.class);
+      encoder = constructor.newInstance(numDataUnits, numParityUnits);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create encoder", e);
     }
 
-    encoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     encoder.setConf(getConf());
     return encoder;
   }
@@ -207,12 +211,14 @@ public abstract class TestRawCoderBase extends TestCoderBase {
   protected RawErasureDecoder createDecoder() {
     RawErasureDecoder decoder;
     try {
-      decoder = decoderClass.newInstance();
+      Constructor<RawErasureDecoder> constructor =
+              (Constructor<RawErasureDecoder>)
+              decoderClass.getConstructor(int.class, int.class);
+      decoder = constructor.newInstance(numDataUnits, numParityUnits);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create decoder", e);
     }
 
-    decoder.initialize(numDataUnits, numParityUnits, getChunkSize());
     decoder.setConf(getConf());
     return decoder;
   }
