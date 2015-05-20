@@ -61,7 +61,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     try {
       performTestCoding(baseChunkSize, true, false);
-      Assert.fail("Encoding test with bad input passed");
+      Assert.fail("Encoding test with bad input should fail");
     } catch (Exception e) {
       // Expected
     }
@@ -77,7 +77,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     try {
       performTestCoding(baseChunkSize, false, true);
-      Assert.fail("Decoding test with bad output passed");
+      Assert.fail("Decoding test with bad output should fail");
     } catch (Exception e) {
       // Expected
     }
@@ -147,7 +147,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create encoder", e);
     }
 
-    encoder.initialize(numDataUnits, numParityUnits, getChunkSize());
+    encoder.initialize(numDataUnits, numParityUnits);
     encoder.setConf(getConf());
     return encoder;
   }
@@ -164,7 +164,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       throw new RuntimeException("Failed to create decoder", e);
     }
 
-    decoder.initialize(numDataUnits, numParityUnits, getChunkSize());
+    decoder.initialize(numDataUnits, numParityUnits);
     decoder.setConf(getConf());
     return decoder;
   }
