@@ -21,6 +21,7 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * An abstract raw erasure decoder that's to be inherited by new decoders.
@@ -34,14 +35,16 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
-    int dataLen = inputs[0].remaining();
+
+    ByteBuffer validInput = findFirstValidInput(inputs);
+    int dataLen = validInput.remaining();
     if (dataLen == 0) {
       return;
     }
-    ensureLength(inputs, dataLen);
-    ensureLength(outputs, dataLen);
+    ensureLength(inputs, true, dataLen);
+    ensureLength(outputs, false, dataLen);
 
-    boolean usingDirectBuffer = inputs[0].isDirect();
+    boolean usingDirectBuffer = validInput.isDirect();
     if (usingDirectBuffer) {
       doDecode(inputs, erasedIndexes, outputs);
       return;
@@ -55,8 +58,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     ByteBuffer buffer;
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      inputOffsets[i] = buffer.position();
-      newInputs[i] = buffer.array();
+      if (buffer != null) {
+        inputOffsets[i] = buffer.position();
+        newInputs[i] = buffer.array();
+      }
     }
 
     for (int i = 0; i < outputs.length; ++i) {
@@ -70,7 +75,10 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
 
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
+      if (buffer != null) {
+        // dataLen bytes consumed
+        buffer.position(inputOffsets[i] + dataLen);
+      }
     }
   }
 
@@ -86,12 +94,14 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     checkParameters(inputs, erasedIndexes, outputs);
-    int dataLen = inputs[0].length;
+
+    byte[] validInput = findFirstValidInput(inputs);
+    int dataLen = validInput.length;
     if (dataLen == 0) {
       return;
     }
-    ensureLength(inputs, dataLen);
-    ensureLength(outputs, dataLen);
+    ensureLength(inputs, true, dataLen);
+    ensureLength(outputs, false, dataLen);
 
     int[] inputOffsets = new int[inputs.length]; // ALL ZERO
     int[] outputOffsets = new int[outputs.length]; // ALL ZERO
@@ -144,5 +154,54 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
       throw new HadoopIllegalArgumentException(
           "Too many erased, not recoverable");
     }
+
+    int validInputs = 0;
+    for (int i = 0; i < inputs.length; ++i) {
+      if (inputs[i] != null) {
+        validInputs += 1;
+      }
+    }
+
+    if (validInputs < getNumDataUnits()) {
+      throw new HadoopIllegalArgumentException(
+          "No enough valid inputs are provided, not recoverable");
+    }
+  }
+
+  /**
+   * Get indexes into inputs array for items marked as null, either erased or
+   * not to read.
+   * @return indexes into inputs array
+   */
+  protected int[] getErasedOrNotToReadIndexes(Object[] inputs) {
+    int[] invalidIndexes = new int[inputs.length];
+    int idx = 0;
+    for (int i = 0; i < inputs.length; i++) {
+      if (inputs[i] == null) {
+        invalidIndexes[idx++] = i;
+      }
+    }
+
+    return Arrays.copyOf(invalidIndexes, idx);
+  }
+
+  /**
+   * Find the valid input from all the inputs.
+   * @param inputs
+   * @return the first valid input
+   */
+  protected static <T> T findFirstValidInput(T[] inputs) {
+    if (inputs[0] != null) {
+      return inputs[0];
+    }
+
+    for (int i = 1; i < inputs.length; i++) {
+      if (inputs[i] != null) {
+        return inputs[i];
+      }
+    }
+
+    throw new HadoopIllegalArgumentException(
+        "Invalid inputs are found, all being null");
   }
 }
