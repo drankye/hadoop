@@ -98,17 +98,14 @@ public abstract class AbstractErasureCoder
   }
 
   @Override
-  public void initialize(int numDataUnits, int numParityUnits,
-                         int chunkSize) {
+  public void initialize(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
-    this.chunkSize = chunkSize;
   }
 
   @Override
   public void initialize(ECSchema schema) {
-      initialize(schema.getNumDataUnits(), schema.getNumParityUnits(),
-          schema.getChunkSize());
+      initialize(schema.getNumDataUnits(), schema.getNumParityUnits());
   }
 
   @Override
