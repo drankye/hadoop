@@ -30,12 +30,6 @@ import org.apache.hadoop.io.erasurecode.grouper.BlockGrouper;
 public interface ErasureCodec extends Configurable {
 
   /**
-   * Set EC schema to be used by this codec.
-   * @param schema
-   */
-  public void setSchema(ECSchema schema);
-
-  /**
    * Create block grouper
    * @return block grouper
    */

@@ -33,9 +33,8 @@ import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
 public abstract class AbstractErasureCoder
     extends Configured implements ErasureCoder {
 
-  private int numDataUnits;
-  private int numParityUnits;
-  private int chunkSize;
+  private final int numDataUnits;
+  private final int numParityUnits;
 
   /**
    * Create raw decoder using the factory specified by rawCoderFactoryKey
@@ -97,15 +96,13 @@ public abstract class AbstractErasureCoder
             fact.createDecoder(numDataUnits, numParityUnits);
   }
 
-  @Override
-  public void initialize(int numDataUnits, int numParityUnits) {
+  public AbstractErasureCoder(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
   }
 
-  @Override
-  public void initialize(ECSchema schema) {
-      initialize(schema.getNumDataUnits(), schema.getNumParityUnits());
+  public AbstractErasureCoder(ECSchema schema) {
+      this(schema.getNumDataUnits(), schema.getNumParityUnits());
   }
 
   @Override
@@ -119,12 +116,7 @@ public abstract class AbstractErasureCoder
   }
 
   @Override
-  public int getChunkSize() {
-    return chunkSize;
-  }
-
-  @Override
-  public boolean preferNativeBuffer() {
+  public boolean preferDirectBuffer() {
     return false;
   }
 
