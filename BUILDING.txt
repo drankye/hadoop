@@ -72,6 +72,8 @@ Optional packages:
 
 * Snappy compression
   $ sudo apt-get install snappy libsnappy-dev
+* Intel ISA-L library for erasure coding
+  Please refer to https://01.org/intel%C2%AE-storage-acceleration-library-open-source-version
 * Bzip2
   $ sudo apt-get install bzip2 libbz2-dev
 * Jansson (C Library for JSON)
@@ -176,6 +178,29 @@ Maven build goals:
   * -Dtest=<TESTCLASSNAME>,<TESTCLASSNAME#METHODNAME>,....
   * -Dtest.exclude=<TESTCLASSNAME>
   * -Dtest.exclude.pattern=**/<TESTCLASSNAME1>.java,**/<TESTCLASSNAME2>.java
+
+ Erasurecode build options:
+
+   Intel ISA-L is a erasure coding library that can be utilized by the native code.
+   It is currently an optional component, meaning that Hadoop can be built with
+   or without this dependency.
+
+  * Use -Drequire.erasurecode to fail the build if libisal.so is not found.
+    If this option is not specified and the isal library is missing,
+    we silently build a version of libhadoop.so that cannot make use of ISA-L and
+    the native raw erasure coders.
+    This option is recommended if you plan on making use of native raw erasure
+    coders and want to get more repeatable builds.
+
+  * Use -Derasurecode.prefix to specify a nonstandard location for the libisal
+    library files. You do not need this option if you have
+    installed isal using a package manager.
+  * Use -Derasurecode.lib to specify a nonstandard location for the libisal library
+    files.  Similarly to erasurecode.prefix, you do not need this option if you have
+    installed ISA-L using a package manager.
+  * Use -Dbundle.erasurecode to copy the contents of the erasurecode.lib directory into
+    the final tar file. This option requires that -Derasurecode.lib is also given,
+    and it ignores the -Derasurecode.prefix option.
 
 ----------------------------------------------------------------------------------
 Building components separately
