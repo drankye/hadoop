@@ -156,6 +156,13 @@ if (ERASURECODE_LIBRARY)
         )
         target_link_libraries(erasure_code_test ${CMAKE_DL_LIBS})
 
+        add_executable(erasure_coder_sample
+            ${D}/io/erasurecode/erasure_code.c
+            ${D}/io/erasurecode/erasure_coder.c
+            ${D}/io/erasurecode/erasure_coder_sample.c
+        )
+        target_link_libraries(erasure_coder_sample ${CMAKE_DL_LIBS})
+
 endif (ERASURECODE_LIBRARY)
 
 
