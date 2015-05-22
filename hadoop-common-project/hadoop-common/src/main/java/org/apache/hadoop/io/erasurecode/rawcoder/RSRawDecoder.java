@@ -49,13 +49,15 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
    *
    */
   // Reused buffers for decoding with bytes arrays
-  private byte[][] bytesArrayBuffers;
-  private byte[][] adjustedByteArrayOutputsParameter;
-  private int[] adjustedOutputOffsets;
+  private byte[][] bytesArrayBuffers = new byte[getNumParityUnits()][];
+  private byte[][] adjustedByteArrayOutputsParameter =
+      new byte[getNumParityUnits()][];
+  private int[] adjustedOutputOffsets = new int[getNumParityUnits()];
 
   // Reused buffers for decoding with direct ByteBuffers
-  private ByteBuffer[] directBuffers;
-  private ByteBuffer[] adjustedDirectBufferOutputsParameter;
+  private ByteBuffer[] directBuffers = new ByteBuffer[getNumParityUnits()];
+  private ByteBuffer[] adjustedDirectBufferOutputsParameter =
+      new ByteBuffer[getNumParityUnits()];
 
   @Override
   public void initialize(int numDataUnits, int numParityUnits, int chunkSize) {
@@ -100,8 +102,6 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   protected void doDecode(byte[][] inputs, int[] inputOffsets,
                           int dataLen, int[] erasedIndexes,
                           byte[][] outputs, int[] outputOffsets) {
-    ensureBytesArrayBuffers(dataLen);
-
     /**
      * As passed parameters are friendly to callers but not to the underlying
      * implementations, so we have to adjust them before calling doDecodeImpl.
@@ -110,23 +110,38 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
 
     // Prepare for adjustedOutputsParameter
-    int bufferIdx = 0;
-    for (int i = 0; i < adjustedByteArrayOutputsParameter.length; i++) {
-      adjustedByteArrayOutputsParameter[i] =
-          resetBuffer(bytesArrayBuffers[bufferIdx++], 0, dataLen);
-      adjustedOutputOffsets[i] = 0; // Always 0 for such temp output
+
+    // First reset the positions needed this time
+    for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
+      adjustedByteArrayOutputsParameter[i] = null;
+      adjustedOutputOffsets[i] = 0;
     }
 
-    int outputIdx = 0;
-    for (int i = 0; i < erasedIndexes.length; i++, outputIdx++) {
+    // Use the caller passed buffers in erasedIndexes positions
+    for (int outputIdx = 0, i = 0; i < erasedIndexes.length; i++, outputIdx++) {
+      boolean found = false;
       for (int j = 0; j < erasedOrNotToReadIndexes.length; j++) {
         // If this index is one requested by the caller via erasedIndexes, then
         // we use the passed output buffer to avoid copying data thereafter.
         if (erasedIndexes[i] == erasedOrNotToReadIndexes[j]) {
+          found = true;
           adjustedByteArrayOutputsParameter[j] =
               resetBuffer(outputs[outputIdx], 0, dataLen);
           adjustedOutputOffsets[j] = outputOffsets[outputIdx];
         }
+      }
+      if (!found) {
+        throw new HadoopIllegalArgumentException(
+            "Inputs not fully corresponding to erasedIndexes in null places");
+      }
+    }
+
+    // Use shared buffers for other positions (not set yet)
+    for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
+      if (adjustedByteArrayOutputsParameter[i] == null) {
+        adjustedByteArrayOutputsParameter[i] = resetBuffer(
+            checkGetBytesArrayBuffer(bufferIdx, dataLen),0, dataLen);
+        adjustedOutputOffsets[i] = 0; // Always 0 for such temp output
       }
     }
 
@@ -139,7 +154,6 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
                           ByteBuffer[] outputs) {
     ByteBuffer validInput = findFirstValidInput(inputs);
     int dataLen = validInput.remaining();
-    ensureDirectBuffers(dataLen);
 
     /**
      * As passed parameters are friendly to callers but not to the underlying
@@ -149,63 +163,52 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
 
     // Prepare for adjustedDirectBufferOutputsParameter
-    int bufferIdx = 0;
-    for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
-      ByteBuffer buffer = directBuffers[bufferIdx++];
-      buffer.limit(dataLen);
-      adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer);
-    }
 
-    int outputIdx = 0;
-    for (int i = 0; i < erasedIndexes.length; i++) {
+    // First reset the positions needed this time
+    for (int i = 0; i < erasedOrNotToReadIndexes.length; i++) {
+      adjustedDirectBufferOutputsParameter[i] = null;
+    }
+    // Use the caller passed buffers in erasedIndexes positions
+    for (int outputIdx = 0, i = 0; i < erasedIndexes.length; i++) {
+      boolean found = false;
       for (int j = 0; j < erasedOrNotToReadIndexes.length; j++) {
         // If this index is one requested by the caller via erasedIndexes, then
         // we use the passed output buffer to avoid copying data thereafter.
         if (erasedIndexes[i] == erasedOrNotToReadIndexes[j]) {
+          found = true;
           adjustedDirectBufferOutputsParameter[j] =
               resetBuffer(outputs[outputIdx++]);
         }
       }
+      if (!found) {
+        throw new HadoopIllegalArgumentException(
+            "Inputs not fully corresponding to erasedIndexes in null places");
+      }
+    }
+    // Use shared buffers for other positions (not set yet)
+    for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
+      ByteBuffer buffer = checkGetDirectBuffer(bufferIdx++, dataLen);
+      buffer.limit(dataLen);
+      adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer);
     }
 
     doDecodeImpl(inputs, erasedOrNotToReadIndexes,
         adjustedDirectBufferOutputsParameter);
   }
 
-  private void ensureBytesArrayBuffers(int dataLen) {
-    if (bytesArrayBuffers == null || bytesArrayBuffers[0].length < dataLen) {
-      /**
-       * Create this set of buffers on demand, which is only needed at the first
-       * time running into this, using bytes array.
-       */
-      // Erased or not to read
-      int maxInvalidUnits = getNumParityUnits();
-      adjustedByteArrayOutputsParameter = new byte[maxInvalidUnits][];
-      adjustedOutputOffsets = new int[maxInvalidUnits];
-
-      // These are temp buffers for both inputs and outputs
-      bytesArrayBuffers = new byte[maxInvalidUnits * 2][];
-      for (int i = 0; i < bytesArrayBuffers.length; ++i) {
-        bytesArrayBuffers[i] = new byte[dataLen];
-      }
+  private byte[] checkGetBytesArrayBuffer(int idx, int bufferLen) {
+    if (bytesArrayBuffers[idx] == null ||
+        bytesArrayBuffers[idx].length < bufferLen) {
+        bytesArrayBuffers[idx] = new byte[bufferLen];
     }
+    return bytesArrayBuffers[idx];
   }
 
-  private void ensureDirectBuffers(int dataLen) {
-    if (directBuffers == null || directBuffers[0].capacity() < dataLen) {
-      /**
-       * Create this set of buffers on demand, which is only needed at the first
-       * time running into this, using DirectBuffer.
-       */
-      // Erased or not to read
-      int maxInvalidUnits = getNumParityUnits();
-      adjustedDirectBufferOutputsParameter = new ByteBuffer[maxInvalidUnits];
-
-      // These are temp buffers for both inputs and outputs
-      directBuffers = new ByteBuffer[maxInvalidUnits * 2];
-      for (int i = 0; i < directBuffers.length; i++) {
-        directBuffers[i] = ByteBuffer.allocateDirect(dataLen);
-      }
+  private ByteBuffer checkGetDirectBuffer(int idx, int bufferLen) {
+    if (directBuffers[idx] == null ||
+        directBuffers[idx].capacity() < bufferLen) {
+      directBuffers[idx] = ByteBuffer.allocateDirect(bufferLen);
     }
+    return directBuffers[idx];
   }
 }
