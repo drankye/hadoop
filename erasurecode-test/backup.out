@@ -1,0 +1,33 @@
+erasure_code_test: 127x8192  - erase list =  0 3 4 - Index =  1 2 5 6 7 8
+encode_matrix:
+  1  0  0  0  0  0
+  0  1  0  0  0  0
+  0  0  1  0  0  0
+  0  0  0  1  0  0
+  0  0  0  0  1  0
+  0  0  0  0  0  1
+ 7a ba 47 a7 8e f4
+ ba 7a a7 47 f4 8e
+ ad 9d dd 98 3d aa
+
+inv b:
+ d2 c5 d9 14 49 41
+  1  0  0  0  0  0
+  0  1  0  0  0  0
+ 96 cf b0 55 ef 78
+ 7b 40 50 2c f3  f
+  0  0  1  0  0  0
+
+
+decode_matrix:
+ d2 c5 d9 14 49 41
+ 96 cf b0 55 ef 78
+ 7b 40 50 2c f3  f
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+  0  0  0  0  0  0
+
+done EC tests: Pass

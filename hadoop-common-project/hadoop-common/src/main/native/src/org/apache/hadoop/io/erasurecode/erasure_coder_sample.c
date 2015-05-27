@@ -1,0 +1,103 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * This is a sample program illustrating how to use the Intel ISA-L library.
+ * Note it's adapted from erasure_code_test.c test program, but trying to use
+ * variable names and styles we're more familiar with already similar to Java
+ * coders.
+ */
+
+#include "erasure_code.h"
+#include "gf_util.h"
+#include "erasure_coder.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+  char errMsg[256];
+  load_erasurecode_lib(errMsg, sizeof(errMsg));
+  if (strlen(errMsg) > 0) {
+    // TODO: this may indicate s severe error instead, failing the test.
+    printf("loading erasurecode library failed: %s, skipping this\n", errMsg);
+    return 0;
+  }
+
+  int i, j;
+  int chunkSize = 1024;
+  int numDataUnits = 6;
+  int numParityUnits = 3;
+
+  unsigned char* dataUnits[numDataUnits];
+  unsigned char* parityUnits[numParityUnits];
+
+  // Allocate and generate data units
+  srand(135);
+  for (i = 0; i < numDataUnits; i++) {
+    dataUnits[i] = malloc(chunkSize);
+    for (j = 0; j < chunkSize; j++) {
+      dataUnits[i][j] = rand();
+    }
+  }
+
+  // Allocate and initialize parity units
+  for (i = 0; i < numParityUnits; i++) {
+    parityUnits[i] = malloc(chunkSize);
+    for (j = 0; j < chunkSize; j++) {
+      parityUnits[i][j] = 0;
+    }
+  }
+
+  EncoderState* pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
+  memset(pEncoder, 0, sizeof(*pEncoder));
+  initEncoder(pEncoder, numDataUnits, numParityUnits, NULL);
+  encode(pEncoder, dataUnits, parityUnits, chunkSize);
+
+  DecoderState* pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
+  memset(pDecoder, 0, sizeof(*pDecoder));
+  initDecoder(pDecoder, numDataUnits, numParityUnits, NULL);
+
+  unsigned char* allUnits[MMAX];
+  memcpy(allUnits, dataUnits, numDataUnits * (sizeof (unsigned char*)));
+  memcpy(allUnits + numDataUnits, parityUnits,
+                            numParityUnits * (sizeof (unsigned char*)));
+
+  int erasedIndexes[2];
+  erasedIndexes[0] = 1;
+  erasedIndexes[1] = 7;
+  unsigned char* decodingOutput[2];
+  decodingOutput[0] = malloc(chunkSize);
+  decodingOutput[1] = malloc(chunkSize);
+
+  decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
+
+  for (i = 0; i < pDecoder->numErased; i++) {
+    if (0 != memcmp(decodingOutput[i],
+                     allUnits[pDecoder->erasedIndexes[i]], chunkSize)) {
+      dumpDecoder(pDecoder);
+      return -1;
+    }
+  }
+
+  dumpDecoder(pDecoder);
+  printf("done EC tests: Pass\n");
+
+  return 0;
+}
