@@ -398,6 +398,9 @@
             <kdc.resource.dir>${kdc.resource.dir}</kdc.resource.dir>
             <runningWithNative>${runningWithNative}</runningWithNative>
           </systemPropertyVariables>
+          <excludes>
+            <exclude>**/*Test*.java</exclude>
+          </excludes>
           <properties>
             <property>
               <name>listener</name>
@@ -444,23 +447,6 @@
 
                 <copy toDir="${project.build.directory}/test-classes">
                   <fileset dir="${basedir}/src/main/conf"/>
-                </copy>
-              </target>
-            </configuration>
-          </execution>
-          <execution>
-            <id>copy-test-tarballs</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <copy toDir="${test.cache.data}">
-                  <fileset dir="${basedir}/src/test/java/org/apache/hadoop/fs">
-                    <include name="test-untar.tar"/>
-                    <include name="test-untar.tgz"/>
-                  </fileset>
                 </copy>
               </target>
             </configuration>
@@ -575,6 +561,9 @@
         <openssl.prefix></openssl.prefix>
         <openssl.lib></openssl.lib>
         <openssl.include></openssl.include>
+        <require.erasurecode>false</require.erasurecode>
+        <erasurecode.prefix></erasurecode.prefix>
+        <erasurecode.lib></erasurecode.lib>
         <require.openssl>false</require.openssl>
         <runningWithNative>true</runningWithNative>
         <bundle.openssl.in.bin>false</bundle.openssl.in.bin>
@@ -650,7 +639,7 @@
                 <configuration>
                   <target>
                     <exec executable="cmake" dir="${project.build.directory}/native" failonerror="true">
-                      <arg line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_BZIP2=${require.bzip2} -DREQUIRE_SNAPPY=${require.snappy} -DCUSTOM_SNAPPY_PREFIX=${snappy.prefix} -DCUSTOM_SNAPPY_LIB=${snappy.lib} -DCUSTOM_SNAPPY_INCLUDE=${snappy.include} -DREQUIRE_OPENSSL=${require.openssl} -DCUSTOM_OPENSSL_PREFIX=${openssl.prefix} -DCUSTOM_OPENSSL_LIB=${openssl.lib} -DCUSTOM_OPENSSL_INCLUDE=${openssl.include} -DEXTRA_LIBHADOOP_RPATH=${extra.libhadoop.rpath}"/>
+                      <arg line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_BZIP2=${require.bzip2} -DREQUIRE_SNAPPY=${require.snappy} -DCUSTOM_SNAPPY_PREFIX=${snappy.prefix} -DCUSTOM_SNAPPY_LIB=${snappy.lib} -DCUSTOM_SNAPPY_INCLUDE=${snappy.include} -DREQUIRE_ERASURECODE=${require.erasurecode} -DCUSTOM_ERASURECODE_PREFIX=${erasurecode.prefix} -DCUSTOM_ERASURECODE_LIB=${erasurecode.lib} -DREQUIRE_OPENSSL=${require.openssl} -DCUSTOM_OPENSSL_PREFIX=${openssl.prefix} -DCUSTOM_OPENSSL_LIB=${openssl.lib} -DCUSTOM_OPENSSL_INCLUDE=${openssl.include} -DEXTRA_LIBHADOOP_RPATH=${extra.libhadoop.rpath}"/>
                     </exec>
                     <exec executable="make" dir="${project.build.directory}/native" failonerror="true">
                       <arg line="VERBOSE=1"/>
@@ -666,16 +655,44 @@
                 <phase>test</phase>
                 <goals><goal>run</goal></goals>
                 <configuration>
-                  <target>
-                    <exec executable="sh" failonerror="true" dir="${project.build.directory}/native">
-                      <arg value="-c"/>
-                      <arg value="[ x$SKIPTESTS = xtrue ] || ${project.build.directory}/native/test_bulk_crc32"/>
-                      <env key="SKIPTESTS" value="${skipTests}"/>
+                  <skip>${skipTests}</skip>
+                  <tasks>
+                    <taskdef resource="net/sf/antcontrib/antcontrib.properties"
+                             classpathref="maven.plugin.classpath" />
+                    <property name="compile_classpath" refid="maven.compile.classpath"/>
+                    <property name="test_classpath" refid="maven.test.classpath"/>
+                    <property name="native_dir" value="${project.build.directory}/native"/>
+
+                    <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}">
+                      <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
                     </exec>
-                  </target>
+
+                    <exec executable="${native_dir}/check_native_lib" resultproperty="erasureCodeLibAvailable" dir="${native_dir}">
+                      <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
+                      <arg value="HADOOP_ERASURECODE_LIBRARY"/>
+                    </exec>
+                    <if>
+                      <equals arg1="${erasureCodeLibAvailable}" arg2="0"/>
+                      <then>
+                        <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}">
+                          <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
+                        </exec>
+                      </then>
+                      <else>
+                        <echo message="Erasure code native library isn't available, test skipped: ${erasureCodeLibAvailable}" />
+                      </else>
+                    </if>
+                  </tasks>
                 </configuration>
               </execution>
             </executions>
+            <dependencies>
+              <dependency>
+                <groupId>ant-contrib</groupId>
+                <artifactId>ant-contrib</artifactId>
+                <version>20020829</version>
+              </dependency>
+            </dependencies>
           </plugin>
         </plugins>
       </build>
@@ -692,6 +709,9 @@
         <snappy.prefix></snappy.prefix>
         <snappy.lib></snappy.lib>
         <snappy.include></snappy.include>
+        <require.erasurecode>false</require.erasurecode>
+        <erasurecode.prefix></erasurecode.prefix>
+        <erasurecode.lib></erasurecode.lib>
         <require.snappy>false</require.snappy>
         <bundle.snappy.in.bin>true</bundle.snappy.in.bin>
         <openssl.prefix></openssl.prefix>
@@ -798,6 +818,9 @@
                     <argument>/p:CustomOpensslLib=${openssl.lib}</argument>
                     <argument>/p:CustomOpensslInclude=${openssl.include}</argument>
                     <argument>/p:RequireOpenssl=${require.openssl}</argument>
+                    <argument>/p:RequireErasurecode=${require.erasurecode}</argument>
+                    <argument>/p:CustomErasurecodePrefix=${erasurecode.prefix}</argument>
+                    <argument>/p:CustomErasurecodeLib=${erasurecode.lib}</argument>
                   </arguments>
                 </configuration>
               </execution>
