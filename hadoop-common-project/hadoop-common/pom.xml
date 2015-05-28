@@ -398,9 +398,6 @@
             <kdc.resource.dir>${kdc.resource.dir}</kdc.resource.dir>
             <runningWithNative>${runningWithNative}</runningWithNative>
           </systemPropertyVariables>
-          <excludes>
-            <exclude>**/*Test*.java</exclude>
-          </excludes>
           <properties>
             <property>
               <name>listener</name>
@@ -447,6 +444,23 @@
 
                 <copy toDir="${project.build.directory}/test-classes">
                   <fileset dir="${basedir}/src/main/conf"/>
+                </copy>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-test-tarballs</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <copy toDir="${test.cache.data}">
+                  <fileset dir="${basedir}/src/test/java/org/apache/hadoop/fs">
+                    <include name="test-untar.tar"/>
+                    <include name="test-untar.tgz"/>
+                  </fileset>
                 </copy>
               </target>
             </configuration>
@@ -659,24 +673,15 @@
                   <tasks>
                     <taskdef resource="net/sf/antcontrib/antcontrib.properties"
                              classpathref="maven.plugin.classpath" />
-                    <property name="compile_classpath" refid="maven.compile.classpath"/>
-                    <property name="test_classpath" refid="maven.test.classpath"/>
                     <property name="native_dir" value="${project.build.directory}/native"/>
-
-                    <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}">
-                      <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
-                    </exec>
-
+                    <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}"/>
                     <exec executable="${native_dir}/check_native_lib" resultproperty="erasureCodeLibAvailable" dir="${native_dir}">
-                      <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
                       <arg value="HADOOP_ERASURECODE_LIBRARY"/>
                     </exec>
                     <if>
                       <equals arg1="${erasureCodeLibAvailable}" arg2="0"/>
                       <then>
-                        <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}">
-                          <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin"/>
-                        </exec>
+                        <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}"/>
                       </then>
                       <else>
                         <echo message="Erasure code native library isn't available, test skipped: ${erasureCodeLibAvailable}" />
