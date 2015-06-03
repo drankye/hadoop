@@ -540,6 +540,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     // Parse group to get chosen DN location
     LocatedBlock[] blks = StripedBlockUtil.
         parseStripedBlockGroup(blockGroup, cellSize, dataBlkNum, parityBlkNum);
+    // Fetch all data blocks initially since we need them in all cases
     for (short i = 0; i < dataBlkNum; i++) {
       if (alignedStripe.chunks[i] != null
           && alignedStripe.chunks[i].state != StripingChunk.ALLZERO) {
@@ -578,12 +579,16 @@ public class DFSStripedInputStream extends DFSInputStream {
           if (decodeInputs == null) {
             decodeInputs = initDecodeInputs(alignedStripe, dataBlkNum, parityBlkNum);
           }
-          for (int i = 0; i < alignedStripe.chunks.length; i++) {
+
+          // A data block or parity block failed to fetch, then look forward to
+          // other parity block
+          for (int i = dataBlkNum; i < alignedStripe.chunks.length; i++) {
             StripingChunk chunk = alignedStripe.chunks[i];
             Preconditions.checkNotNull(chunk);
-            if (chunk.state == StripingChunk.REQUESTED && i <= dataBlkNum) {
+            if (chunk.state == StripingChunk.REQUESTED) {
               fetchOneStripingChunk(futures, service, blks[i], alignedStripe, i,
                   corruptedBlockMap);
+              break;
             }
           }
         }
@@ -597,9 +602,10 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
 
     if (alignedStripe.missingChunksNum > 0) {
-      finalizeDecodeInputs(decodeInputs, alignedStripe);
-      decodeAndFillBuffer(decodeInputs, buf, alignedStripe, parityBlkNum,
-          decoder);
+      byte[][] adjustedDecodeInputs = finalizeDecodeInputs(
+          decodeInputs, dataBlkNum, parityBlkNum, alignedStripe);
+      decodeAndFillBuffer(adjustedDecodeInputs, buf, alignedStripe,
+          dataBlkNum, parityBlkNum, decoder);
     }
   }
 

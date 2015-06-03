@@ -29,6 +29,7 @@ import org.apache.hadoop.hdfs.web.ByteRangeInputStream;
 import org.apache.hadoop.hdfs.web.WebHdfsConstants;
 import org.apache.hadoop.hdfs.web.WebHdfsTestUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.RSRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -39,35 +40,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
-public class TestWriteReadStripedFile {
-  private static int dataBlocks = HdfsConstants.NUM_DATA_BLOCKS;
-  private static int parityBlocks = HdfsConstants.NUM_PARITY_BLOCKS;
-
-  private final static int cellSize = HdfsConstants.BLOCK_STRIPED_CELL_SIZE;
-  private final static int stripesPerBlock = 4;
-  static int blockSize = cellSize * stripesPerBlock;
-  static int numDNs = dataBlocks + parityBlocks + 2;
-
-  private static MiniDFSCluster cluster;
-  private static Configuration conf;
-  private static FileSystem fs;
-
-  private static Random r= new Random();
+public class TestWriteReadStripedFile extends TestWriteReadStrippedFileBase {
 
   @BeforeClass
   public static void setup() throws IOException {
-    conf = new Configuration();
-    conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDNs).build();
-    cluster.getFileSystem().getClient().createErasureCodingZone("/", null, cellSize);
-    fs = cluster.getFileSystem();
+    performSetup();
   }
 
   @AfterClass
   public static void tearDown() {
-    if (cluster != null) {
-      cluster.shutdown();
-    }
+    performTearDown();
   }
 
   @Test
@@ -152,31 +134,6 @@ public class TestWriteReadStripedFile {
             + cellSize + 123);
   }
 
-  private byte[] generateBytes(int cnt) {
-    byte[] bytes = new byte[cnt];
-    for (int i = 0; i < cnt; i++) {
-      bytes[i] = getByte(i);
-    }
-    return bytes;
-  }
-
-  private int readAll(FSDataInputStream in, byte[] buf) throws IOException {
-    int readLen = 0;
-    int ret;
-    do {
-      ret = in.read(buf, readLen, buf.length - readLen);
-      if (ret > 0) {
-        readLen += ret;
-      }
-    } while (ret >= 0 && readLen < buf.length);
-    return readLen;
-  }
-
-  private byte getByte(long pos) {
-    final int mod = 29;
-    return (byte) (pos % mod + 1);
-  }
-
   private void assertSeekAndRead(FSDataInputStream fsdis, int pos,
                                  int writeBytes) throws IOException {
     fsdis.seek(pos);
@@ -204,11 +161,9 @@ public class TestWriteReadStripedFile {
 
     verifyStatefulRead(fs, srcPath, fileLength, expected, largeBuf);
     verifySeek(fs, srcPath, fileLength);
-    verifyStatefulRead(fs, srcPath, fileLength, expected,
-        ByteBuffer.allocate(fileLength + 100));
+    verifyStatefulRead(fs, srcPath, fileLength, expected, ByteBuffer.allocate(fileLength + 100));
     verifyStatefulRead(fs, srcPath, fileLength, expected, smallBuf);
-    verifyStatefulRead(fs, srcPath, fileLength, expected,
-        ByteBuffer.allocate(1024));
+    verifyStatefulRead(fs, srcPath, fileLength, expected, ByteBuffer.allocate(1024));
   }
 
   @Test
@@ -352,44 +307,5 @@ public class TestWriteReadStripedFile {
       }
     }
     in.close();
-  }
-
-  @Test
-  public void testWritePreadWithDNFailure() throws IOException {
-    final int failedDNIdx = 2;
-    final int length = cellSize * (dataBlocks + 2);
-    Path testPath = new Path("/foo");
-    final byte[] bytes = generateBytes(length);
-    DFSTestUtil.writeFile(fs, testPath, new String(bytes));
-
-    // shut down the DN that holds the last internal data block
-    BlockLocation[] locs = fs.getFileBlockLocations(testPath, cellSize * 5,
-        cellSize);
-    String name = (locs[0].getNames())[failedDNIdx];
-    for (DataNode dn : cluster.getDataNodes()) {
-      int port = dn.getXferPort();
-      if (name.contains(Integer.toString(port))) {
-        dn.shutdown();
-        break;
-      }
-    }
-
-    // pread
-    int startOffsetInFile = cellSize * 5;
-    try (FSDataInputStream fsdis = fs.open(testPath)) {
-      byte[] buf = new byte[length];
-      int readLen = fsdis.read(startOffsetInFile, buf, 0, buf.length);
-      Assert.assertEquals("The length of file should be the same to write size",
-          length - startOffsetInFile, readLen);
-
-      byte[] expected = new byte[readLen];
-      for (int i = startOffsetInFile; i < length; i++) {
-        expected[i - startOffsetInFile] = getByte(i);
-      }
-      for (int i = startOffsetInFile; i < length; i++) {
-        Assert.assertEquals("Byte at " + i + " should be the same",
-            expected[i - startOffsetInFile], buf[i - startOffsetInFile]);
-      }
-    }
   }
 }
