@@ -1,48 +1,51 @@
-/* *
- * Copyright (c) 2014, James S. Plank and Kevin Greenan
- * All rights reserved.
- *
- * Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure
- * Coding Techniques
- *
- * Revision 2.0: Galois Field backend now links to GF-Complete
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  - Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  - Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- *  - Neither the name of the University of Tennessee nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
- * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+/* Examples/decoder.c
+ * Catherine D. Schuman, James S. Plank
 
-/* Jerasure's authors:
+Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure Coding Techniques
 
-   Revision 2.x - 2014: James S. Plank and Kevin M. Greenan.
-   Revision 1.2 - 2008: James S. Plank, Scott Simmerman and Catherine D. Schuman.
-   Revision 1.0 - 2007: James S. Plank.
- */
+Revision 1.2A
+May 24, 2011
+
+James S. Plank
+Department of Electrical Engineering and Computer Science
+University of Tennessee
+Knoxville, TN 37996
+plank@cs.utk.edu
+
+Copyright (c) 2011, James S. Plank
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+ - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+ - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+ - Neither the name of the University of Tennessee nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
+*/
 
 /* 
 This program takes as input an inputfile, k, m, a coding
@@ -61,19 +64,14 @@ same arguments, and encoder.c does error check.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <assert.h>
-#include <unistd.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <unistd.h>
 #include "jerasure.h"
 #include "reed_sol.h"
 #include "galois.h"
 #include "cauchy.h"
 #include "liberation.h"
-#include "timing.h"
 
 #define N 10
 
@@ -101,11 +99,11 @@ int main (int argc, char **argv) {
 	
 	/* Parameters */
 	int k, m, w, packetsize, buffersize;
-	int tech;
+	enum Coding_Technique tech;
 	char *c_tech;
 	
-	int i, j;				// loop control variable, s
-	int blocksize = 0;			// size of individual files
+	int i, j;				// loop control variables
+	int blocksize;			// size of individual files
 	int origsize;			// size of file before padding
 	int total;				// used to write data, not padding to file
 	struct stat status;		// used to find size of individual files
@@ -119,7 +117,8 @@ int main (int argc, char **argv) {
 	char *curdir;
 
 	/* Used to time decoding */
-	struct timing t1, t2, t3, t4;
+	struct timeval t1, t2, t3, t4;
+	struct timezone tz;
 	double tsec;
 	double totalsec;
 
@@ -131,15 +130,15 @@ int main (int argc, char **argv) {
 	totalsec = 0.0;
 	
 	/* Start timing */
-	timing_set(&t1);
+	gettimeofday(&t1, &tz);
 
 	/* Error checking parameters */
 	if (argc != 2) {
 		fprintf(stderr, "usage: inputfile\n");
 		exit(0);
 	}
-	curdir = (char *)malloc(sizeof(char)*1000);
-	assert(curdir == getcwd(curdir, 1000));
+	curdir = (char *)malloc(sizeof(char)*100);
+	getcwd(curdir, 100);
 	
 	/* Begin recreation of file names */
 	cs1 = (char*)malloc(sizeof(char)*strlen(argv[1]));
@@ -158,7 +157,7 @@ int main (int argc, char **argv) {
 	} else {
            extension = strdup("");
         }	
-	fname = (char *)malloc(sizeof(char*)*(100+strlen(argv[1])+20));
+	fname = (char *)malloc(sizeof(char*)*(100+strlen(argv[1])+10));
 
 	/* Read in parameters from metadata file */
 	sprintf(fname, "%s/Coding/%s_meta.txt", curdir, cs1);
@@ -168,11 +167,8 @@ int main (int argc, char **argv) {
           fprintf(stderr, "Error: no metadata file %s\n", fname);
           exit(1);
         }
-	temp = (char *)malloc(sizeof(char)*(strlen(argv[1])+20));
-	if (fscanf(fp, "%s", temp) != 1) {
-		fprintf(stderr, "Metadata file - bad format\n");
-		exit(0);
-	}
+	temp = (char *)malloc(sizeof(char)*(strlen(argv[1])+10));
+	fscanf(fp, "%s", temp);	
 	
 	if (fscanf(fp, "%d", &origsize) != 1) {
 		fprintf(stderr, "Original size is not valid\n");
@@ -182,20 +178,11 @@ int main (int argc, char **argv) {
 		fprintf(stderr, "Parameters are not correct\n");
 		exit(0);
 	}
-	c_tech = (char *)malloc(sizeof(char)*(strlen(argv[1])+20));
-	if (fscanf(fp, "%s", c_tech) != 1) {
-		fprintf(stderr, "Metadata file - bad format\n");
-		exit(0);
-	}
-	if (fscanf(fp, "%d", &tech) != 1) {
-		fprintf(stderr, "Metadata file - bad format\n");
-		exit(0);
-	}
+	c_tech = (char *)malloc(sizeof(char)*(strlen(argv[1])+10));
+	fscanf(fp, "%s", c_tech);
+	fscanf(fp, "%d", (int*)&tech);
 	method = tech;
-	if (fscanf(fp, "%d", &readins) != 1) {
-		fprintf(stderr, "Metadata file - bad format\n");
-		exit(0);
-	}
+	fscanf(fp, "%d", &readins);
 	fclose(fp);	
 
 	/* Allocate memory */
@@ -218,7 +205,7 @@ int main (int argc, char **argv) {
 
 	sprintf(temp, "%d", k);
 	md = strlen(temp);
-	timing_set(&t3);
+	gettimeofday(&t3, &tz);
 
 	/* Create coding matrix or bitmatrix */
 	switch(tech) {
@@ -246,9 +233,18 @@ int main (int argc, char **argv) {
 			break;
 		case Liber8tion:
 			bitmatrix = liber8tion_coding_bitmatrix(k);
+		default:
+			fprintf(stderr,  "unsupported coding technique used\n");
+			break;
 	}
-	timing_set(&t4);
-	totalsec += timing_delta(&t3, &t4);
+	gettimeofday(&t4, &tz);
+	tsec = 0.0;
+	tsec += t4.tv_usec;
+	tsec -= t3.tv_usec;
+	tsec /= 1000000.0;
+	tsec += t4.tv_sec;
+	tsec -= t3.tv_sec;
+	totalsec += tsec;
 	
 	/* Begin decoding process */
 	total = 0;
@@ -270,11 +266,11 @@ int main (int argc, char **argv) {
 					stat(fname, &status);
 					blocksize = status.st_size;
 					data[i-1] = (char *)malloc(sizeof(char)*blocksize);
-					assert(blocksize == fread(data[i-1], sizeof(char), blocksize, fp));
+					fread(data[i-1], sizeof(char), blocksize, fp);
 				}
 				else {
 					fseek(fp, blocksize*(n-1), SEEK_SET); 
-					assert(buffersize/k == fread(data[i-1], sizeof(char), buffersize/k, fp));
+					fread(data[i-1], sizeof(char), buffersize/k, fp);
 				}
 				fclose(fp);
 			}
@@ -293,11 +289,11 @@ int main (int argc, char **argv) {
 					stat(fname, &status);
 					blocksize = status.st_size;
 					coding[i-1] = (char *)malloc(sizeof(char)*blocksize);
-					assert(blocksize == fread(coding[i-1], sizeof(char), blocksize, fp));
+					fread(coding[i-1], sizeof(char), blocksize, fp);
 				}
 				else {
 					fseek(fp, blocksize*(n-1), SEEK_SET);
-					assert(blocksize == fread(coding[i-1], sizeof(char), blocksize, fp));
+					fread(coding[i-1], sizeof(char), blocksize, fp);
 				}	
 				fclose(fp);
 			}
@@ -315,7 +311,7 @@ int main (int argc, char **argv) {
 		}
 		
 		erasures[numerased] = -1;
-		timing_set(&t3);
+		gettimeofday(&t3, &tz);
 	
 		/* Choose proper decoding method */
 		if (tech == Reed_Sol_Van || tech == Reed_Sol_R6_Op) {
@@ -328,7 +324,7 @@ int main (int argc, char **argv) {
 			fprintf(stderr, "Not a valid coding technique.\n");
 			exit(0);
 		}
-		timing_set(&t4);
+		gettimeofday(&t4, &tz);
 	
 		/* Exit if decoding was unsuccessful */
 		if (i == -1) {
@@ -364,7 +360,13 @@ int main (int argc, char **argv) {
 		}
 		n++;
 		fclose(fp);
-		totalsec += timing_delta(&t3, &t4);
+		tsec = 0.0;
+		tsec += t4.tv_usec;
+		tsec -= t3.tv_usec;
+		tsec /= 1000000.0;
+		tsec += t4.tv_sec;
+		tsec -= t3.tv_sec;
+		totalsec += tsec;
 	}
 	
 	/* Free allocated memory */
@@ -377,12 +379,15 @@ int main (int argc, char **argv) {
 	free(erased);
 	
 	/* Stop timing and print time */
-	timing_set(&t2);
-	tsec = timing_delta(&t1, &t2);
-	printf("Decoding (MB/sec): %0.10f\n", (((double) origsize)/1024.0/1024.0)/totalsec);
-	printf("De_Total (MB/sec): %0.10f\n\n", (((double) origsize)/1024.0/1024.0)/tsec);
-
-	return 0;
+	gettimeofday(&t2, &tz);
+	tsec = 0;
+	tsec += t2.tv_usec;
+	tsec -= t1.tv_usec;
+	tsec /= 1000000.0;
+	tsec += t2.tv_sec;
+	tsec -= t1.tv_sec;
+	printf("Decoding (MB/sec): %0.10f\n", (origsize/1024/1024)/totalsec);
+	printf("De_Total (MB/sec): %0.10f\n\n", (origsize/1024/1024)/tsec);
 }	
 
 void ctrl_bs_handler(int dummy) {

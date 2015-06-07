@@ -1,47 +1,50 @@
-/* *
- * Copyright (c) 2014, James S. Plank and Kevin Greenan
- * All rights reserved.
- *
- * Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure
- * Coding Techniques
- *
- * Revision 2.0: Galois Field backend now links to GF-Complete
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  - Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  - Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- *  - Neither the name of the University of Tennessee nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
- * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+/* Examples/encoder.c
+ * Catherine D. Schuman, James S. Plank
 
-/* Jerasure's authors:
+Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure Coding Techniques
 
-   Revision 2.x - 2014: James S. Plank and Kevin M. Greenan.
-   Revision 1.2 - 2008: James S. Plank, Scott Simmerman and Catherine D. Schuman.
-   Revision 1.0 - 2007: James S. Plank.
+Revision 1.2A
+May 24, 2011
+
+James S. Plank
+Department of Electrical Engineering and Computer Science
+University of Tennessee
+Knoxville, TN 37996
+plank@cs.utk.edu
+
+Copyright (c) 2011, James S. Plank
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+ - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+ - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+ - Neither the name of the University of Tennessee nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
  */
 
 /* 
@@ -53,25 +56,20 @@ the original file and m of the files are encoded based on
 the given coding technique. The format of the created files 
 is the file name with "_k#" or "_m#" and then the extension.  
 (For example, inputfile test.txt would yield file "test_k1.txt".)
-*/
 
-#include <assert.h>
-#include <time.h>
+ */
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
-#include <gf_rand.h>
-#include <unistd.h>
 #include "jerasure.h"
 #include "reed_sol.h"
+#include "galois.h"
 #include "cauchy.h"
 #include "liberation.h"
-#include "timing.h"
 
 #define N 10
 
@@ -89,9 +87,13 @@ void ctrl_bs_handler(int dummy);
 
 int jfread(void *ptr, int size, int nmembers, FILE *stream)
 {
+  int nd;
+  int *li, i;
   if (stream != NULL) return fread(ptr, size, nmembers, stream);
 
-  MOA_Fill_Random_Region(ptr, size);
+  nd = size/sizeof(int);
+  li = (int *) ptr;
+  for (i = 0; i < nd; i++) li[i] = mrand48();
   return size;
 }
 
@@ -106,7 +108,7 @@ int main (int argc, char **argv) {
 	enum Coding_Technique tech;		// coding technique (parameter)
 	int k, m, w, packetsize;		// parameters
 	int buffersize;					// paramter
-	int i;						// loop control variables
+	int i;							// loop control variables
 	int blocksize;					// size of k+m files
 	int total;
 	int extra;
@@ -126,10 +128,11 @@ int main (int argc, char **argv) {
 	char *curdir;
 	
 	/* Timing variables */
-	struct timing t1, t2, t3, t4;
+	struct timeval t1, t2, t3, t4;
+	struct timezone tz;
 	double tsec;
 	double totalsec;
-	struct timing start;
+	struct timeval start;
 
 	/* Find buffersize */
 	int up, down;
@@ -138,7 +141,7 @@ int main (int argc, char **argv) {
 	signal(SIGQUIT, ctrl_bs_handler);
 
 	/* Start timing */
-	timing_set(&t1);
+	gettimeofday(&t1, &tz);
 	totalsec = 0.0;
 	matrix = NULL;
 	bitmatrix = NULL;
@@ -146,11 +149,8 @@ int main (int argc, char **argv) {
 	
 	/* Error check Arguments*/
 	if (argc != 8) {
-		fprintf(stderr,  "usage: inputfile k m coding_technique w packetsize buffersize\n");
+		fprintf(stderr,  "usage: inputfile k m coding_technique w (packetsize) (buffersize)\n");
 		fprintf(stderr,  "\nChoose one of the following coding techniques: \nreed_sol_van, \nreed_sol_r6_op, \ncauchy_orig, \ncauchy_good, \nliberation, \nblaum_roth, \nliber8tion");
-		fprintf(stderr,  "\n\nPacketsize is ignored for the reed_sol's");
-		fprintf(stderr,  "\nBuffersize of 0 means the buffersize is chosen automatically.\n");
-		fprintf(stderr,  "\nIf you just want to test speed, use an inputfile of \"-number\" where number is the size of the fake file you want to test.\n\n");
 		exit(0);
 	}
 	/* Conversion of parameters and error checking */	
@@ -188,16 +188,16 @@ int main (int argc, char **argv) {
 
 	/* Determine proper buffersize by finding the closest valid buffersize to the input value  */
 	if (buffersize != 0) {
-		if (packetsize != 0 && buffersize%(sizeof(long)*w*k*packetsize) != 0) { 
+		if (packetsize != 0 && buffersize%(sizeof(int)*w*k*packetsize) != 0) { 
 			up = buffersize;
 			down = buffersize;
-			while (up%(sizeof(long)*w*k*packetsize) != 0 && (down%(sizeof(long)*w*k*packetsize) != 0)) {
+			while (up%(sizeof(int)*w*k*packetsize) != 0 && (down%(sizeof(int)*w*k*packetsize) != 0)) {
 				up++;
 				if (down == 0) {
 					down--;
 				}
 			}
-			if (up%(sizeof(long)*w*k*packetsize) == 0) {
+			if (up%(sizeof(int)*w*k*packetsize) == 0) {
 				buffersize = up;
 			}
 			else {
@@ -206,14 +206,14 @@ int main (int argc, char **argv) {
 				}
 			}
 		}
-		else if (packetsize == 0 && buffersize%(sizeof(long)*w*k) != 0) {
+		else if (packetsize == 0 && buffersize%(sizeof(int)*w*k) != 0) {
 			up = buffersize;
 			down = buffersize;
-			while (up%(sizeof(long)*w*k) != 0 && down%(sizeof(long)*w*k) != 0) {
+			while (up%(sizeof(int)*w*k) != 0 && down%(sizeof(int)*w*k) != 0) {
 				up++;
 				down--;
 			}
-			if (up%(sizeof(long)*w*k) == 0) {
+			if (up%(sizeof(int)*w*k) == 0) {
 				buffersize = up;
 			}
 			else {
@@ -272,8 +272,8 @@ int main (int argc, char **argv) {
 			fprintf(stderr, "Must include packetsize.\n");
 			exit(0);
 		}
-		if ((packetsize%(sizeof(long))) != 0) {
-			fprintf(stderr,  "packetsize must be a multiple of sizeof(long)\n");
+		if ((packetsize%(sizeof(int))) != 0) {
+			fprintf(stderr,  "packetsize must be a multiple of sizeof(int)\n");
 			exit(0);
 		}
 		tech = Liberation;
@@ -291,8 +291,8 @@ int main (int argc, char **argv) {
 			fprintf(stderr, "Must include packetsize.\n");
 			exit(0);
 		}
-		if ((packetsize%(sizeof(long))) != 0) {
-			fprintf(stderr,  "packetsize must be a multiple of sizeof(long)\n");
+		if ((packetsize%(sizeof(int))) != 0) {
+			fprintf(stderr,  "packetsize must be a multiple of sizeof(int)\n");
 			exit(0);
 		}
 		tech = Blaum_Roth;
@@ -326,7 +326,7 @@ int main (int argc, char **argv) {
 
 	/* Get current working directory for construction of file names */
 	curdir = (char*)malloc(sizeof(char)*1000);	
-	assert(curdir == getcwd(curdir, 1000));
+	getcwd(curdir, 1000);
 
         if (argv[1][0] != '-') {
 
@@ -353,21 +353,21 @@ int main (int argc, char **argv) {
 			exit(1);
 		}
         	fp = NULL;
-		MOA_Seed(time(0));
+		srand48(time(0));
         }
 
 	newsize = size;
 	
 	/* Find new size by determining next closest multiple */
 	if (packetsize != 0) {
-		if (size%(k*w*packetsize*sizeof(long)) != 0) {
-			while (newsize%(k*w*packetsize*sizeof(long)) != 0) 
+		if (size%(k*w*packetsize*sizeof(int)) != 0) {
+			while (newsize%(k*w*packetsize*sizeof(int)) != 0) 
 				newsize++;
 		}
 	}
 	else {
-		if (size%(k*w*sizeof(long)) != 0) {
-			while (newsize%(k*w*sizeof(long)) != 0) 
+		if (size%(k*w*sizeof(int)) != 0) {
+			while (newsize%(k*w*sizeof(int)) != 0) 
 				newsize++;
 		}
 	}
@@ -400,7 +400,7 @@ int main (int argc, char **argv) {
 	}
 	
 	/* Break inputfile name into the filename and extension */	
-	s1 = (char*)malloc(sizeof(char)*(strlen(argv[1])+20));
+	s1 = (char*)malloc(sizeof(char)*(strlen(argv[1])+10));
 	s2 = strrchr(argv[1], '/');
 	if (s2 != NULL) {
 		s2++;
@@ -418,7 +418,7 @@ int main (int argc, char **argv) {
         }
 	
 	/* Allocate for full file name */
-	fname = (char*)malloc(sizeof(char)*(strlen(argv[1])+strlen(curdir)+20));
+	fname = (char*)malloc(sizeof(char)*(strlen(argv[1])+strlen(curdir)+10));
 	sprintf(temp, "%d", k);
 	md = strlen(temp);
 	
@@ -433,14 +433,12 @@ int main (int argc, char **argv) {
 	
 
 	/* Create coding matrix or bitmatrix and schedule */
-	timing_set(&t3);
+	gettimeofday(&t3, &tz);
 	switch(tech) {
 		case No_Coding:
 			break;
 		case Reed_Sol_Van:
 			matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
-			break;
-		case Reed_Sol_R6_Op:
 			break;
 		case Cauchy_Orig:
 			matrix = cauchy_original_coding_matrix(k, m, w);
@@ -464,14 +462,19 @@ int main (int argc, char **argv) {
 			bitmatrix = liber8tion_coding_bitmatrix(k);
 			schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
 			break;
-		case RDP:
-		case EVENODD:
-			assert(0);
+		default:
+			fprintf(stderr,  "unsupported coding technique used\n");
+			break;
 	}
-	timing_set(&start);
-	timing_set(&t4);
-	totalsec += timing_delta(&t3, &t4);
-
+	gettimeofday(&start, &tz);	
+	gettimeofday(&t4, &tz);
+	tsec = 0.0;
+	tsec += t4.tv_usec;
+	tsec -= t3.tv_usec;
+	tsec /= 1000000.0;
+	tsec += t4.tv_sec;
+	tsec -= t3.tv_sec;
+	totalsec += tsec;
 	
 
 	/* Read in data until finished */
@@ -496,12 +499,13 @@ int main (int argc, char **argv) {
 			}
 		}
 	
+			
 		/* Set pointers to point to file data */
 		for (i = 0; i < k; i++) {
 			data[i] = block+(i*blocksize);
 		}
 
-		timing_set(&t3);
+	gettimeofday(&t3, &tz);
 		/* Encode according to coding method */
 		switch(tech) {	
 			case No_Coding:
@@ -527,11 +531,11 @@ int main (int argc, char **argv) {
 			case Liber8tion:
 				jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize);
 				break;
-			case RDP:
-			case EVENODD:
-				assert(0);
+			default:
+				fprintf(stderr,  "unsupported coding technique used\n");
+				break;
 		}
-		timing_set(&t4);
+		gettimeofday(&t4, &tz);
 	
 		/* Write data and encoded data to k+m files */
 		for	(i = 1; i <= k; i++) {
@@ -567,7 +571,13 @@ int main (int argc, char **argv) {
 		}
 		n++;
 		/* Calculate encoding time */
-		totalsec += timing_delta(&t3, &t4);
+		tsec = 0.0;
+		tsec += t4.tv_usec;
+		tsec -= t3.tv_usec;
+		tsec /= 1000000.0;
+		tsec += t4.tv_sec;
+		tsec -= t3.tv_sec;
+		totalsec += tsec;
 	}
 
 	/* Create metadata file */
@@ -591,12 +601,15 @@ int main (int argc, char **argv) {
 	free(curdir);
 	
 	/* Calculate rate in MB/sec and print */
-	timing_set(&t2);
-	tsec = timing_delta(&t1, &t2);
-	printf("Encoding (MB/sec): %0.10f\n", (((double) size)/1024.0/1024.0)/totalsec);
-	printf("En_Total (MB/sec): %0.10f\n", (((double) size)/1024.0/1024.0)/tsec);
-
-	return 0;
+	gettimeofday(&t2, &tz);
+	tsec = 0.0;
+	tsec += t2.tv_usec;
+	tsec -= t1.tv_usec;
+	tsec /= 1000000.0;
+	tsec += t2.tv_sec;
+	tsec -= t1.tv_sec;
+	printf("Encoding (MB/sec): %0.10f\n", (size/1024/1024)/totalsec);
+	printf("En_Total (MB/sec): %0.10f\n", (size/1024/1024)/tsec);
 }
 
 /* is_prime returns 1 if number if prime, 0 if not prime */
@@ -611,7 +624,8 @@ int is_prime(int w) {
 			else { return 0; }
 		}
 	}
-	assert(0);
+	// explicit return value
+	return 0;
 }
 
 /* Handles ctrl-\ event */

@@ -1,53 +1,54 @@
-/* *
- * Copyright (c) 2014, James S. Plank and Kevin Greenan
- * All rights reserved.
- *
- * Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure
- * Coding Techniques
- *
- * Revision 2.0: Galois Field backend now links to GF-Complete
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  - Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- *  - Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- *  - Neither the name of the University of Tennessee nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
- * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+/* jerasure.c
+ * James S. Plank
 
-/* Jerasure's authors:
+Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure Coding Techniques
 
-   Revision 2.x - 2014: James S. Plank and Kevin M. Greenan
-   Revision 1.2 - 2008: James S. Plank, Scott Simmerman and Catherine D. Schuman.
-   Revision 1.0 - 2007: James S. Plank
+Revision 1.2A
+May 24, 2011
+
+James S. Plank
+Department of Electrical Engineering and Computer Science
+University of Tennessee
+Knoxville, TN 37996
+plank@cs.utk.edu
+
+Copyright (c) 2011, James S. Plank
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+ - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+ - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+ - Neither the name of the University of Tennessee nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "galois.h"
 #include "jerasure.h"
@@ -246,12 +247,6 @@ int jerasure_matrix_decode(int k, int m, int w, int *matrix, int row_k_ones, int
 
   if (edd > 0) {
     tmpids = talloc(int, k);
-    if (!tmpids) {
-      free(erased);
-      free(dm_ids);
-      free(decoding_matrix);
-      return -1;
-    }
     for (i = 0; i < k; i++) {
       tmpids[i] = (i < lastdrive) ? i : i+1;
     }
@@ -280,10 +275,8 @@ int *jerasure_matrix_to_bitmatrix(int k, int m, int w, int *matrix)
   int *bitmatrix;
   int rowelts, rowindex, colindex, elt, i, j, l, x;
 
-  if (matrix == NULL) { return NULL; }
-
   bitmatrix = talloc(int, k*m*w*w);
-  if (!bitmatrix) return NULL;
+  if (matrix == NULL) { return NULL; }
 
   rowelts = k * w;
   rowindex = 0;
@@ -312,7 +305,7 @@ void jerasure_matrix_encode(int k, int m, int w, int *matrix,
   
   if (w != 8 && w != 16 && w != 32) {
     fprintf(stderr, "ERROR: jerasure_matrix_encode() and w is not 8, 16 or 32\n");
-    assert(0);
+    exit(1);
   }
 
   for (i = 0; i < m; i++) {
@@ -329,7 +322,7 @@ void jerasure_bitmatrix_dotprod(int k, int w, int *bitmatrix_row,
 
   if (size%(w*packetsize) != 0) {
     fprintf(stderr, "jerasure_bitmatrix_dotprod - size%c(w*packetsize)) must = 0\n", '%');
-    assert(0);
+    exit(1);
   }
 
   bpptr = (dest_id < k) ? data_ptrs[dest_id] : coding_ptrs[dest_id-k];
@@ -355,7 +348,7 @@ void jerasure_bitmatrix_dotprod(int k, int w, int *bitmatrix_row,
               jerasure_total_memcpy_bytes += packetsize;
               pstarted = 1;
             } else {
-              galois_region_xor(dptr, pptr, packetsize);
+              galois_region_xor(pptr, dptr, pptr, packetsize);
               jerasure_total_xor_bytes += packetsize;
             }
           }
@@ -374,7 +367,7 @@ void jerasure_do_parity(int k, char **data_ptrs, char *parity_ptr, int size)
   jerasure_total_memcpy_bytes += size;
   
   for (i = 1; i < k; i++) {
-    galois_region_xor(data_ptrs[i], parity_ptr, size);
+    galois_region_xor(data_ptrs[i], parity_ptr, parity_ptr, size);
     jerasure_total_xor_bytes += size;
   }
 }
@@ -568,7 +561,7 @@ void jerasure_free_schedule_cache(int k, int m, int ***cache)
 
   if (m != 2) {
     fprintf(stderr, "jerasure_free_schedule_cache(): m must equal 2\n");
-    assert(0);
+    exit(1);
   }
 
   for (e1 = 0; e1 < k+m; e1++) {
@@ -590,7 +583,7 @@ void jerasure_matrix_dotprod(int k, int w, int *matrix_row,
 
   if (w != 1 && w != 8 && w != 16 && w != 32) {
     fprintf(stderr, "ERROR: jerasure_matrix_dotprod() called and w is not 1, 8, 16 or 32\n");
-    assert(0);
+    exit(1);
   }
 
   init = 0;
@@ -613,7 +606,7 @@ void jerasure_matrix_dotprod(int k, int w, int *matrix_row,
         jerasure_total_memcpy_bytes += size;
         init = 1;
       } else {
-        galois_region_xor(sptr, dptr, size);
+        galois_region_xor(sptr, dptr, dptr, size);
         jerasure_total_xor_bytes += size;
       }
     }
@@ -704,12 +697,6 @@ int jerasure_bitmatrix_decode(int k, int m, int w, int *bitmatrix, int row_k_one
 
   if (edd > 0) {
     tmpids = talloc(int, k);
-    if (!tmpids) {
-      free(erased);
-      free(dm_ids);
-      free(decoding_matrix);
-      return -1;
-    }
     for (i = 0; i < k; i++) {
       tmpids[i] = (i < lastdrive) ? i : i+1;
     }
@@ -761,10 +748,6 @@ static char **set_up_ptrs_for_scheduled_decoding(int k, int m, int *erasures, ch
    */
          
   ptrs = talloc(char *, k+m);
-  if (!ptrs) {
-    free(erased);
-    return NULL;
-  }
 
   j = k;
   x = k;
@@ -854,18 +837,9 @@ static int **jerasure_generate_decoding_schedule(int k, int m, int w, int *bitma
   }
   
   row_ids = talloc(int, k+m);
-  if (!row_ids) return NULL;
   ind_to_row = talloc(int, k+m);
-  if (!ind_to_row) {
-    free(row_ids);
-    return NULL;
-  }
 
-  if (set_up_ids_for_scheduled_decoding(k, m, erasures, row_ids, ind_to_row) < 0) {
-    free(row_ids);
-    free(ind_to_row);
-    return NULL;
-  }
+  if (set_up_ids_for_scheduled_decoding(k, m, erasures, row_ids, ind_to_row) < 0) return NULL;
 
   /* Now, we're going to create one decoding matrix which is going to 
      decode everything with one call.  The hope is that the scheduler
@@ -873,11 +847,6 @@ static int **jerasure_generate_decoding_schedule(int k, int m, int w, int *bitma
      number of erasures (ddf+cdf) */
 
   real_decoding_matrix = talloc(int, k*w*(cdf+ddf)*w);
-  if (!real_decoding_matrix) {
-    free(row_ids);
-    free(ind_to_row);
-    return NULL;
-  }
 
   /* First, if any data drives have failed, then initialize the first
      ddf*w rows of the decoding matrix from the standard decoding
@@ -886,11 +855,6 @@ static int **jerasure_generate_decoding_schedule(int k, int m, int w, int *bitma
   if (ddf > 0) {
     
     decoding_matrix = talloc(int, k*k*w*w);
-    if (!decoding_matrix) {
-      free(row_ids);
-      free(ind_to_row);
-      return NULL;
-    }
     ptr = decoding_matrix;
     for (i = 0; i < k; i++) {
       if (row_ids[i] == i) {
@@ -904,12 +868,6 @@ static int **jerasure_generate_decoding_schedule(int k, int m, int w, int *bitma
       ptr += (k*w*w);
     }
     inverse = talloc(int, k*k*w*w);
-    if (!inverse) {
-      free(row_ids);
-      free(ind_to_row);
-      free(decoding_matrix);
-      return NULL;
-    }
     jerasure_invert_bitmatrix(decoding_matrix, inverse, k*w);
 
 /*    printf("\nMatrix to invert\n");
@@ -1218,7 +1176,7 @@ void jerasure_do_scheduled_operations(char **ptrs, int **operations, int packets
       operations[op][2], 
       operations[op][3]); 
       printf("xor(0x%x, 0x%x -> 0x%x, %d)\n", sptr, dptr, dptr, packetsize); */
-      galois_region_xor(sptr, dptr, packetsize);
+      galois_region_xor(sptr, dptr, dptr, packetsize);
       jerasure_total_xor_bytes += packetsize;
     } else {
 /*      printf("memcpy(0x%x <- 0x%x)\n", dptr, sptr); */
@@ -1251,7 +1209,6 @@ int **jerasure_dumb_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
   int index, optodo, i, j;
 
   operations = talloc(int *, k*m*w*w+1);
-  if (!operations) return NULL;
   op = 0;
   
   index = 0;
@@ -1260,10 +1217,6 @@ int **jerasure_dumb_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
     for (j = 0; j < k*w; j++) {
       if (bitmatrix[index]) {
         operations[op] = talloc(int, 5);
-	if (!operations[op]) {
-	  // -ENOMEM
-          goto error;
-        }
         operations[op][4] = optodo;
         operations[op][0] = j/w;
         operations[op][1] = j%w;
@@ -1277,19 +1230,8 @@ int **jerasure_dumb_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
     }
   }
   operations[op] = talloc(int, 5);
-  if (!operations[op]) {
-    // -ENOMEM
-    goto error;
-  }
   operations[op][0] = -1;
   return operations;
-
-error:
-  for (i = 0; i <= op; i++) {
-    free(operations[op]);
-  }
-  free(operations);
-  return NULL;
 }
 
 int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
@@ -1300,41 +1242,18 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
   int *diff, *from, *b1, *flink, *blink;
   int *ptr, no, row;
   int optodo;
-  int bestrow = 0, bestdiff, top;
+  int bestrow, bestdiff, top;
 
 /*   printf("Scheduling:\n\n");
   jerasure_print_bitmatrix(bitmatrix, m*w, k*w, w); */
 
   operations = talloc(int *, k*m*w*w+1);
-  if (!operations) return NULL;
   op = 0;
   
   diff = talloc(int, m*w);
-  if (!diff) {
-    free(operations);
-    return NULL;
-  }
   from = talloc(int, m*w);
-  if (!from) {
-    free(operations);
-    free(diff);
-    return NULL;
-  }
   flink = talloc(int, m*w);
-  if (!flink) {
-    free(operations);
-    free(diff);
-    free(from);
-    return NULL;
-  }
   blink = talloc(int, m*w);
-  if (!blink) {
-    free(operations);
-    free(diff);
-    free(from);
-    free(flink);
-    return NULL;
-  }
 
   ptr = bitmatrix;
 
@@ -1378,7 +1297,6 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
       for (j = 0; j < k*w; j++) {
         if (ptr[j]) {
           operations[op] = talloc(int, 5);
-          if (!operations[op]) goto error;
           operations[op][4] = optodo;
           operations[op][0] = j/w;
           operations[op][1] = j%w;
@@ -1390,7 +1308,6 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
       }
     } else {
       operations[op] = talloc(int, 5);
-      if (!operations[op]) goto error;
       operations[op][4] = 0;
       operations[op][0] = k+from[row]/w;
       operations[op][1] = from[row]%w;
@@ -1401,7 +1318,6 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
       for (j = 0; j < k*w; j++) {
         if (ptr[j] ^ b1[j]) {
           operations[op] = talloc(int, 5);
-          if (!operations[op]) goto error;
           operations[op][4] = 1;
           operations[op][0] = j/w;
           operations[op][1] = j%w;
@@ -1429,7 +1345,6 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
   }
   
   operations[op] = talloc(int, 5);
-  if (!operations[op]) goto error;
   operations[op][0] = -1;
   free(from);
   free(diff);
@@ -1437,17 +1352,6 @@ int **jerasure_smart_bitmatrix_to_schedule(int k, int m, int w, int *bitmatrix)
   free(flink);
 
   return operations;
-
-error:
-  for (i = 0; i <= op; i++) {
-    free(operations[op]);
-  }
-  free(operations);
-  free(from);
-  free(diff);
-  free(blink);
-  free(flink);
-  return NULL;
 }
 
 void jerasure_bitmatrix_encode(int k, int m, int w, int *bitmatrix,
@@ -1457,29 +1361,16 @@ void jerasure_bitmatrix_encode(int k, int m, int w, int *bitmatrix,
 
   if (packetsize%sizeof(long) != 0) {
     fprintf(stderr, "jerasure_bitmatrix_encode - packetsize(%d) %c sizeof(long) != 0\n", packetsize, '%');
-    assert(0);
+    exit(1);
   }
   if (size%(packetsize*w) != 0) {
     fprintf(stderr, "jerasure_bitmatrix_encode - size(%d) %c (packetsize(%d)*w(%d))) != 0\n", 
          size, '%', packetsize, w);
-    assert(0);
+    exit(1);
   }
 
   for (i = 0; i < m; i++) {
     jerasure_bitmatrix_dotprod(k, w, bitmatrix+i*k*w*w, NULL, k+i, data_ptrs, coding_ptrs, size, packetsize);
   }
-}
-
-/*
- * Exported function for use by autoconf to perform quick 
- * spot-check.
- */
-int jerasure_autoconf_test()
-{
-  int x = galois_single_multiply(1, 2, 8);
-  if (x != 2) {
-    return -1;
-  }
-  return 0;
 }
 
