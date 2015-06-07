@@ -31,12 +31,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void usage(char* errorMsg) {
+  fprintf(stderr, "usage: sample <numDataUnits> <numParityUnits>\n");
+  fprintf(stderr, "A Reed-Solomon coding sample.\n");
+  if (errorMsg != NULL) fprintf(stderr, "\n%s\n\n", errorMsg);
+  exit(1);
+}
+
 int main(int argc, char *argv[]) {
   char errMsg[256];
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
     // TODO: this may indicate s severe error instead, failing the test.
-    printf("loading erasurecode library failed: %s, skipping this\n", errMsg);
+    fprintf(stderr, "loading erasurecode library failed: %s, skipping this\n", errMsg);
     return 0;
   }
 
@@ -45,6 +52,15 @@ int main(int argc, char *argv[]) {
   int numDataUnits = 6;
   int numParityUnits = 3;
 
+  if (argc != 3) usage(NULL);
+  if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
+    usage("Invalid numDataUnits");
+  }
+  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || m <= 0) {
+    usage("Invalid numParityUnits");
+  }
+
+  int numAllUnits = numDataUnits + numParityUnits;
   unsigned char* dataUnits[numDataUnits];
   unsigned char* parityUnits[numParityUnits];
 

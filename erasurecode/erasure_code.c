@@ -37,8 +37,6 @@
  *
  */
 
-#define UNIX
-
 /**
  * A helper function to dlsym a 'symbol' from a given library-handle.
  */
@@ -114,34 +112,7 @@ typedef void (__cdecl *__d_ec_encode_data_update)(int, int, int, unsigned char*,
 static __d_ec_encode_data_update d_ec_encode_data_update;
 #endif
 
-char* load_erasurecode_lib(char* err, int err_len) {
-  static void* libec = NULL;
-
-  if (libec != NULL) {
-    return NULL;
-  }
-
-  const char* libecName = HADOOP_ERASURECODE_LIBRARY;
-
-  // Load Intel ISA-L
-  #ifdef UNIX
-  libec = dlopen(libecName, RTLD_LAZY | RTLD_GLOBAL);
-  if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
-    return err;
-  }
-  // Clear any existing error
-  dlerror();
-  #endif
-
-  #ifdef WINDOWS
-  HMODULE libec = LoadLibrary(libecName);
-  if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
-    return errMsg;
-  }
-  #endif
-
+static const char* load_functions(void* libec) {
   LOAD_DYNAMIC_SYMBOL(d_gf_mul, libec, "gf_mul");
   LOAD_DYNAMIC_SYMBOL(d_gf_inv, libec, "gf_inv");
   LOAD_DYNAMIC_SYMBOL(d_gf_gen_rs_matrix, libec, "gf_gen_rs_matrix");
@@ -151,8 +122,44 @@ char* load_erasurecode_lib(char* err, int err_len) {
 
   LOAD_DYNAMIC_SYMBOL(d_ec_init_tables, libec, "ec_init_tables");
   LOAD_DYNAMIC_SYMBOL(d_ec_encode_data, libec, "ec_encode_data");
+  LOAD_DYNAMIC_SYMBOL(d_ec_encode_data_update, libec, "ec_encode_data_update");
+}
 
-  return NULL;
+void load_erasurecode_lib(char* err, size_t err_len) {
+  static void* libec = NULL;
+
+  err[0] = '\0';
+
+  if (libec != NULL) {
+    return;
+  }
+
+  const char* libecName = HADOOP_ERASURECODE_LIBRARY;
+
+  // Load Intel ISA-L
+  #ifdef UNIX
+  libec = dlopen(libecName, RTLD_LAZY | RTLD_GLOBAL);
+  if (libec == NULL) {
+    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
+    return;
+  }
+  // Clear any existing error
+  dlerror();
+  #endif
+
+  #ifdef WINDOWS
+  HMODULE libec = LoadLibrary(libecName);
+  if (libec == NULL) {
+    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
+    return;
+  }
+  #endif
+
+  const char* errMsg = load_functions(libec);
+  if (errMsg != NULL) {
+    snprintf(err, err_len, "Loading functions from %s failed: %s",
+                                                          libecName, errMsg);
+  }
 }
 
 unsigned char h_gf_mul(unsigned char a, unsigned char b) {

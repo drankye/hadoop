@@ -1,5 +1,5 @@
 rm -rf sample
-gcc -g -ldl erasure_code.c coder_common.c sample.c -o sample
+gcc -g -ldl erasure_code.c erasure_coder.c erasure_coder_sample.c -o sample
 if [ $? = 0 ]; then
   ./sample
 fi

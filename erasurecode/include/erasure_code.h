@@ -18,6 +18,8 @@
 #ifndef _ERASURE_CODE_H_
 #define _ERASURE_CODE_H_
 
+#include <stddef.h>
+
 /**
  *  Interface to functions supporting erasure code encode and decode.
  *
@@ -41,7 +43,7 @@
  * @param err     The err message buffer.
  * @param err_len The length of the message buffer.
  */
-char* load_erasurecode_lib(char* err, int err_len);
+void load_erasurecode_lib(char* err, size_t err_len);
 
 /**
  * Initialize tables for fast Erasure Code encode and decode.

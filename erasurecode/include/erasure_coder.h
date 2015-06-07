@@ -23,8 +23,8 @@
  * coders.
  */
 
-#ifndef _CODER_COMMON_H_
-#define _CODER_COMMON_H_
+#ifndef _ERASURE_CODER_H_
+#define _ERASURE_CODER_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,26 +34,27 @@
 #define KMAX 20
 
 typedef struct _CoderState {
+  int verbose;
   int numParityUnits;
   int numDataUnits;
   int numAllUnits;
-  unsigned char** inputs;
-  unsigned char** outputs;
 } CoderState;
 
 typedef struct _EncoderState {
   CoderState coderState;
 
   unsigned char gftbls[MMAX * KMAX * 32];
+
   unsigned char encodeMatrix[MMAX * KMAX];
 } EncoderState;
 
 typedef struct _DecoderState {
   CoderState coderState;
 
-  unsigned char gftbls[MMAX * KMAX * 32];
-  unsigned char* allUnits[MMAX];
   unsigned char encodeMatrix[MMAX * KMAX];
+
+  // Below are per decode call
+  unsigned char gftbls[MMAX * KMAX * 32];
   unsigned int decodeIndex[MMAX];
   unsigned char b[MMAX * KMAX];
   unsigned char invertMatrix[MMAX * KMAX];
@@ -62,15 +63,20 @@ typedef struct _DecoderState {
   int erasedIndexes[MMAX];
   int numErased;
   int numErasedDataUnits;
-  unsigned char* recover[MMAX];
+  unsigned char* realInputs[MMAX];
 } DecoderState;
 
-void initCoder(CoderState* pCoderState, int isEncode, int numDataUnits,
-       int numParityUnits);
+void initCoder(CoderState* pCoderState, int numDataUnits, int numParityUnits);
 
-EncoderState* initEncoder(int numDataUnits, int numParityUnits);
+void allowVerbose(CoderState* pCoderState, int flag);
 
-DecoderState* initDecoder(int numDataUnits, int numParityUnits);
+void initEncoder(EncoderState* encoder, int numDataUnits,
+                                 int numParityUnits, int* initialMatrix);
+
+void initDecoder(DecoderState* decoder, int numDataUnits,
+                                int numParityUnits, int* initialMatrix);
+
+void clearDecoder(DecoderState* decoder);
 
 int encode(EncoderState* pCoderState, unsigned char** dataUnits,
     unsigned char** parityUnits, int chunkSize);
@@ -79,11 +85,14 @@ int decode(DecoderState* pCoderState, unsigned char** allUnits,
     int* erasedIndexes, int numErased,
     unsigned char** recoveredUnits, int chunkSize);
 
-void processErasures(DecoderState* pCoderState, int* erasedIndexes, int numErased);
+void processErasures(DecoderState* pCoderState,
+                              int* erasedIndexes, int numErased);
 
 int generateDecodeMatrix(DecoderState* pCoderState);
 
-void dumpDecoder(DecoderState* pCoderState, int chunkSize);
+void dumpEncoder(EncoderState* pCoderState);
+
+void dumpDecoder(DecoderState* pCoderState);
 
 void dump(unsigned char* buf, int len);
 
@@ -91,4 +100,4 @@ void dumpMatrix(unsigned char** s, int k, int m);
 
 void dumpU8xU8(unsigned char* s, int n1, int n2);
 
-#endif //_CODER_COMMON_H
+#endif //_ERASURE_CODER_H_

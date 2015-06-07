@@ -25,7 +25,7 @@
 
 #include "erasure_code.h"
 #include "gf_util.h"
-#include "coder_common.h"
+#include "erasure_coder.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,14 +39,15 @@ static void usage(char* errorMsg) {
 }
 
 int main(int argc, char *argv[]) {
-  char err_msg[256];
-  load_erasurecode_lib(err_msg, sizeof(err_msg));
-  if (strlen(err_msg) > 0) {
-    fprintf(stderr, "loading erasurecode library failed: %s, skipping tests\n", error);
+  char errMsg[256];
+  load_erasurecode_lib(errMsg, sizeof(errMsg));
+  if (strlen(errMsg) > 0) {
+    // TODO: this may indicate s severe error instead, failing the test.
+    fprintf(stderr, "loading erasurecode library failed: %s, skipping this\n", errMsg);
     return 0;
   }
 
-  int i, j, k;
+  int i, j;
   int chunkSize = 1024;
   int numDataUnits = 6;
   int numParityUnits = 3;
@@ -80,36 +81,38 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  EncoderState* pEncoder = initEncoder(numDataUnits, numParityUnits);
+  EncoderState* pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
+  memset(pEncoder, 0, sizeof(*pEncoder));
+  initEncoder(pEncoder, numDataUnits, numParityUnits, NULL);
   encode(pEncoder, dataUnits, parityUnits, chunkSize);
 
-  DecoderState* pDecoder = initDecoder(numDataUnits, numParityUnits);
+  DecoderState* pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
+  memset(pDecoder, 0, sizeof(*pDecoder));
+  initDecoder(pDecoder, numDataUnits, numParityUnits, NULL);
 
   unsigned char* allUnits[MMAX];
   memcpy(allUnits, dataUnits, numDataUnits * (sizeof (unsigned char*)));
-  memcpy(allUnits + numDataUnits, parityUnits, numParityUnits * (sizeof (unsigned char*)));
+  memcpy(allUnits + numDataUnits, parityUnits,
+                            numParityUnits * (sizeof (unsigned char*)));
 
-  int erasedIndexes[4];
-  erasedIndexes[0] = 0;
-  erasedIndexes[1] = 1;
-  erasedIndexes[2] = 10;
-  erasedIndexes[3] = 11;
-  unsigned char** decodingOutput[4];
+  int erasedIndexes[2];
+  erasedIndexes[0] = 1;
+  erasedIndexes[1] = 7;
+  unsigned char* decodingOutput[2];
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
-  decodingOutput[2] = malloc(chunkSize);
-  decodingOutput[3] = malloc(chunkSize);
-  decode(pDecoder, allUnits, erasedIndexes, 4, decodingOutput, chunkSize);
+
+  decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
 
   for (i = 0; i < pDecoder->numErased; i++) {
-    if (0 != memcmp(pDecoder->recover[numDataUnits + i],
-                      pDecoder->allUnits[pDecoder->erasedIndexes[i]], chunkSize)) {
-      dumpDecoder(pDecoder, chunkSize);
+    if (0 != memcmp(decodingOutput[i],
+                     allUnits[pDecoder->erasedIndexes[i]], chunkSize)) {
+      dumpDecoder(pDecoder);
       return -1;
     }
   }
 
-  dumpDecoder(pDecoder, chunkSize);
+  dumpDecoder(pDecoder);
   printf("done EC tests: Pass\n");
 
   return 0;
