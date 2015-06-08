@@ -26,4 +26,6 @@
 #define HAVE_SYNC_FILE_RANGE
 #define HAVE_POSIX_FADVISE
 
+#define UNIX
+
 #endif

@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
     usage("Invalid numDataUnits");
   }
-  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || m <= 0) {
+  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || numParityUnits <= 0) {
     usage("Invalid numParityUnits");
   }
 
