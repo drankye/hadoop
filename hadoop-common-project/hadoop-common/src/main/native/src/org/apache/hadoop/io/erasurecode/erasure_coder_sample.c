@@ -43,7 +43,8 @@ int main(int argc, char *argv[]) {
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
     // TODO: this may indicate s severe error instead, failing the test.
-    fprintf(stderr, "loading erasurecode library failed: %s, skipping this\n", errMsg);
+    fprintf(stderr,
+      "loading erasurecode library failed: %s, skipping this\n", errMsg);
     return 0;
   }
 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
   if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
     usage("Invalid numDataUnits");
   }
-  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || m <= 0) {
+  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || numParityUnits <= 0) {
     usage("Invalid numParityUnits");
   }
 

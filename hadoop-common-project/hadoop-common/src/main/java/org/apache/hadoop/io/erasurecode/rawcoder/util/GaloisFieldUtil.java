@@ -251,6 +251,7 @@ public final class GaloisFieldUtil {
     return 0;
   }
 
+    /*
   public static void ec_init_tables(int k, int rows, byte[] a, byte[] gf_tbls) {
     int i, j;
 
@@ -299,4 +300,5 @@ public final class GaloisFieldUtil {
     t[3] = v80 ^ v40;
 
   }
+    */
 }

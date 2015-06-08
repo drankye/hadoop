@@ -64,8 +64,7 @@ static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
 #define LOAD_DYNAMIC_SYMBOL(func_ptr, handle, symbol) \
   if ((func_ptr = my_dlsym(handle, symbol)) == NULL) { \
     return "Failed to load symbol" symbol; \
-  } \
-  return NULL;
+  }
 
 
 #ifdef UNIX
@@ -124,6 +123,8 @@ static const char* load_functions(void* libec) {
   LOAD_DYNAMIC_SYMBOL(d_ec_init_tables, libec, "ec_init_tables");
   LOAD_DYNAMIC_SYMBOL(d_ec_encode_data, libec, "ec_encode_data");
   LOAD_DYNAMIC_SYMBOL(d_ec_encode_data_update, libec, "ec_encode_data_update");
+
+  return NULL;
 }
 
 void load_erasurecode_lib(char* err, size_t err_len) {

@@ -29,8 +29,8 @@ public final class ErasureCodeUtil {
 
     for (i = 0; i < rows; i++) {
       for (j = 0; j < k; j++) {
-        GaloisFieldUtil.gfVectMulInit(*a++, gftbls);
-        gftbls += 32;
+        //GaloisFieldUtil.gfVectMulInit(*a++, gftbls);
+        //gftbls += 32;
       }
     }
   }
