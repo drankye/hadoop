@@ -64,7 +64,8 @@ static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
 #define LOAD_DYNAMIC_SYMBOL(func_ptr, handle, symbol) \
   if ((func_ptr = my_dlsym(handle, symbol)) == NULL) { \
     return "Failed to load symbol" symbol; \
-  }
+  } \
+  return NULL;
 
 
 #ifdef UNIX
