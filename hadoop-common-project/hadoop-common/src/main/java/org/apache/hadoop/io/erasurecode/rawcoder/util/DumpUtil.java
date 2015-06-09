@@ -54,6 +54,19 @@ public final class DumpUtil {
     return new String(hexChars);
   }
 
+  public static void dumpMatrix(byte[] matrix,
+                                int numDataUnits, int numParityUnits) {
+    for (int i = 0; i < numParityUnits; i++) {
+      for (int j = 0; j < numDataUnits; j++) {
+        if (j != 0) {
+          System.out.print(" ");
+        }
+        System.out.print(matrix[i * numDataUnits + j]);
+      }
+      System.out.println();
+    }
+  }
+
   /**
    * Print data in hex format in an array of chunks.
    * @param header

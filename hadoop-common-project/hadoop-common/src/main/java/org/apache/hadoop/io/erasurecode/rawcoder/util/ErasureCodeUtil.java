@@ -35,5 +35,19 @@ public final class ErasureCodeUtil {
     }
   }
 
-
+  /**
+   * Generate Cauchy matrix.
+   * @param matrix
+   * @param numParityUnits
+   * @param numDataUnits
+   */
+  public static void genCauchyMatrix(byte[] matrix,
+                                        int numDataUnits, int numParityUnits) {
+    for (int i = 0; i < numParityUnits; i++) {
+      for (int j = 0; j < numDataUnits; j++) {
+        matrix[i * numDataUnits + j] =
+            GaloisFieldUtil.gfInv((byte) (i ^ (numParityUnits + j)));
+      }
+    }
+  }
 }
