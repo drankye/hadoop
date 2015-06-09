@@ -33,4 +33,14 @@ public class TestErasureCodeUtil {
     ErasureCodeUtil.genCauchyMatrix(matrix, numAllUnits, numDataUnits);
     DumpUtil.dumpMatrix(matrix, numDataUnits, numAllUnits);
   }
+
+  @Test
+  public void testGenCauchyMatrix_JE() {
+    int numDataUnits = 6;
+    int numParityUnits = 3;
+
+    byte[] matrix = new byte[numDataUnits * numParityUnits];
+    ErasureCodeUtil.genCauchyMatrix_JE(matrix, numDataUnits, numParityUnits);
+    DumpUtil.dumpMatrix_JE(matrix, numDataUnits, numParityUnits);
+  }
 }
