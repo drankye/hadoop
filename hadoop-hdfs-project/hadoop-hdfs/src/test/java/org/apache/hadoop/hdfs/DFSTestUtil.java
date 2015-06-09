@@ -790,15 +790,21 @@ public class DFSTestUtil {
     return os.toByteArray();
   }
 
-  /* Write the given string to the given file */
-  public static void writeFile(FileSystem fs, Path p, String s) 
+  /* Write the given bytes to the given file */
+  public static void writeFile(FileSystem fs, Path p, byte[] bytes)
       throws IOException {
     if (fs.exists(p)) {
       fs.delete(p, true);
     }
-    InputStream is = new ByteArrayInputStream(s.getBytes());
+    InputStream is = new ByteArrayInputStream(bytes);
     FSDataOutputStream os = fs.create(p);
-    IOUtils.copyBytes(is, os, s.length(), true);
+    IOUtils.copyBytes(is, os, bytes.length, true);
+  }
+
+  /* Write the given string to the given file */
+  public static void writeFile(FileSystem fs, Path p, String s)
+      throws IOException {
+    writeFile(fs, p, s.getBytes());
   }
 
   /* Append the given string to the given file */
@@ -1853,6 +1859,7 @@ public class DFSTestUtil {
   /**
    * Creates the metadata of a file in striped layout. This method only
    * manipulates the NameNode state without injecting data to DataNode.
+   * You should disable periodical heartbeat before use this.
    *  @param file Path of the file to create
    * @param dir Parent path of the file
    * @param numBlocks Number of striped block groups to add to the file
@@ -1902,6 +1909,7 @@ public class DFSTestUtil {
    * Adds a striped block group to a file. This method only manipulates NameNode
    * states of the file and the block without injecting data to DataNode.
    * It does mimic block reports.
+   * You should disable periodical heartbeat before use this.
    * @param dataNodes List DataNodes to host the striped block group
    * @param previous Previous block in the file
    * @param numStripes Number of stripes in each block group
@@ -1957,5 +1965,20 @@ public class DFSTestUtil {
       throws IOException {
     out.flushInternal();
     return out.getBlock();
+  }
+
+  /**
+   * Verify that blocks in striped block group are on different nodes.
+   */
+  public static void verifyLocatedStripedBlocks(LocatedBlocks lbs,
+       int groupSize) {
+    for (LocatedBlock lb : lbs.getLocatedBlocks()) {
+      HashSet<DatanodeInfo> locs = new HashSet<>();
+      for (DatanodeInfo datanodeInfo : lb.getLocations()) {
+        locs.add(datanodeInfo);
+      }
+      assertEquals(groupSize, lb.getLocations().length);
+      assertEquals(groupSize, locs.size());
+    }
   }
 }

@@ -32,6 +32,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
+import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
 import org.apache.hadoop.hdfs.server.namenode.ErasureCodingSchemaManager;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
@@ -71,6 +73,9 @@ public class TestDFSStripedInputStream {
     cluster = new MiniDFSCluster.Builder(conf).numDataNodes(
         DATA_BLK_NUM + PARITY_BLK_NUM).build();
     cluster.waitActive();
+    for (DataNode dn : cluster.getDataNodes()) {
+      DataNodeTestUtils.setHeartbeatsDisabledForTests(dn, true);
+    }
     fs = cluster.getFileSystem();
     fs.mkdirs(dirPath);
     fs.getClient().createErasureCodingZone(dirPath.toString(), null, CELLSIZE);
@@ -87,7 +92,7 @@ public class TestDFSStripedInputStream {
    * Test {@link DFSStripedInputStream#getBlockAt(long)}
    */
   @Test
-  public void testGetBlock() throws Exception {
+  public void testRefreshBlock() throws Exception {
     final int numBlocks = 4;
     DFSTestUtil.createStripedFile(cluster, filePath, null, numBlocks,
         NUM_STRIPE_PER_BLOCK, false);
@@ -102,7 +107,7 @@ public class TestDFSStripedInputStream {
       LocatedBlock[] blks = StripedBlockUtil.parseStripedBlockGroup(lsb,
           CELLSIZE, DATA_BLK_NUM, PARITY_BLK_NUM);
       for (int j = 0; j < DATA_BLK_NUM; j++) {
-        LocatedBlock refreshed = in.getBlockAt(blks[j].getStartOffset());
+        LocatedBlock refreshed = in.refreshLocatedBlock(blks[j]);
         assertEquals(blks[j].getBlock(), refreshed.getBlock());
         assertEquals(blks[j].getStartOffset(), refreshed.getStartOffset());
         assertArrayEquals(blks[j].getLocations(), refreshed.getLocations());
@@ -208,26 +213,27 @@ public class TestDFSStripedInputStream {
     // Update the expected content for decoded data
     for (int i = 0; i < NUM_STRIPE_PER_BLOCK; i++) {
       byte[][] decodeInputs = new byte[DATA_BLK_NUM + PARITY_BLK_NUM][CELLSIZE];
-      int[] missingBlkIdx = new int[]{failedDNIdx, DATA_BLK_NUM+1, DATA_BLK_NUM+2};
+      int[] missingBlkIdx = new int[]{failedDNIdx + PARITY_BLK_NUM, 1, 2};
       byte[][] decodeOutputs = new byte[PARITY_BLK_NUM][CELLSIZE];
       for (int j = 0; j < DATA_BLK_NUM; j++) {
         int posInBuf = i * CELLSIZE * DATA_BLK_NUM + j * CELLSIZE;
         if (j != failedDNIdx) {
-          System.arraycopy(expected, posInBuf, decodeInputs[j], 0, CELLSIZE);
+          System.arraycopy(expected, posInBuf, decodeInputs[j + PARITY_BLK_NUM],
+              0, CELLSIZE);
         }
       }
       for (int k = 0; k < CELLSIZE; k++) {
         int posInBlk = i * CELLSIZE + k;
-        decodeInputs[DATA_BLK_NUM][k] = SimulatedFSDataset.simulatedByte(
+        decodeInputs[0][k] = SimulatedFSDataset.simulatedByte(
             new Block(bg.getBlock().getBlockId() + DATA_BLK_NUM), posInBlk);
       }
-//      RSRawDecoder rsRawDecoder = new RSRawDecoder();
-//      rsRawDecoder.initialize(DATA_BLK_NUM, PARITY_BLK_NUM, CELLSIZE);
-//      rsRawDecoder.decode(decodeInputs, missingBlkIdx, decodeOutputs);
+      for (int m : missingBlkIdx) {
+        decodeInputs[m] = null;
+      }
+      RSRawDecoder rsRawDecoder = new RSRawDecoder(DATA_BLK_NUM, PARITY_BLK_NUM);
+      rsRawDecoder.decode(decodeInputs, missingBlkIdx, decodeOutputs);
       int posInBuf = i * CELLSIZE * DATA_BLK_NUM + failedDNIdx * CELLSIZE;
-//      System.arraycopy(decodeOutputs[0], 0, expected, posInBuf, CELLSIZE);
-      //TODO: workaround (filling fixed bytes), to remove after HADOOP-11938
-      Arrays.fill(expected, posInBuf, posInBuf + CELLSIZE, (byte)7);
+      System.arraycopy(decodeOutputs[0], 0, expected, posInBuf, CELLSIZE);
     }
     int delta = 10;
     int done = 0;

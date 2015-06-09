@@ -259,3 +259,33 @@
     HDFS-8382. Remove chunkSize and initialize from erasure coder. (Kai Zheng)
 
     HDFS-8408. Revisit and refactor ErasureCodingInfo (vinayakumarb)
+
+    HDFS-8479. Erasure coding: fix striping related logic in FSDirWriteFileOp to
+    sync with HDFS-8421. (Zhe Zhang via jing9)
+
+    HDFS-8481. Erasure coding: remove workarounds in client side stripped blocks 
+    recovering. (zhz)
+
+    HDFS-8336. Expose some administrative erasure coding operations to HdfsAdmin
+    (Uma Maheswara Rao G via vinayakumarb)
+
+    HDFS-8444. Erasure Coding: fix cannot rename a zone dir
+    (Walter Su via vinayakumarb)
+
+    HDFS-8517. Fix a decoding issue in stripped block recovering in client side.
+    (Kai Zheng via jing9)
+
+    HDFS-8453. Erasure coding: properly handle start offset for internal blocks
+    in a block group. (Zhe Zhang via jing9)
+
+    HDFS-7621. Erasure Coding: update the Balancer/Mover data migration logic.
+    (Walter Su via zhz)
+
+    HDFS-8328. Follow-on to update decode for DataNode striped blocks
+    reconstruction. (yliu)
+
+    HDFS-8319. Erasure Coding: support decoding for stateful read.
+    (Jing Zhao via zhz)
+
+    HDFS-8460. Erasure Coding: stateful read result doesn't match data 
+    occasionally because of flawed test. (Walter Su via zhz)
