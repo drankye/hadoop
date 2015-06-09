@@ -55,13 +55,10 @@ public final class DumpUtil {
   }
 
   public static void dumpMatrix(byte[] matrix,
-                                int numDataUnits, int numParityUnits) {
-    for (int i = 0; i < numParityUnits; i++) {
-      for (int j = 0; j < numDataUnits; j++) {
-        if (j != 0) {
-          System.out.print(" ");
-        }
-        System.out.print(matrix[i * numDataUnits + j]);
+                                int numDataUnits, int numAllUnits) {
+    for (int i = 0; i < numDataUnits; i++) {
+      for (int j = 0; j < numAllUnits; j++) {
+        System.out.print(0xff & matrix[i * numAllUnits + j]);
       }
       System.out.println();
     }

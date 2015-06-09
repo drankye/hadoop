@@ -270,12 +270,11 @@ void dumpMatrix(unsigned char** buf, int n1, int n2) {
   printf("\n");
 }
 
-void dumpCodingMatrix(unsigned char* buf,
-                          int numDataUnits, int numAllUnits) {
+void dumpCodingMatrix(unsigned char* buf, int n1, int n2) {
   int i, j;
-  for (i = 0; i < numDataUnits; i++) {
-    for (j = 0; j < numAllUnits; j++) {
-      printf(" %2x", 0xff & buf[j + (i * numAllUnits)]);
+  for (i = 0; i < n1; i++) {
+    for (j = 0; j < n2; j++) {
+      printf(" %2x", 0xff & buf[j + (i * n2)]);
     }
     printf("\n");
   }
