@@ -61,7 +61,7 @@ public final class DumpUtil {
         if (j != 0) {
           System.out.print(" ");
         }
-        System.out.print(matrix[i * numDataUnits + j]);
+        System.out.print(0xff & matrix[i * numDataUnits + j]);
       }
       System.out.println();
     }
@@ -71,6 +71,7 @@ public final class DumpUtil {
                                 int numDataUnits, int numAllUnits) {
     for (int i = 0; i < numDataUnits; i++) {
       for (int j = 0; j < numAllUnits; j++) {
+        System.out.print(" ");
         System.out.print(0xff & matrix[i * numAllUnits + j]);
       }
       System.out.println();
