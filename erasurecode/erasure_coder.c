@@ -215,7 +215,7 @@ void dumpEncoder(EncoderState* pCoderState) {
                                     numParityUnits, numDataUnits);
 
   printf("\n\nEncodeMatrix:\n");
-  dumpU8xU8((unsigned char*) pCoderState->encodeMatrix,
+  dumpCodingMatrix((unsigned char*) pCoderState->encodeMatrix,
                                            numDataUnits, numAllUnits);
 }
 
@@ -238,15 +238,15 @@ void dumpDecoder(DecoderState* pCoderState) {
   }
 
   printf("\n\nEncodeMatrix:\n");
-  dumpU8xU8((unsigned char*) pCoderState->encodeMatrix,
+  dumpCodingMatrix((unsigned char*) pCoderState->encodeMatrix,
                                     numDataUnits, numAllUnits);
 
   printf("InvertMatrix:\n");
-  dumpU8xU8((unsigned char*) pCoderState->invertMatrix,
+  dumpCodingMatrix((unsigned char*) pCoderState->invertMatrix,
                                    numDataUnits, numDataUnits);
 
   printf("DecodeMatrix:\n");
-  dumpU8xU8((unsigned char*) pCoderState->decodeMatrix,
+  dumpCodingMatrix((unsigned char*) pCoderState->decodeMatrix,
                                     numDataUnits, numAllUnits);
 }
 
@@ -270,11 +270,12 @@ void dumpMatrix(unsigned char** buf, int n1, int n2) {
   printf("\n");
 }
 
-void dumpU8xU8(unsigned char* buf, int n1, int n2) {
+void dumpCodingMatrix(unsigned char* buf,
+                          int numDataUnits, int numAllUnits) {
   int i, j;
-  for (i = 0; i < n1; i++) {
-    for (j = 0; j < n2; j++) {
-      printf(" %2x", 0xff & buf[j + (i * n2)]);
+  for (i = 0; i < numDataUnits; i++) {
+    for (j = 0; j < numAllUnits; j++) {
+      printf(" %2x", 0xff & buf[j + (i * numAllUnits)]);
     }
     printf("\n");
   }

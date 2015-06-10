@@ -35,13 +35,49 @@ public final class ErasureCodeUtil {
     }
   }
 
+  public static void genRSMatrix(byte[] a, int m, int k) {
+    int i, j;
+    byte p, gen = 1;
+
+    for (i = 0; i < k; i++) {
+      a[k * i + i] = 1;
+    }
+
+    for (i = k; i < m; i++) {
+      p = 1;
+      for (j = 0; j < k; j++) {
+        a[k * i + j] = p;
+        p = GaloisFieldUtil.gfMul(p, gen);
+      }
+      gen = GaloisFieldUtil.gfMul(gen, (byte) 0x10);
+    }
+  }
+
+  public static void genCauchyMatrix(byte[] a, int m, int k) {
+    int i, j;
+    byte[] p;
+
+    // Identity matrix in high position
+    for (i = 0; i < k; i++) {
+      a[k * i + i] = 1;
+    }
+
+    // For the rest choose 1/(i + j) | i != j
+    int pos = k * k;
+    for (i = k; i < m; i++) {
+      for (j = 0; j < k; j++) {
+        a[pos++] = GaloisFieldUtil.gfInv((byte) (i ^ j));
+      }
+    }
+  }
+
   /**
    * Generate Cauchy matrix.
    * @param matrix
    * @param numParityUnits
    * @param numDataUnits
    */
-  public static void genCauchyMatrix(byte[] matrix,
+  public static void genCauchyMatrix_JE(byte[] matrix,
                                         int numDataUnits, int numParityUnits) {
     for (int i = 0; i < numParityUnits; i++) {
       for (int j = 0; j < numDataUnits; j++) {

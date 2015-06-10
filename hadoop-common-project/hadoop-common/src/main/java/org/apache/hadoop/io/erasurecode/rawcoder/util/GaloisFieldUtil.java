@@ -144,46 +144,10 @@ public final class GaloisFieldUtil {
   }
 
   public static byte gfInv(byte a) {
-    if (a == 0)
-      return 0;
+      if (a == 0)
+          return 0;
 
-    return gfBase[255 - gfLogBase[a]];
-  }
-
-  public static void gfGenRSMatrix(byte[] a, int m, int k) {
-    int i, j;
-    byte p, gen = 1;
-
-    for (i = 0; i < k; i++) {
-      a[k * i + i] = 1;
-    }
-
-    for (i = k; i < m; i++) {
-      p = 1;
-      for (j = 0; j < k; j++) {
-        a[k * i + j] = p;
-        p = gfMul(p, gen);
-      }
-      gen = gfMul(gen, (byte) 0x10);
-    }
-  }
-
-  public static void gfGenCauchy1Matrix(byte[] a, int m, int k) {
-    int i, j;
-    byte[] p;
-
-    // Identity matrix in high position
-    for (i = 0; i < k; i++) {
-      a[k * i + i] = 1;
-    }
-
-    // For the rest choose 1/(i + j) | i != j
-    int pos = k * k;
-    for (i = k; i < m; i++) {
-      for (j = 0; j < k; j++) {
-        a[pos++] = gfInv((byte) (i ^ j));
-      }
-    }
+      return gfBase[255 - gfLogBase[a] & 0xff];
   }
 
   public static int gfInvertMatrix(byte[] inMatrix, byte[] outMatrix, int n) {
