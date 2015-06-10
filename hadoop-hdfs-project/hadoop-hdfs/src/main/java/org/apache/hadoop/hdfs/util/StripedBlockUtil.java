@@ -31,8 +31,9 @@ import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.io.erasurecode.ECSchema;
-import org.apache.hadoop.io.erasurecode.rawcoder.RSRawDecoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.io.IOException;
 import java.util.concurrent.CancellationException;
@@ -79,7 +80,6 @@ public class StripedBlockUtil {
   public static LocatedBlock[] parseStripedBlockGroup(LocatedStripedBlock bg,
       int cellSize, int dataBlkNum, int parityBlkNum) {
     int locatedBGSize = bg.getBlockIndices().length;
-    // TODO not considering missing blocks for now, only identify data blocks
     LocatedBlock[] lbs = new LocatedBlock[dataBlkNum + parityBlkNum];
     for (short i = 0; i < locatedBGSize; i++) {
       final int idx = bg.getBlockIndices()[i];
@@ -105,16 +105,15 @@ public class StripedBlockUtil {
     final ExtendedBlock blk = constructInternalBlock(
         bg.getBlock(), cellSize, dataBlkNum, idxInBlockGroup);
 
-    final long offset = bg.getStartOffset() + idxInBlockGroup * (long) cellSize;
     if (idxInReturnedLocs < bg.getLocations().length) {
       return new LocatedBlock(blk,
           new DatanodeInfo[]{bg.getLocations()[idxInReturnedLocs]},
           new String[]{bg.getStorageIDs()[idxInReturnedLocs]},
           new StorageType[]{bg.getStorageTypes()[idxInReturnedLocs]},
-          offset, bg.isCorrupt(), null);
+          bg.getStartOffset(), bg.isCorrupt(), null);
     } else {
       return new LocatedBlock(blk, null, null, null,
-          offset, bg.isCorrupt(), null);
+          bg.getStartOffset(), bg.isCorrupt(), null);
     }
   }
 
@@ -213,7 +212,7 @@ public class StripedBlockUtil {
         return new StripingChunkReadResult(StripingChunkReadResult.TIMEOUT);
       }
     } catch (ExecutionException e) {
-      DFSClient.LOG.error("ExecutionException " + e);
+      DFSClient.LOG.warn("ExecutionException " + e);
       return new StripingChunkReadResult(futures.remove(future),
           StripingChunkReadResult.FAILED);
     } catch (CancellationException e) {
@@ -246,71 +245,153 @@ public class StripedBlockUtil {
 
   /**
    * Initialize the decoding input buffers based on the chunk states in an
-   * AlignedStripe
+   * {@link AlignedStripe}. For each chunk that was not initially requested,
+   * schedule a new fetch request with the decoding input buffer as transfer
+   * destination.
    */
   public static byte[][] initDecodeInputs(AlignedStripe alignedStripe,
       int dataBlkNum, int parityBlkNum) {
     byte[][] decodeInputs =
         new byte[dataBlkNum + parityBlkNum][(int) alignedStripe.getSpanInBlock()];
-    for (int i = 0; i < alignedStripe.chunks.length; i++) {
-      StripingChunk chunk = alignedStripe.chunks[i];
-      if (chunk == null) {
-        alignedStripe.chunks[i] = new StripingChunk(decodeInputs[i]);
-        alignedStripe.chunks[i].offsetsInBuf.add(0);
-        alignedStripe.chunks[i].lengthsInBuf.add((int) alignedStripe.getSpanInBlock());
-      } else if (chunk.state == StripingChunk.FETCHED) {
-        int posInBuf = 0;
-        for (int j = 0; j < chunk.offsetsInBuf.size(); j++) {
-          System.arraycopy(chunk.buf, chunk.offsetsInBuf.get(j),
-              decodeInputs[i], posInBuf, chunk.lengthsInBuf.get(j));
-          posInBuf += chunk.lengthsInBuf.get(j);
-        }
-      } else if (chunk.state == StripingChunk.ALLZERO) {
-        Arrays.fill(decodeInputs[i], (byte)0);
+    // read the full data aligned stripe
+    for (int i = 0; i < dataBlkNum; i++) {
+      if (alignedStripe.chunks[i] == null) {
+        final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
+        alignedStripe.chunks[i] = new StripingChunk(decodeInputs[decodeIndex]);
+        alignedStripe.chunks[i].addByteArraySlice(0,
+            (int) alignedStripe.getSpanInBlock());
       }
     }
     return decodeInputs;
   }
 
   /**
-   * Decode based on the given input buffers and schema
+   * Some fetched {@link StripingChunk} might be stored in original application
+   * buffer instead of prepared decode input buffers. Some others are beyond
+   * the range of the internal blocks and should correspond to all zero bytes.
+   * When all pending requests have returned, this method should be called to
+   * finalize decode input buffers.
    */
-  public static void decodeAndFillBuffer(final byte[][] decodeInputs, byte[] buf,
-      AlignedStripe alignedStripe, int dataBlkNum, int parityBlkNum) {
+  public static void finalizeDecodeInputs(final byte[][] decodeInputs,
+      int dataBlkNum, int parityBlkNum, AlignedStripe alignedStripe) {
+    for (int i = 0; i < alignedStripe.chunks.length; i++) {
+      final StripingChunk chunk = alignedStripe.chunks[i];
+      final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
+      if (chunk != null && chunk.state == StripingChunk.FETCHED) {
+        chunk.copyTo(decodeInputs[decodeIndex]);
+      } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
+        Arrays.fill(decodeInputs[decodeIndex], (byte) 0);
+      } else {
+        decodeInputs[decodeIndex] = null;
+      }
+    }
+  }
+
+  /**
+   * Currently decoding requires parity chunks are before data chunks.
+   * The indices are opposite to what we store in NN. In future we may
+   * improve the decoding to make the indices order the same as in NN.
+   *
+   * @param index The index to convert
+   * @param dataBlkNum The number of data blocks
+   * @param parityBlkNum The number of parity blocks
+   * @return converted index
+   */
+  public static int convertIndex4Decode(int index, int dataBlkNum,
+      int parityBlkNum) {
+    return index < dataBlkNum ? index + parityBlkNum : index - dataBlkNum;
+  }
+
+  public static int convertDecodeIndexBack(int index, int dataBlkNum,
+      int parityBlkNum) {
+    return index < parityBlkNum ? index + dataBlkNum : index - parityBlkNum;
+  }
+
+  /**
+   * Decode based on the given input buffers and schema.
+   */
+  public static void decodeAndFillBuffer(final byte[][] decodeInputs,
+      AlignedStripe alignedStripe, int dataBlkNum, int parityBlkNum,
+      RawErasureDecoder decoder) {
+    // Step 1: prepare indices and output buffers for missing data units
     int[] decodeIndices = new int[parityBlkNum];
     int pos = 0;
     for (int i = 0; i < alignedStripe.chunks.length; i++) {
-      if (alignedStripe.chunks[i].state != StripingChunk.FETCHED &&
-          alignedStripe.chunks[i].state != StripingChunk.ALLZERO) {
-        decodeIndices[pos++] = i;
+      if (alignedStripe.chunks[i] != null &&
+          alignedStripe.chunks[i].state == StripingChunk.MISSING){
+        decodeIndices[pos++] = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
       }
     }
+    decodeIndices = Arrays.copyOf(decodeIndices, pos);
+    byte[][] decodeOutputs =
+        new byte[decodeIndices.length][(int) alignedStripe.getSpanInBlock()];
 
-    byte[][] outputs = new byte[parityBlkNum][(int) alignedStripe.getSpanInBlock()];
-    RSRawDecoder rsRawDecoder = new RSRawDecoder(dataBlkNum, parityBlkNum);
-    rsRawDecoder.decode(decodeInputs, decodeIndices, outputs);
+    // Step 2: decode into prepared output buffers
+    decoder.decode(decodeInputs, decodeIndices, decodeOutputs);
 
-    for (int i = 0; i < dataBlkNum + parityBlkNum; i++) {
-      StripingChunk chunk = alignedStripe.chunks[i];
+    // Step 3: fill original application buffer with decoded data
+    for (int i = 0; i < decodeIndices.length; i++) {
+      int missingBlkIdx = convertDecodeIndexBack(decodeIndices[i],
+          dataBlkNum, parityBlkNum);
+      StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
       if (chunk.state == StripingChunk.MISSING) {
-        int srcPos = 0;
-        for (int j = 0; j < chunk.offsetsInBuf.size(); j++) {
-          //TODO: workaround (filling fixed bytes), to remove after HADOOP-11938
-//          System.arraycopy(outputs[i], srcPos, buf, chunk.offsetsInBuf.get(j),
-//              chunk.lengthsInBuf.get(j));
-          Arrays.fill(buf, chunk.offsetsInBuf.get(j),
-              chunk.offsetsInBuf.get(j) + chunk.lengthsInBuf.get(j), (byte)7);
-          srcPos += chunk.lengthsInBuf.get(j);
+        chunk.copyFrom(decodeOutputs[i]);
+      }
+    }
+  }
+
+  /**
+   * Similar functionality with {@link #divideByteRangeIntoStripes}, but is used
+   * by stateful read and uses ByteBuffer as reading target buffer. Besides the
+   * read range is within a single stripe thus the calculation logic is simpler.
+   */
+  public static AlignedStripe[] divideOneStripe(ECSchema ecSchema,
+      int cellSize, LocatedStripedBlock blockGroup, long rangeStartInBlockGroup,
+      long rangeEndInBlockGroup, ByteBuffer buf) {
+    final int dataBlkNum = ecSchema.getNumDataUnits();
+    // Step 1: map the byte range to StripingCells
+    StripingCell[] cells = getStripingCellsOfByteRange(ecSchema, cellSize,
+        blockGroup, rangeStartInBlockGroup, rangeEndInBlockGroup);
+
+    // Step 2: get the unmerged ranges on each internal block
+    VerticalRange[] ranges = getRangesForInternalBlocks(ecSchema, cellSize,
+        cells);
+
+    // Step 3: merge into stripes
+    AlignedStripe[] stripes = mergeRangesForInternalBlocks(ecSchema, ranges);
+
+    // Step 4: calculate each chunk's position in destination buffer. Since the
+    // whole read range is within a single stripe, the logic is simpler here.
+    int bufOffset = (int) (rangeStartInBlockGroup % (cellSize * dataBlkNum));
+    for (StripingCell cell : cells) {
+      long cellStart = cell.idxInInternalBlk * cellSize + cell.offset;
+      long cellEnd = cellStart + cell.size - 1;
+      for (AlignedStripe s : stripes) {
+        long stripeEnd = s.getOffsetInBlock() + s.getSpanInBlock() - 1;
+        long overlapStart = Math.max(cellStart, s.getOffsetInBlock());
+        long overlapEnd = Math.min(cellEnd, stripeEnd);
+        int overLapLen = (int) (overlapEnd - overlapStart + 1);
+        if (overLapLen > 0) {
+          Preconditions.checkState(s.chunks[cell.idxInStripe] == null);
+          final int pos = (int) (bufOffset + overlapStart - cellStart);
+          buf.position(pos);
+          buf.limit(pos + overLapLen);
+          s.chunks[cell.idxInStripe] = new StripingChunk(buf.slice());
         }
       }
+      bufOffset += cell.size;
     }
+
+    // Step 5: prepare ALLZERO blocks
+    prepareAllZeroChunks(blockGroup, stripes, cellSize, dataBlkNum);
+    return stripes;
   }
 
   /**
    * This method divides a requested byte range into an array of inclusive
    * {@link AlignedStripe}.
    * @param ecSchema The codec schema for the file, which carries the numbers
-   *                 of data / parity blocks, as well as cell size
+   *                 of data / parity blocks
    * @param cellSize Cell size of stripe
    * @param blockGroup The striped block group
    * @param rangeStartInBlockGroup The byte range's start offset in block group
@@ -325,10 +406,9 @@ public class StripedBlockUtil {
       int cellSize, LocatedStripedBlock blockGroup,
       long rangeStartInBlockGroup, long rangeEndInBlockGroup, byte[] buf,
       int offsetInBuf) {
-    // TODO: change ECSchema naming to use cell size instead of chunk size
 
     // Step 0: analyze range and calculate basic parameters
-    int dataBlkNum = ecSchema.getNumDataUnits();
+    final int dataBlkNum = ecSchema.getNumDataUnits();
 
     // Step 1: map the byte range to StripingCells
     StripingCell[] cells = getStripingCellsOfByteRange(ecSchema, cellSize,
@@ -342,11 +422,10 @@ public class StripedBlockUtil {
     AlignedStripe[] stripes = mergeRangesForInternalBlocks(ecSchema, ranges);
 
     // Step 4: calculate each chunk's position in destination buffer
-    calcualteChunkPositionsInBuf(ecSchema, cellSize, stripes, cells, buf,
-        offsetInBuf);
+    calcualteChunkPositionsInBuf(cellSize, stripes, cells, buf, offsetInBuf);
 
     // Step 5: prepare ALLZERO blocks
-    prepareAllZeroChunks(blockGroup, buf, stripes, cellSize, dataBlkNum);
+    prepareAllZeroChunks(blockGroup, stripes, cellSize, dataBlkNum);
 
     return stripes;
   }
@@ -363,23 +442,25 @@ public class StripedBlockUtil {
     Preconditions.checkArgument(
         rangeStartInBlockGroup <= rangeEndInBlockGroup &&
             rangeEndInBlockGroup < blockGroup.getBlockSize());
-    int len = (int) (rangeEndInBlockGroup - rangeStartInBlockGroup + 1);
+    long len = rangeEndInBlockGroup - rangeStartInBlockGroup + 1;
     int firstCellIdxInBG = (int) (rangeStartInBlockGroup / cellSize);
     int lastCellIdxInBG = (int) (rangeEndInBlockGroup / cellSize);
     int numCells = lastCellIdxInBG - firstCellIdxInBG + 1;
     StripingCell[] cells = new StripingCell[numCells];
-    cells[0] = new StripingCell(ecSchema, cellSize, firstCellIdxInBG);
-    cells[numCells - 1] = new StripingCell(ecSchema, cellSize, lastCellIdxInBG);
 
-    cells[0].offset = (int) (rangeStartInBlockGroup % cellSize);
-    cells[0].size =
-        Math.min(cellSize - (int) (rangeStartInBlockGroup % cellSize), len);
+    final int firstCellOffset = (int) (rangeStartInBlockGroup % cellSize);
+    final int firstCellSize =
+        (int) Math.min(cellSize - (rangeStartInBlockGroup % cellSize), len);
+    cells[0] = new StripingCell(ecSchema, firstCellSize, firstCellIdxInBG,
+        firstCellOffset);
     if (lastCellIdxInBG != firstCellIdxInBG) {
-      cells[numCells - 1].size = (int) (rangeEndInBlockGroup % cellSize) + 1;
+      final int lastCellSize = (int) (rangeEndInBlockGroup % cellSize) + 1;
+      cells[numCells - 1] = new StripingCell(ecSchema, lastCellSize,
+          lastCellIdxInBG, 0);
     }
 
     for (int i = 1; i < numCells - 1; i++) {
-      cells[i] = new StripingCell(ecSchema, cellSize, i + firstCellIdxInBG);
+      cells[i] = new StripingCell(ecSchema, cellSize, i + firstCellIdxInBG, 0);
     }
 
     return cells;
@@ -398,8 +479,8 @@ public class StripedBlockUtil {
     long[] startOffsets = new long[dataBlkNum + parityBlkNum];
     Arrays.fill(startOffsets, -1L);
     int firstCellIdxInBG = (int) (rangeStartInBlockGroup / cellSize);
-    StripingCell firstCell = new StripingCell(ecSchema, cellSize, firstCellIdxInBG);
-    firstCell.offset = (int) (rangeStartInBlockGroup % cellSize);
+    StripingCell firstCell = new StripingCell(ecSchema, cellSize,
+        firstCellIdxInBG, (int) (rangeStartInBlockGroup % cellSize));
     startOffsets[firstCell.idxInStripe] =
         firstCell.idxInInternalBlk * cellSize + firstCell.offset;
     long earliestStart = startOffsets[firstCell.idxInStripe];
@@ -408,7 +489,7 @@ public class StripedBlockUtil {
       if (idx * (long) cellSize >= blockGroup.getBlockSize()) {
         break;
       }
-      StripingCell cell = new StripingCell(ecSchema, cellSize, idx);
+      StripingCell cell = new StripingCell(ecSchema, cellSize, idx, 0);
       startOffsets[cell.idxInStripe] = cell.idxInInternalBlk * (long) cellSize;
       if (startOffsets[cell.idxInStripe] < earliestStart) {
         earliestStart = startOffsets[cell.idxInStripe];
@@ -488,8 +569,8 @@ public class StripedBlockUtil {
     return stripes.toArray(new AlignedStripe[stripes.size()]);
   }
 
-  private static void calcualteChunkPositionsInBuf(ECSchema ecSchema,
-      int cellSize, AlignedStripe[] stripes, StripingCell[] cells, byte[] buf,
+  private static void calcualteChunkPositionsInBuf(int cellSize,
+      AlignedStripe[] stripes, StripingCell[] cells, byte[] buf,
       int offsetInBuf) {
     /**
      *     | <--------------- AlignedStripe --------------->|
@@ -523,10 +604,8 @@ public class StripedBlockUtil {
         if (s.chunks[cell.idxInStripe] == null) {
           s.chunks[cell.idxInStripe] = new StripingChunk(buf);
         }
-
-        s.chunks[cell.idxInStripe].offsetsInBuf.
-            add((int)(offsetInBuf + done + overlapStart - cellStart));
-        s.chunks[cell.idxInStripe].lengthsInBuf.add(overLapLen);
+        s.chunks[cell.idxInStripe].addByteArraySlice(
+            (int)(offsetInBuf + done + overlapStart - cellStart), overLapLen);
       }
       done += cell.size;
     }
@@ -537,15 +616,14 @@ public class StripedBlockUtil {
    * size, the chunk should be treated as zero bytes in decoding.
    */
   private static void prepareAllZeroChunks(LocatedStripedBlock blockGroup,
-      byte[] buf, AlignedStripe[] stripes, int cellSize, int dataBlkNum) {
+      AlignedStripe[] stripes, int cellSize, int dataBlkNum) {
     for (AlignedStripe s : stripes) {
       for (int i = 0; i < dataBlkNum; i++) {
         long internalBlkLen = getInternalBlockLength(blockGroup.getBlockSize(),
             cellSize, dataBlkNum, i);
         if (internalBlkLen <= s.getOffsetInBlock()) {
           Preconditions.checkState(s.chunks[i] == null);
-          s.chunks[i] = new StripingChunk(buf);
-          s.chunks[i].state = StripingChunk.ALLZERO;
+          s.chunks[i] = new StripingChunk(); // chunk state is set to ALLZERO
         }
       }
     }
@@ -575,7 +653,7 @@ public class StripedBlockUtil {
    */
   @VisibleForTesting
   static class StripingCell {
-    public final ECSchema schema;
+    final ECSchema schema;
     /** Logical order in a block group, used when doing I/O to a block group */
     final int idxInBlkGroup;
     final int idxInInternalBlk;
@@ -586,27 +664,17 @@ public class StripedBlockUtil {
      * {@link #size} variable represent the start offset and size of the
      * overlap.
      */
-    int offset;
-    int size;
+    final int offset;
+    final int size;
 
-    StripingCell(ECSchema ecSchema, int cellSize, int idxInBlkGroup) {
+    StripingCell(ECSchema ecSchema, int cellSize, int idxInBlkGroup,
+        int offset) {
       this.schema = ecSchema;
       this.idxInBlkGroup = idxInBlkGroup;
       this.idxInInternalBlk = idxInBlkGroup / ecSchema.getNumDataUnits();
       this.idxInStripe = idxInBlkGroup -
           this.idxInInternalBlk * ecSchema.getNumDataUnits();
-      this.offset = 0;
-      this.size = cellSize;
-    }
-
-    StripingCell(ECSchema ecSchema, int cellSize, int idxInInternalBlk,
-        int idxInStripe) {
-      this.schema = ecSchema;
-      this.idxInInternalBlk = idxInInternalBlk;
-      this.idxInStripe = idxInStripe;
-      this.idxInBlkGroup =
-          idxInInternalBlk * ecSchema.getNumDataUnits() + idxInStripe;
-      this.offset = 0;
+      this.offset = offset;
       this.size = cellSize;
     }
   }
@@ -657,11 +725,6 @@ public class StripedBlockUtil {
     public AlignedStripe(long offsetInBlock, long length, int width) {
       Preconditions.checkArgument(offsetInBlock >= 0 && length >= 0);
       this.range = new VerticalRange(offsetInBlock, length);
-      this.chunks = new StripingChunk[width];
-    }
-
-    public AlignedStripe(VerticalRange range, int width) {
-      this.range = range;
       this.chunks = new StripingChunk[width];
     }
 
@@ -737,10 +800,6 @@ public class StripedBlockUtil {
    * |REQUESTED|  |REQUESTED|    ALLZERO    |  |null|  |null| <- AlignedStripe2
    * +---------+  +---------+               |  +----+  +----+
    * <----------- data blocks ------------> | <--- parity --->
-   *
-   * The class also carries {@link #buf}, {@link #offsetsInBuf}, and
-   * {@link #lengthsInBuf} to define how read task for this chunk should
-   * deliver the returned data.
    */
   public static class StripingChunk {
     /** Chunk has been successfully fetched */
@@ -768,11 +827,49 @@ public class StripedBlockUtil {
      * null (AlignedStripe created) -> REQUESTED (upon failure) -> PENDING ...
      */
     public int state = REQUESTED;
-    public byte[] buf;
-    public List<Integer> offsetsInBuf;
-    public List<Integer> lengthsInBuf;
+
+    public final ChunkByteArray byteArray;
+    public final ByteBuffer byteBuffer;
 
     public StripingChunk(byte[] buf) {
+      this.byteArray = new ChunkByteArray(buf);
+      byteBuffer = null;
+    }
+
+    public StripingChunk(ByteBuffer buf) {
+      this.byteArray = null;
+      this.byteBuffer = buf;
+    }
+
+    public StripingChunk() {
+      this.byteArray = null;
+      this.byteBuffer = null;
+      this.state = ALLZERO;
+    }
+
+    public void addByteArraySlice(int offset, int length) {
+      assert byteArray != null;
+      byteArray.offsetsInBuf.add(offset);
+      byteArray.lengthsInBuf.add(length);
+    }
+
+    void copyTo(byte[] target) {
+      assert byteArray != null;
+      byteArray.copyTo(target);
+    }
+
+    void copyFrom(byte[] src) {
+      assert byteArray != null;
+      byteArray.copyFrom(src);
+    }
+  }
+
+  public static class ChunkByteArray {
+    private final byte[] buf;
+    private final List<Integer> offsetsInBuf;
+    private final List<Integer> lengthsInBuf;
+
+    ChunkByteArray(byte[] buf) {
       this.buf = buf;
       this.offsetsInBuf = new ArrayList<>();
       this.lengthsInBuf = new ArrayList<>();
@@ -792,6 +889,28 @@ public class StripedBlockUtil {
         lens[i] = this.lengthsInBuf.get(i);
       }
       return lens;
+    }
+
+    public byte[] buf() {
+      return buf;
+    }
+
+    void copyTo(byte[] target) {
+      int posInBuf = 0;
+      for (int i = 0; i < offsetsInBuf.size(); i++) {
+        System.arraycopy(buf, offsetsInBuf.get(i),
+            target, posInBuf, lengthsInBuf.get(i));
+        posInBuf += lengthsInBuf.get(i);
+      }
+    }
+
+    void copyFrom(byte[] src) {
+      int srcPos = 0;
+      for (int j = 0; j < offsetsInBuf.size(); j++) {
+        System.arraycopy(src, srcPos, buf, offsetsInBuf.get(j),
+            lengthsInBuf.get(j));
+        srcPos += lengthsInBuf.get(j);
+      }
     }
   }
 
