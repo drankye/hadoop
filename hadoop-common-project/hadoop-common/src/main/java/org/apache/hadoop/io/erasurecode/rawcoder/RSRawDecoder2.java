@@ -44,15 +44,16 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
   }
 
   @Override
-  protected void doDecode(byte[][] inputs, int[] inputOffsets,
-                          int dataLen, int[] erasedIndexes,
-                          byte[][] outputs, int[] outputOffsets) {
+  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
+                          ByteBuffer[] outputs) {
     //TODO
   }
 
   @Override
-  protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
-                          ByteBuffer[] outputs) {
-    //TODO
+  protected void doDecode(byte[][] inputs, int[] inputOffsets,
+                          int dataLen, int[] erasedIndexes,
+                          byte[][] outputs, int[] outputOffsets) {
+    ErasureCodeUtil.decodeData(getNumDataUnits(), getNumParityUnits(),
+        encodeMatrix, 0, erasedIndexes, inputs, outputs);
   }
 }

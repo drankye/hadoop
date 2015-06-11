@@ -166,21 +166,22 @@ public final class ErasureCodeUtil {
     }
   }
 
-  public static void decodeData(int k, int m, byte[] matrix, int row_k_ones, int[] erasures,
-                               byte[][] data_ptrs, byte[][] coding_ptrs) {
+  public static void decodeData(int numDataunits, int numParityUnits,
+                                byte[] matrix, int row_k_ones, int[] erasures,
+                               byte[][] inputs, byte[][] outputs) {
     int i, edd, lastdrive;
     int[] tmpids;
     boolean[] erased;
     int[] dmIds;
 
-    erased = erasures2erased(k, m, erasures);
+    erased = erasures2erased(numDataunits, numParityUnits, erasures);
 
     //Find the number of data drives failed
 
-    lastdrive = k;
+    lastdrive = numDataunits;
 
     edd = 0;
-    for (i = 0; i < k; i++) {
+    for (i = 0; i < numDataunits; i++) {
       if (erased[i]) {
         edd++;
         lastdrive = i;
@@ -196,21 +197,21 @@ public final class ErasureCodeUtil {
       We're going to use lastdrive to denote when to stop decoding data.
       At this point in the code, it is equal to the last erased data device.
       However, if we can't use the parity row to decode it (i.e. row_k_ones=0
-         or erased[k] = 1, we're going to set it to k so that the decoding
+         or erased[numDataunits] = 1, we're going to set it to numDataunits so that the decoding
          pass will decode all data.
    */
 
-    if (row_k_ones == 0 || erased[k]) {
-      lastdrive = k;
+    if (row_k_ones == 0 || erased[numDataunits]) {
+      lastdrive = numDataunits;
     }
 
     dmIds = null;
     byte[] decodingMatrix = null;
 
-    if (edd > 1 || (edd > 0 && (row_k_ones ==0 || erased[k]))) {
-      dmIds = new int[k];
-      decodingMatrix = new byte[k * k];
-      makeDecodingMatrix(k, m, matrix, erased, decodingMatrix, dmIds);
+    if (edd > 1 || (edd > 0 && (row_k_ones ==0 || erased[numDataunits]))) {
+      dmIds = new int[numDataunits];
+      decodingMatrix = new byte[numDataunits * numDataunits];
+      makeDecodingMatrix(numDataunits, numParityUnits, matrix, erased, decodingMatrix, dmIds);
     }
 
     /*
@@ -222,7 +223,7 @@ public final class ErasureCodeUtil {
 
     for (i = 0; edd > 0 && i < lastdrive; i++) {
       if (erased[i]) {
-        dotprod(k, decodingMatrix, i * k, dmIds, i, data_ptrs, coding_ptrs);
+        dotprod(numDataunits, decodingMatrix, i * numDataunits, dmIds, i, inputs, outputs);
         edd--;
       }
     }
@@ -230,28 +231,28 @@ public final class ErasureCodeUtil {
     // Then if necessary, decode drive lastdrive
 
     if (edd > 0) {
-      tmpids = new int[k];
-      for (i = 0; i < k; i++) {
+      tmpids = new int[numDataunits];
+      for (i = 0; i < numDataunits; i++) {
         tmpids[i] = (i < lastdrive) ? i : i+1;
       }
-      dotprod(k, matrix, 0, tmpids, lastdrive, data_ptrs, coding_ptrs);
+      dotprod(numDataunits, matrix, 0, tmpids, lastdrive, inputs, outputs);
     }
 
     // Finally, re-encode any erased coding devices
 
-    for (i = 0; i < m; i++) {
-      if (erased[k+i]) {
-        dotprod(k, matrix, i * k, null, i + k, data_ptrs, coding_ptrs);
+    for (i = 0; i < numParityUnits; i++) {
+      if (erased[numDataunits+i]) {
+        dotprod(numDataunits, matrix, i * numDataunits, null, i + numDataunits, inputs, outputs);
       }
     }
   }
 
-  private static boolean[] erasures2erased(int k, int m, int[] erasures) {
+  private static boolean[] erasures2erased(int numDataUnits, int numParityUnits, int[] erasures) {
     int td;
     boolean[] erased;
     int i;
 
-    td = k+m;
+    td = numDataUnits+numParityUnits;
     erased = new boolean[td];
 
     for (i = 0; i < td; i++) {
@@ -265,37 +266,37 @@ public final class ErasureCodeUtil {
     return erased;
   }
 
-  public static int makeDecodingMatrix(int k, int m, byte[] matrix,
+  public static int makeDecodingMatrix(int numDataUnits, int numParityUnits, byte[] matrix,
                                        boolean[] erased, byte[] decodingMatrix,
                                        int[] dmIds) {
     int i, j;
     j = 0;
-    for (i = 0; j < k; i++) {
+    for (i = 0; j < numDataUnits; i++) {
       if (!erased[i]) {
         dmIds[j] = i;
         j++;
       }
     }
 
-    byte[] tmpmat = new byte[k * k];
+    byte[] tmpmat = new byte[numDataUnits * numDataUnits];
     if (tmpmat == null) {
       return -1;
     }
 
-    for (i = 0; i < k; i++) {
-      if (dmIds[i] < k) {
-        for (j = 0; j < k; j++) {
-          tmpmat[i * k + j] = 0;
+    for (i = 0; i < numDataUnits; i++) {
+      if (dmIds[i] < numDataUnits) {
+        for (j = 0; j < numDataUnits; j++) {
+          tmpmat[i * numDataUnits + j] = 0;
         }
-        tmpmat[i * k + dmIds[i]] = 1;
+        tmpmat[i * numDataUnits + dmIds[i]] = 1;
       } else {
-        for (j = 0; j < k; j++) {
-          tmpmat[i * k + j] = matrix[(dmIds[i] - k) * k + j];
+        for (j = 0; j < numDataUnits; j++) {
+          tmpmat[i * numDataUnits + j] = matrix[(dmIds[i] - numDataUnits) * numDataUnits + j];
         }
       }
     }
 
-    i = GaloisFieldUtil.gfInvertMatrix(tmpmat, decodingMatrix, k);
+    i = GaloisFieldUtil.gfInvertMatrix(tmpmat, decodingMatrix, numDataUnits);
     return i;
   }
 }

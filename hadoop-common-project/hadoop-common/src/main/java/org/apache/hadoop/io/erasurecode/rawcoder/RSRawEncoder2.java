@@ -54,6 +54,7 @@ public class RSRawEncoder2 extends AbstractRawErasureEncoder {
   protected void doEncode(byte[][] inputs, int[] inputOffsets,
                           int dataLen, byte[][] outputs,
                           int[] outputOffsets) {
-
+    ErasureCodeUtil.encodeData(getNumDataUnits(), getNumParityUnits(),
+        encodeMatrix, inputs, outputs);
   }
 }
