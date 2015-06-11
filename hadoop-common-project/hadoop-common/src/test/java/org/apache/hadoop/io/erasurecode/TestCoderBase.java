@@ -155,29 +155,29 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Adjust and return erased indexes altogether, including erased data indexes
-   * and parity indexes.
+   * Return erased indexes altogether, including erased data indexes and parity
+   * indexes.
    * @return erased indexes altogether
    */
   protected int[] getErasedIndexesForDecoding() {
     int[] erasedIndexesForDecoding =
-        new int[erasedParityIndexes.length + erasedDataIndexes.length];
+        new int[erasedDataIndexes.length + erasedParityIndexes.length];
 
     int idx = 0;
 
-    for (int i = 0; i < erasedParityIndexes.length; i++) {
-      erasedIndexesForDecoding[idx ++] = erasedParityIndexes[i];
+    for (int i = 0; i < erasedDataIndexes.length; i++) {
+      erasedIndexesForDecoding[idx ++] = erasedDataIndexes[i];
     }
 
-    for (int i = 0; i < erasedDataIndexes.length; i++) {
-      erasedIndexesForDecoding[idx ++] = erasedDataIndexes[i] + numParityUnits;
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      erasedIndexesForDecoding[idx ++] = erasedParityIndexes[i] + numDataUnits;
     }
 
     return erasedIndexesForDecoding;
   }
 
   /**
-   * Return input chunks for decoding, which is parityChunks + dataChunks.
+   * Return input chunks for decoding, which is dataChunks + parityChunks.
    * @param dataChunks
    * @param parityChunks
    * @return
@@ -187,11 +187,11 @@ public abstract class TestCoderBase {
     ECChunk[] inputChunks = new ECChunk[numParityUnits + numDataUnits];
     
     int idx = 0;
-    for (int i = 0; i < numParityUnits; i++) {
-      inputChunks[idx ++] = parityChunks[i];
-    }
     for (int i = 0; i < numDataUnits; i++) {
       inputChunks[idx ++] = dataChunks[i];
+    }
+    for (int i = 0; i < numParityUnits; i++) {
+      inputChunks[idx ++] = parityChunks[i];
     }
     
     return inputChunks;

@@ -73,7 +73,7 @@ static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
 static unsigned char (*d_gf_mul)(unsigned char, unsigned char);
 static unsigned char (*d_gf_inv)(unsigned char);
 static void (*d_gf_gen_rs_matrix)(unsigned char *, int, int);
-static void (*d_gf_gen_cauchy1_matrix)(unsigned char *, int, int);
+static void (*d_gf_gen_cauchy_matrix)(unsigned char *, int, int);
 static int (*d_gf_invert_matrix)(unsigned char *, unsigned char *, const int);
 static int (*d_gf_vect_mul)(int, unsigned char *, void *, void *);
 
@@ -93,8 +93,8 @@ typedef unsigned char (__cdecl *__d_gf_inv)(unsigned char);
 static __d_gf_inv d_gf_inv;
 typedef void (__cdecl *__d_gf_gen_rs_matrix)(unsigned char *, int, int);
 static __d_gf_gen_rs_matrix d_gf_gen_rs_matrix;
-typedef void (__cdecl *__d_gf_gen_cauchy1_matrix)(unsigned char *, int, int);
-static __d_gf_gen_cauchy1_matrix d_gf_gen_cauchy1_matrix;
+typedef void (__cdecl *__d_gf_gen_cauchy_matrix)(unsigned char *, int, int);
+static __d_gf_gen_cauchy_matrix d_gf_gen_cauchy_matrix;
 typedef int (__cdecl *__d_gf_invert_matrix)(unsigned char *,
                                                    unsigned char *, const int);
 static __d_gf_invert_matrix d_gf_invert_matrix;
@@ -117,7 +117,7 @@ static const char* load_functions(void* libec) {
   LOAD_DYNAMIC_SYMBOL(d_gf_mul, libec, "gf_mul");
   LOAD_DYNAMIC_SYMBOL(d_gf_inv, libec, "gf_inv");
   LOAD_DYNAMIC_SYMBOL(d_gf_gen_rs_matrix, libec, "gf_gen_rs_matrix");
-  LOAD_DYNAMIC_SYMBOL(d_gf_gen_cauchy1_matrix, libec, "gf_gen_cauchy1_matrix");
+  LOAD_DYNAMIC_SYMBOL(d_gf_gen_cauchy_matrix, libec, "gf_gen_cauchy_matrix");
   LOAD_DYNAMIC_SYMBOL(d_gf_invert_matrix, libec, "gf_invert_matrix");
   LOAD_DYNAMIC_SYMBOL(d_gf_vect_mul, libec, "gf_vect_mul");
 
@@ -175,8 +175,8 @@ void h_gf_gen_rs_matrix(unsigned char *a, int m, int k) {
   d_gf_gen_rs_matrix(a, m, k);
 }
 
-void h_gf_gen_cauchy1_matrix(unsigned char *a, int m, int k) {
-  d_gf_gen_cauchy1_matrix(a, m, k);
+void h_gf_gen_cauchy_matrix(unsigned char *a, int m, int k) {
+  d_gf_gen_cauchy_matrix(a, m, k);
 }
 
 int h_gf_invert_matrix(unsigned char *in, unsigned char *out, const int n) {
