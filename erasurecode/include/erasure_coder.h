@@ -70,11 +70,9 @@ void initCoder(CoderState* pCoderState, int numDataUnits, int numParityUnits);
 
 void allowVerbose(CoderState* pCoderState, int flag);
 
-void initEncoder(EncoderState* encoder, int numDataUnits,
-                                 int numParityUnits, int* initialMatrix);
+void initEncoder(EncoderState* encoder, int numDataUnits, int numParityUnits);
 
-void initDecoder(DecoderState* decoder, int numDataUnits,
-                                int numParityUnits, int* initialMatrix);
+void initDecoder(DecoderState* decoder, int numDataUnits, int numParityUnits);
 
 void clearDecoder(DecoderState* decoder);
 

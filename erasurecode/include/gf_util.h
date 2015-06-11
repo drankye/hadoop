@@ -74,7 +74,7 @@ void h_gf_gen_rs_matrix(unsigned char *a, int m, int k);
  * @param k  number of columns in matrix corresponding to srcs.
  * @returns  none
  */
-void h_gf_gen_cauchy1_matrix(unsigned char *a, int m, int k);
+void h_gf_gen_cauchy_matrix(unsigned char *a, int m, int k);
 
 /**
  * Invert a matrix in GF(2^8)

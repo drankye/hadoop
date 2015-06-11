@@ -43,7 +43,8 @@ int main(int argc, char *argv[]) {
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
     // TODO: this may indicate s severe error instead, failing the test.
-    fprintf(stderr, "loading erasurecode library failed: %s, skipping this\n", errMsg);
+    fprintf(stderr,
+      "loading erasurecode library failed: %s, skipping this\n", errMsg);
     return 0;
   }
 
