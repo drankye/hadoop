@@ -37,32 +37,17 @@ void allowVerbose(CoderState* pCoderState, int flag) {
 }
 
 static void initEncodeMatrix(int numDataUnits, int numParityUnits,
-                       int* initialMatrix, unsigned char* encodeMatrix) {
-  if (initialMatrix == NULL) {
-    // Generate encode matrix, always invertible
-    h_gf_gen_cauchy1_matrix(encodeMatrix,
+                                                unsigned char* encodeMatrix) {
+  // Generate encode matrix, always invertible
+  h_gf_gen_cauchy_matrix(encodeMatrix,
                           numDataUnits + numParityUnits, numDataUnits);
-  } else {
-    int i, j;
-    int numAllUnits = numDataUnits + numParityUnits;
-    for (i = 0; i < numDataUnits; i++) {
-      encodeMatrix[numDataUnits * i + i] = 1;
-    }
-    for (i = numDataUnits; i < numAllUnits; i++) {
-      for (j = 0; j < numDataUnits; j++) {
-        encodeMatrix[numDataUnits * i + j] =
-                     initialMatrix[numDataUnits * (i - numDataUnits) + j];
-      }
-    }
-  }
 }
 
 void initEncoder(EncoderState* pCoderState, int numDataUnits,
-                            int numParityUnits, int* initialMatrix) {
+                            int numParityUnits) {
   initCoder((CoderState*)pCoderState, numDataUnits, numParityUnits);
 
-  initEncodeMatrix(numDataUnits, numParityUnits,
-                             initialMatrix, pCoderState->encodeMatrix);
+  initEncodeMatrix(numDataUnits, numParityUnits, pCoderState->encodeMatrix);
 
   // Generate gftbls from encode matrix
   h_ec_init_tables(numDataUnits, numParityUnits,
@@ -71,11 +56,10 @@ void initEncoder(EncoderState* pCoderState, int numDataUnits,
 }
 
 void initDecoder(DecoderState* pCoderState, int numDataUnits,
-                                    int numParityUnits, int* initialMatrix) {
+                                                       int numParityUnits) {
   initCoder((CoderState*)pCoderState, numDataUnits, numParityUnits);
 
-  initEncodeMatrix(numDataUnits, numParityUnits,
-                             initialMatrix, pCoderState->encodeMatrix);
+  initEncodeMatrix(numDataUnits, numParityUnits, pCoderState->encodeMatrix);
 }
 
 int encode(EncoderState* pCoderState, unsigned char** dataUnits,

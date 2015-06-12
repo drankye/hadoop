@@ -29,10 +29,6 @@ public abstract class AbstractNativeRawDecoder
   @Override
   protected void doDecode(ByteBuffer[] inputs, int[] erasedIndexes,
                           ByteBuffer[] outputs) {
-    // When not necessary to adjust the order, then we can remove the call
-    // entirely
-    adjustOrder(inputs, erasedIndexes, outputs);
-
     int[] inputOffsets = new int[inputs.length];
     int[] outputOffsets = new int[outputs.length];
     ByteBuffer validInput = findFirstValidInput(inputs);
@@ -61,51 +57,6 @@ public abstract class AbstractNativeRawDecoder
         buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
       }
     }
-  }
-
-  /*
-   * From parity units + data units to data units + parity units. Hopefully we
-   * could eliminate this in future.
-   */
-  private void adjustOrder(ByteBuffer[] inputs, int[] erasedIndexes,
-                          ByteBuffer[] outputs) {
-    ByteBuffer[] inputs2 = new ByteBuffer[inputs.length];
-    int[] erasedIndexes2 = new int[erasedIndexes.length];
-    ByteBuffer[] outputs2 = new ByteBuffer[outputs.length];
-    int numDataUnits = getNumDataUnits();
-    int numParityUnits = getNumParityUnits();
-
-    // From parity units + data units to data units + parity units
-    System.arraycopy(inputs, 0, inputs2, numDataUnits, numParityUnits);
-    System.arraycopy(inputs, numParityUnits, inputs2,
-        0, numDataUnits);
-
-    int numErasedDataUnits = 0, numErasedParityUnits = 0;
-    int idx = 0;
-    for (int i = 0; i < erasedIndexes.length; i++) {
-      if (erasedIndexes[i] >= numParityUnits) {
-        erasedIndexes2[idx++] = erasedIndexes[i] - numParityUnits;
-        numErasedDataUnits++;
-      }
-    }
-    for (int i = 0; i < erasedIndexes.length; i++) {
-      if (erasedIndexes[i] < numParityUnits) {
-          erasedIndexes2[idx++] = erasedIndexes[i] + numDataUnits;
-          numErasedParityUnits++;
-      }
-    }
-
-    // Copy for data units
-    System.arraycopy(outputs, numErasedParityUnits, outputs2,
-        0, numErasedDataUnits);
-    // Copy for parity units
-    System.arraycopy(outputs, 0, outputs2,
-        numErasedDataUnits, numErasedParityUnits);
-
-    // Copy back with adjusted order
-    System.arraycopy(inputs2, 0, inputs, 0, inputs.length);
-    System.arraycopy(erasedIndexes2, 0, erasedIndexes, 0, erasedIndexes.length);
-    System.arraycopy(outputs2, 0, outputs, 0, outputs.length);
   }
 
   protected abstract void performDecodeImpl(
