@@ -35,12 +35,15 @@ public abstract class AbstractNativeRawDecoder
 
     int[] inputOffsets = new int[inputs.length];
     int[] outputOffsets = new int[outputs.length];
-    int dataLen = inputs[0].remaining();
+    ByteBuffer validInput = findFirstValidInput(inputs);
+    int dataLen = validInput.remaining();
 
     ByteBuffer buffer;
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      inputOffsets[i] = buffer.position();
+      if (buffer != null) {
+        inputOffsets[i] = buffer.position();
+      }
     }
 
     for (int i = 0; i < outputs.length; ++i) {
@@ -54,7 +57,9 @@ public abstract class AbstractNativeRawDecoder
 
     for (int i = 0; i < inputs.length; ++i) {
       buffer = inputs[i];
-      buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
+      if (buffer != null) {
+        buffer.position(inputOffsets[i] + dataLen); // dataLen bytes consumed
+      }
     }
   }
 
