@@ -61,7 +61,6 @@ int main(int argc, char *argv[]) {
     usage("Invalid numParityUnits");
   }
 
-  int numAllUnits = numDataUnits + numParityUnits;
   unsigned char* dataUnits[numDataUnits];
   unsigned char* parityUnits[numParityUnits];
 
@@ -84,12 +83,12 @@ int main(int argc, char *argv[]) {
 
   EncoderState* pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
   memset(pEncoder, 0, sizeof(*pEncoder));
-  initEncoder(pEncoder, numDataUnits, numParityUnits, NULL);
+  initEncoder(pEncoder, numDataUnits, numParityUnits);
   encode(pEncoder, dataUnits, parityUnits, chunkSize);
 
   DecoderState* pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
   memset(pDecoder, 0, sizeof(*pDecoder));
-  initDecoder(pDecoder, numDataUnits, numParityUnits, NULL);
+  initDecoder(pDecoder, numDataUnits, numParityUnits);
 
   unsigned char* allUnits[MMAX];
   memcpy(allUnits, dataUnits, numDataUnits * (sizeof (unsigned char*)));

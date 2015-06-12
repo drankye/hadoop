@@ -54,8 +54,7 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder_initImpl(
   JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
   RSEncoderState* pCoderState = (RSEncoderState*)malloc(sizeof(RSEncoderState));
   memset(pCoderState, 0, sizeof(*pCoderState));
-  initEncoder((EncoderState*)pCoderState, (int)numDataUnits,
-                                                  (int)numParityUnits, NULL);
+  initEncoder((EncoderState*)pCoderState, (int)numDataUnits, (int)numParityUnits);
 
   setCoderState(env, thiz, (CoderState*)pCoderState);
 }
