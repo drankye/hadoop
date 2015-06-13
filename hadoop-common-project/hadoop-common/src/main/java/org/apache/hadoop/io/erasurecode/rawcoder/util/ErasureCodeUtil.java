@@ -330,6 +330,6 @@ public final class ErasureCodeUtil {
       }
     }
 
-    GaloisFieldUtil.gfInvertMatrix(tmpMatrix, decodingMatrix, numDataUnits);
+    GaloisFieldUtil.gfInvertMatrix_JE(tmpMatrix, decodingMatrix, numDataUnits);
   }
 }

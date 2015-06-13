@@ -214,6 +214,94 @@ public final class GaloisFieldUtil {
         }
     }
 
+  public static void gfInvertMatrix_JE(byte[] inMatrix, byte[] outMatrix, int rows) {
+    int cols, i, j, k, x, rs2;
+    int row_start;
+    byte tmp, inverse;
+
+    cols = rows;
+
+    k = 0;
+    for (i = 0; i < rows; i++) {
+      for (j = 0; j < cols; j++) {
+        outMatrix[k] = (byte) ((i == j) ? 1 : 0);
+        k++;
+      }
+    }
+
+  /* First -- convert into upper triangular  */
+    for (i = 0; i < cols; i++) {
+      row_start = cols*i;
+
+    /* Swap rows if we ave a zero i,i element.  If we can't swap, then the
+       matrix was not invertible  */
+
+      if (inMatrix[row_start+i] == 0) {
+        for (j = i+1; j < rows && inMatrix[cols*j+i] == 0; j++) ;
+        if (j == rows) {
+          throw new RuntimeException("Not invertble");
+        }
+        rs2 = j*cols;
+        for (k = 0; k < cols; k++) {
+          tmp = inMatrix[row_start+k];
+          inMatrix[row_start+k] = inMatrix[rs2+k];
+          inMatrix[rs2+k] = tmp;
+          tmp = outMatrix[row_start+k];
+          outMatrix[row_start+k] = outMatrix[rs2+k];
+          outMatrix[rs2+k] = tmp;
+        }
+      }
+
+    /* Multiply the row by 1/element i,i  */
+      tmp = inMatrix[row_start+i];
+      if (tmp != 1) {
+        inverse = gfInv(tmp);
+        for (j = 0; j < cols; j++) {
+          inMatrix[row_start+j] = gfMul(inMatrix[row_start + j], inverse);
+          outMatrix[row_start+j] = gfMul(outMatrix[row_start+j], inverse);
+        }
+      }
+
+    /* Now for each j>i, add A_ji*Ai to Aj  */
+      k = row_start+i;
+      for (j = i+1; j != cols; j++) {
+        k += cols;
+        if (inMatrix[k] != 0) {
+          if (inMatrix[k] == 1) {
+            rs2 = cols*j;
+            for (x = 0; x < cols; x++) {
+              inMatrix[rs2+x] ^= inMatrix[row_start+x];
+              outMatrix[rs2+x] ^= outMatrix[row_start+x];
+            }
+          } else {
+            tmp = inMatrix[k];
+            rs2 = cols*j;
+            for (x = 0; x < cols; x++) {
+              inMatrix[rs2+x] ^= gfMul(tmp, inMatrix[row_start+x]);
+              outMatrix[rs2+x] ^= gfMul(tmp, outMatrix[row_start+x]);
+            }
+          }
+        }
+      }
+    }
+
+  /* Now the matrix is upper triangular.  Start at the top and multiply down  */
+
+    for (i = rows-1; i >= 0; i--) {
+      row_start = i*cols;
+      for (j = 0; j < i; j++) {
+        rs2 = j*cols;
+        if (inMatrix[rs2+i] != 0) {
+          tmp = inMatrix[rs2+i];
+          inMatrix[rs2+i] = 0;
+          for (k = 0; k < cols; k++) {
+            outMatrix[rs2+k] ^= gfMul(tmp, outMatrix[row_start+k]);
+          }
+        }
+      }
+    }
+  }
+
     /*
   public static void ec_init_tables(int k, int rows, byte[] a, byte[] gf_tbls) {
     int i, j;
