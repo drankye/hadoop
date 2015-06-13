@@ -94,24 +94,24 @@ public final class ErasureCodeUtil {
     }
   }
 
-  public static void dotprod(int k, byte[] matrix, int rowIdx, int[] srcIds,
+  public static void dotprod(int numDataUnits, byte[] matrix, int rowIdx, int[] srcIds,
                              int destId, byte[][] inputs, byte[][] outputs) {
     byte[] output, input;
     int size = 513; //inputs[0].length;
     int i;
 
-    output = (destId < k) ? inputs[destId] : outputs[destId - k];
+    output = (destId < numDataUnits) ? inputs[destId] : outputs[destId - numDataUnits];
 
     //First copy or xor any data that does not need to be multiplied by a factor
     int init = 0;
-    for (i = 0; i < k; i++) {
+    for (i = 0; i < numDataUnits; i++) {
       if (matrix[rowIdx + i] == 1) {
         if (srcIds == null) {
           input = inputs[i];
-        } else if (srcIds[i] < k) {
+        } else if (srcIds[i] < numDataUnits) {
           input = inputs[srcIds[i]];
         } else {
-          input = outputs[srcIds[i]-k];
+          input = outputs[srcIds[i]-numDataUnits];
         }
         if (init == 0) {
           System.arraycopy(input, 0, output, 0, size);
@@ -125,14 +125,14 @@ public final class ErasureCodeUtil {
     }
 
     //Now do the data that needs to be multiplied by a factor
-    for (i = 0; i < k; i++) {
+    for (i = 0; i < numDataUnits; i++) {
       if (matrix[rowIdx + i] != 0 && matrix[rowIdx + i] != 1) {
         if (srcIds == null) {
           input = inputs[i];
-        } else if (srcIds[i] < k) {
+        } else if (srcIds[i] < numDataUnits) {
           input = inputs[srcIds[i]];
         } else {
-          input = outputs[srcIds[i]-k];
+          input = outputs[srcIds[i]-numDataUnits];
         }
         regionMultiply(input, matrix[rowIdx + i], size, output, init);
         init = 1;
@@ -165,11 +165,12 @@ public final class ErasureCodeUtil {
                                 byte[] matrix, int row_k_ones, int[] erasures,
                                 byte[][] inputs, byte[][] outputs) {
     int i, numErasedDataUnits;
-    int[] tmpIds;
     boolean[] erased;
-    int[] dmIds;
 
     erased = erasures2erased(numDataunits, numParityUnits, erasures);
+
+    int[] validSourceIndexes = new int[numDataunits];
+    makeValidIndexes(inputs, validSourceIndexes);
 
     //Find the number of data units failed
 
@@ -180,17 +181,15 @@ public final class ErasureCodeUtil {
       }
     }
 
-    dmIds = null;
     byte[] decodingMatrix = null;
 
-    dmIds = new int[numDataunits];
     decodingMatrix = new byte[numDataunits * numDataunits];
-    makeDecodingMatrix(numDataunits, numParityUnits, matrix, erased, decodingMatrix, dmIds);
+    makeDecodingMatrix(numDataunits, numParityUnits, matrix, erased, decodingMatrix, validSourceIndexes);
 
     // Decode erased data units
     for (i = 0; numErasedDataUnits > 0; i++) {
       if (erased[i]) {
-        dotprod(numDataunits, decodingMatrix, i * numDataunits, dmIds, i, inputs, outputs);
+        dotprod(numDataunits, decodingMatrix, i * numDataunits, validSourceIndexes, i, inputs, outputs);
         numErasedDataUnits--;
       }
     }
@@ -280,6 +279,15 @@ public final class ErasureCodeUtil {
     for (i = 0; i < numParityUnits; i++) {
       if (erased[numDataunits+i]) {
         dotprod(numDataunits, matrix, i * numDataunits, null, i + numDataunits, inputs, outputs);
+      }
+    }
+  }
+
+  private static void makeValidIndexes(byte[][] inputs, int[] validIndexes) {
+    int idx = 0;
+    for (int i = 0; i < inputs.length; i++) {
+      if (inputs[i] == null) {
+        validIndexes[idx++] = i;
       }
     }
   }
