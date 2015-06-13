@@ -69,8 +69,8 @@ public abstract class TestRawCoderBase extends TestCoderBase {
      * to verify the same encoder/decoder can process variable width of data.
      */
     performTestCoding(baseChunkSize, false, false);
-    performTestCoding(baseChunkSize - 17, false, false);
-    performTestCoding(baseChunkSize + 16, false, false);
+    //performTestCoding(baseChunkSize - 17, false, false);
+    //performTestCoding(baseChunkSize + 16, false, false);
   }
 
   /**
@@ -105,8 +105,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     }
   }
 
-  @Test
-  public void testCodingWithErasingTooMany() {
+  protected void testCodingWithErasingTooMany() {
     try {
       testCoding(true);
       Assert.fail("Decoding test erasing too many should fail");

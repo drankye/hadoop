@@ -23,18 +23,18 @@ import org.junit.Test;
 /**
  * Test raw Reed-solomon coder implemented in Java.
  */
-public class TestRSRawCoder2 extends TestRSRawCoderBase {
+public class TestRSRawCoderNative extends TestRSRawCoderBase {
 
   @Before
   public void setup() {
-    this.encoderClass = RSRawEncoder2.class;
-    this.decoderClass = RSRawDecoder2.class;
+    this.encoderClass = NativeRSRawEncoder.class;
+    this.decoderClass = NativeRSRawDecoder.class;
     setAllowDump(true); // Change to true to allow verbose dump for debugging
   }
 
   @Test
   public void testCoding_6x3_erasing_d0() {
-    prepare(null, 6, 3, new int[]{0}, new int[0], true);
+    prepare(null, 6, 3, new int[]{0, 1, 2}, new int[0], true);
     testCoding(false);
   }
 }

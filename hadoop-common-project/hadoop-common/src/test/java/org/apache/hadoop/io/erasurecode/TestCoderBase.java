@@ -212,14 +212,14 @@ public abstract class TestCoderBase {
 
     int idx = 0;
 
-    for (int i = 0; i < erasedParityIndexes.length; i++) {
-      toEraseChunks[idx ++] = parityChunks[erasedParityIndexes[i]];
-      parityChunks[erasedParityIndexes[i]] = null;
-    }
-
     for (int i = 0; i < erasedDataIndexes.length; i++) {
       toEraseChunks[idx ++] = dataChunks[erasedDataIndexes[i]];
       dataChunks[erasedDataIndexes[i]] = null;
+    }
+
+    for (int i = 0; i < erasedParityIndexes.length; i++) {
+      toEraseChunks[idx ++] = parityChunks[erasedParityIndexes[i]];
+      parityChunks[erasedParityIndexes[i]] = null;
     }
 
     return toEraseChunks;
@@ -297,7 +297,7 @@ public abstract class TestCoderBase {
      * and in the beginning, dummy data are prefixed, to simulate a buffer of
      * position > 0.
      */
-    int startOffset = startBufferWithZero ? 0 : 11; // 11 is arbitrary
+    int startOffset = startBufferWithZero ? 0 : 0; // 11 is arbitrary
     int allocLen = startOffset + bufferLen + startOffset;
     ByteBuffer buffer = usingDirectBuffer ?
         ByteBuffer.allocateDirect(allocLen) : ByteBuffer.allocate(allocLen);

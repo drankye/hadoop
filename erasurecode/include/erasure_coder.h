@@ -96,6 +96,6 @@ void dump(unsigned char* buf, int len);
 
 void dumpMatrix(unsigned char** s, int k, int m);
 
-void dumpU8xU8(unsigned char* s, int n1, int n2);
+void dumpCodingMatrix(unsigned char* s, int n1, int n2);
 
 #endif //_ERASURE_CODER_H_

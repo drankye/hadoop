@@ -116,7 +116,7 @@ static const char* load_functions(void* libec) {
   LOAD_DYNAMIC_SYMBOL(d_gf_mul, libec, "gf_mul");
   LOAD_DYNAMIC_SYMBOL(d_gf_inv, libec, "gf_inv");
   LOAD_DYNAMIC_SYMBOL(d_gf_gen_rs_matrix, libec, "gf_gen_rs_matrix");
-  LOAD_DYNAMIC_SYMBOL(d_gf_gen_cauchy_matrix, libec, "gf_gen_cauchy_matrix");
+  LOAD_DYNAMIC_SYMBOL(d_gf_gen_cauchy_matrix, libec, "gf_gen_cauchy1_matrix");
   LOAD_DYNAMIC_SYMBOL(d_gf_invert_matrix, libec, "gf_invert_matrix");
   LOAD_DYNAMIC_SYMBOL(d_gf_vect_mul, libec, "gf_vect_mul");
 
