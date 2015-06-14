@@ -90,7 +90,7 @@ public final class ErasureCodeUtil {
   public static void encodeData(int numDataUnits, int numParityUnits, byte[] matrix,
                                 byte[][] inputs, byte[][] outputs) {
     for (int i = 0; i < numParityUnits; i++) {
-      dotprod(numDataUnits, matrix, i * numDataUnits, null, numDataUnits + i, inputs, outputs);
+      encodeDotprod(numDataUnits, matrix, i * numDataUnits, inputs, outputs[i]);
     }
   }
 
@@ -140,6 +140,70 @@ public final class ErasureCodeUtil {
     }
   }
 
+  public static void encodeDotprod(int numDataUnits, byte[] matrix, int rowIdx,
+                             byte[][] inputs, byte[] output) {
+    byte[] input;
+    int size = 513; //inputs[0].length;
+    int i;
+
+    //First copy or xor any data that does not need to be multiplied by a factor
+    int init = 0;
+    for (i = 0; i < numDataUnits; i++) {
+      if (matrix[rowIdx + i] == 1) {
+        input = inputs[i];
+        if (init == 0) {
+          System.arraycopy(input, 0, output, 0, size);
+          init = 1;
+        } else {
+          for (int j = 0; j < size; j++) {
+            output[j] ^= input[j];
+          }
+        }
+      }
+    }
+
+    //Now do the data that needs to be multiplied by a factor
+    for (i = 0; i < numDataUnits; i++) {
+      if (matrix[rowIdx + i] != 0 && matrix[rowIdx + i] != 1) {
+        input = inputs[i];
+        regionMultiply(input, matrix[rowIdx + i], size, output, init);
+        init = 1;
+      }
+    }
+  }
+
+  public static void decodeDotprod(int numDataUnits, byte[] matrix, int rowIdx, int[] srcIds,
+                             byte[][] inputs, byte[] output) {
+    byte[] input;
+    int size = 513; //inputs[0].length;
+    int i;
+
+    //First copy or xor any data that does not need to be multiplied by a factor
+    int init = 0;
+    for (i = 0; i < numDataUnits; i++) {
+      if (matrix[rowIdx + i] == 1) {
+        input = inputs[srcIds[i]];
+        if (init == 0) {
+          System.arraycopy(input, 0, output, 0, size);
+          init = 1;
+        } else {
+          for (int j = 0; j < size; j++) {
+            output[j] ^= input[j];
+          }
+        }
+      }
+    }
+
+    //Now do the data that needs to be multiplied by a factor
+    for (i = 0; i < numDataUnits; i++) {
+      if (matrix[rowIdx + i] != 0 && matrix[rowIdx + i] != 1) {
+        input = inputs[srcIds[i]];
+        regionMultiply(input, matrix[rowIdx + i], size, output, init);
+        init = 1;
+      }
+    }
+  }
+
   public static void regionMultiply(byte[] region, int multby,
                                     int nbytes, byte[] r2, int add) {
     byte[] ur1, ur2;
@@ -181,15 +245,15 @@ public final class ErasureCodeUtil {
       }
     }
 
-    byte[] decodingMatrix = null;
-
-    decodingMatrix = new byte[numDataunits * numDataunits];
+    byte[] decodingMatrix = new byte[numDataunits * numDataunits];
     makeDecodingMatrix(numDataunits, numParityUnits, matrix, erased, decodingMatrix, validSourceIndexes);
+
+    int idx = 0; // For output
 
     // Decode erased data units
     for (i = 0; numErasedDataUnits > 0; i++) {
       if (erased[i]) {
-        dotprod(numDataunits, decodingMatrix, i * numDataunits, validSourceIndexes, i, inputs, outputs);
+        decodeDotprod(numDataunits, decodingMatrix, i * numDataunits, validSourceIndexes, inputs, outputs[idx++]);
         numErasedDataUnits--;
       }
     }
@@ -197,7 +261,7 @@ public final class ErasureCodeUtil {
     // Finally, re-encode any erased coding devices
     for (i = 0; i < numParityUnits; i++) {
       if (erased[numDataunits+i]) {
-        dotprod(numDataunits, matrix, i * numDataunits, null, i + numDataunits, inputs, outputs);
+        encodeDotprod(numDataunits, matrix, i * numDataunits, inputs, outputs[idx++]);
       }
     }
   }
