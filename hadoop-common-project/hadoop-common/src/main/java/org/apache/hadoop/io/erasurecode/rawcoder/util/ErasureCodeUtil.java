@@ -286,7 +286,7 @@ public final class ErasureCodeUtil {
   private static void makeValidIndexes(byte[][] inputs, int[] validIndexes) {
     int idx = 0;
     for (int i = 0; i < inputs.length; i++) {
-      if (inputs[i] == null) {
+      if (inputs[i] != null) {
         validIndexes[idx++] = i;
       }
     }

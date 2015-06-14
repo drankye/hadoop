@@ -239,7 +239,7 @@ public final class GaloisFieldUtil {
       if (inMatrix[row_start+i] == 0) {
         for (j = i+1; j < rows && inMatrix[cols*j+i] == 0; j++) ;
         if (j == rows) {
-          throw new RuntimeException("Not invertble");
+          throw new RuntimeException("Not invertible");
         }
         rs2 = j*cols;
         for (k = 0; k < cols; k++) {
