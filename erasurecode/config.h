@@ -18,14 +18,13 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define HADOOP_ZLIB_LIBRARY "libz.so.1"
-#define HADOOP_BZIP2_LIBRARY "libbz2.so.1"
-/* #undef HADOOP_SNAPPY_LIBRARY */
-#define HADOOP_OPENSSL_LIBRARY "libcrypto.so"
-#define HADOOP_ERASURECODE_LIBRARY "libisal.so"
-#define HAVE_SYNC_FILE_RANGE
-#define HAVE_POSIX_FADVISE
 
-#define UNIX
+#ifdef UNIX
+#define HADOOP_ERASURECODE_LIBRARY "libisal.so"
+#endif
+
+#ifdef WINDOWS
+#define HADOOP_ERASURECODE_LIBRARY "isa-l.dll"
+#endif
 
 #endif

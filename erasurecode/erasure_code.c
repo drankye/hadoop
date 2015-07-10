@@ -15,16 +15,21 @@
  *  limitations under the License.
  */
 
+#ifdef UNIX
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <errno.h>
+#include <dlfcn.h>
+#endif
 
+#ifdef WINDOWS
+#include <Windows.h>
+#endif
+
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
-
 #include "gf_util.h"
 #include "erasure_code.h"
 #include "config.h"
@@ -49,6 +54,12 @@ void *my_dlsym(void *handle, const char *symbol) {
   return func_ptr;
 }
 
+/* A helper macro to dlsym the requisite dynamic symbol in NON-JNI env. */
+#define LOAD_DYNAMIC_SYMBOL(func_ptr, handle, symbol) \
+  if ((func_ptr = my_dlsym(handle, symbol)) == NULL) { \
+    return "Failed to load symbol" symbol; \
+  }
+
 #endif
 
 #ifdef WINDOWS
@@ -58,13 +69,13 @@ static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
   return func_ptr;
 }
 
-#endif
-
 /* A helper macro to dlsym the requisite dynamic symbol in NON-JNI env. */
-#define LOAD_DYNAMIC_SYMBOL(func_ptr, handle, symbol) \
-  if ((func_ptr = my_dlsym(handle, symbol)) == NULL) { \
+#define LOAD_DYNAMIC_SYMBOL(func_type, func_ptr, handle, symbol) \
+  if ((func_ptr = (func_type)my_dlsym(handle, symbol)) == NULL) { \
     return "Failed to load symbol" symbol; \
   }
+
+#endif
 
 
 #ifdef UNIX
@@ -107,12 +118,13 @@ static __d_ec_init_tables d_ec_init_tables;
 typedef void (__cdecl *__d_ec_encode_data)(int, int, int, unsigned char*,
                                              unsigned char**, unsigned char**);
 static __d_ec_encode_data d_ec_encode_data;
-typedef void (__cdecl *__d_ec_encode_data_update)(int, int, int, unsigned char*,
-                                             unsigned char**, unsigned char**);
+typedef void (__cdecl *__d_ec_encode_data_update)(int, int, int, int, unsigned char*,
+                                             unsigned char*, unsigned char**);
 static __d_ec_encode_data_update d_ec_encode_data_update;
 #endif
 
 static const char* load_functions(void* libec) {
+#ifdef UNIX
   LOAD_DYNAMIC_SYMBOL(d_gf_mul, libec, "gf_mul");
   LOAD_DYNAMIC_SYMBOL(d_gf_inv, libec, "gf_inv");
   LOAD_DYNAMIC_SYMBOL(d_gf_gen_rs_matrix, libec, "gf_gen_rs_matrix");
@@ -123,12 +135,28 @@ static const char* load_functions(void* libec) {
   LOAD_DYNAMIC_SYMBOL(d_ec_init_tables, libec, "ec_init_tables");
   LOAD_DYNAMIC_SYMBOL(d_ec_encode_data, libec, "ec_encode_data");
   LOAD_DYNAMIC_SYMBOL(d_ec_encode_data_update, libec, "ec_encode_data_update");
+#endif
+
+#ifdef WINDOWS
+  LOAD_DYNAMIC_SYMBOL(__d_gf_mul, d_gf_mul, libec, "gf_mul");
+  LOAD_DYNAMIC_SYMBOL(__d_gf_inv, d_gf_inv, libec, "gf_inv");
+  LOAD_DYNAMIC_SYMBOL(__d_gf_gen_rs_matrix, d_gf_gen_rs_matrix, libec, "gf_gen_rs_matrix");
+  LOAD_DYNAMIC_SYMBOL(__d_gf_gen_cauchy_matrix, d_gf_gen_cauchy_matrix, libec, "gf_gen_cauchy1_matrix");
+  LOAD_DYNAMIC_SYMBOL(__d_gf_invert_matrix, d_gf_invert_matrix, libec, "gf_invert_matrix");
+  LOAD_DYNAMIC_SYMBOL(__d_gf_vect_mul, d_gf_vect_mul, libec, "gf_vect_mul");
+
+  LOAD_DYNAMIC_SYMBOL(__d_ec_init_tables, d_ec_init_tables, libec, "ec_init_tables");
+  LOAD_DYNAMIC_SYMBOL(__d_ec_encode_data, d_ec_encode_data, libec, "ec_encode_data");
+  LOAD_DYNAMIC_SYMBOL(__d_ec_encode_data_update, d_ec_encode_data_update, libec, "ec_encode_data_update");
+#endif
 
   return NULL;
 }
 
 void load_erasurecode_lib(char* err, size_t err_len) {
   static void* libec = NULL;
+  const char* libecName;
+  const char* errMsg;
 
   err[0] = '\0';
 
@@ -136,13 +164,13 @@ void load_erasurecode_lib(char* err, size_t err_len) {
     return;
   }
 
-  const char* libecName = HADOOP_ERASURECODE_LIBRARY;
+  libecName = HADOOP_ERASURECODE_LIBRARY;
 
   // Load Intel ISA-L
   #ifdef UNIX
   libec = dlopen(libecName, RTLD_LAZY | RTLD_GLOBAL);
   if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
+    snprintf(err, err_len, "Failed to load %s! (%s)", libecName, dlerror());
     return;
   }
   // Clear any existing error
@@ -150,16 +178,16 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   #endif
 
   #ifdef WINDOWS
-  HMODULE libec = LoadLibrary(libecName);
+  libec = LoadLibrary(libecName);
   if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s! (%s)!", libecName, dlerror());
+    _snprintf(err, err_len, "Failed to load %s", libecName);
     return;
   }
   #endif
 
-  const char* errMsg = load_functions(libec);
+  errMsg = load_functions(libec);
   if (errMsg != NULL) {
-    snprintf(err, err_len, "Loading functions from %s failed: %s",
+    _snprintf(err, err_len, "Loading functions from %s failed: %s",
                                                           libecName, errMsg);
   }
 }

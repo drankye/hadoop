@@ -64,7 +64,6 @@ void initDecoder(DecoderState* pCoderState, int numDataUnits,
 
 int encode(EncoderState* pCoderState, unsigned char** dataUnits,
     unsigned char** parityUnits, int chunkSize) {
-
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
   int numParityUnits = ((CoderState*)pCoderState)->numParityUnits;
 
@@ -81,10 +80,10 @@ int encode(EncoderState* pCoderState, unsigned char** dataUnits,
 int decode(DecoderState* pCoderState, unsigned char** inputs,
                   int* erasedIndexes, int numErased,
                    unsigned char** outputs, int chunkSize) {
-  clearDecoder(pCoderState);
+  int numDataUnits, i, ret;
 
-  int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
-  int i, ret;
+  clearDecoder(pCoderState);
+  numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
 
   // Choose random buffers to be in erasure
   processErasures(pCoderState, erasedIndexes, numErased);
@@ -135,6 +134,7 @@ void processErasures(DecoderState* pCoderState,
                                     int* erasedIndexes, int numErased) {
   int i, index;
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
+
   for (i = 0; i < numErased; i++) {
     index = erasedIndexes[i];
     pCoderState->erasedIndexes[i] = index;
@@ -150,6 +150,7 @@ void processErasures(DecoderState* pCoderState,
 // Generate decode matrix from encode matrix
 int generateDecodeMatrix(DecoderState* pCoderState) {
   int i, j, r, p;
+  unsigned char s;
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
 
   // Construct matrix b by removing error rows
@@ -174,7 +175,6 @@ int generateDecodeMatrix(DecoderState* pCoderState) {
     }
   }
 
-  unsigned char s;
   for (p = pCoderState->numErasedDataUnits; p < pCoderState->numErased; p++) {
     for (i = 0; i < numDataUnits; i++) {
       s = 0;
