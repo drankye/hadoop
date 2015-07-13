@@ -39,7 +39,19 @@ static void usage(char* errorMsg) {
 }
 
 int main(int argc, char *argv[]) {
+  int i, j;
+  int chunkSize = 1024;
+  const int numDataUnits = 6;
+  const int numParityUnits = 3;
   char errMsg[256];
+  unsigned char** dataUnits;
+  unsigned char** parityUnits;
+  EncoderState* pEncoder;
+  int erasedIndexes[2];
+  unsigned char* allUnits[MMAX];
+  DecoderState* pDecoder;
+  unsigned char* decodingOutput[2];
+
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
     // TODO: this may indicate s severe error instead, failing the test.
@@ -47,11 +59,6 @@ int main(int argc, char *argv[]) {
       "loading erasurecode library failed: %s, skipping this\n", errMsg);
     return 0;
   }
-
-  int i, j;
-  int chunkSize = 1024;
-  int numDataUnits = 6;
-  int numParityUnits = 3;
 
   if (argc != 3) usage(NULL);
   if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
@@ -61,8 +68,8 @@ int main(int argc, char *argv[]) {
     usage("Invalid numParityUnits");
   }
 
-  unsigned char* dataUnits[numDataUnits];
-  unsigned char* parityUnits[numParityUnits];
+  dataUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numDataUnits);
+  parityUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
 
   // Allocate and generate data units
   srand(135);
@@ -81,20 +88,19 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  EncoderState* pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
+  pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
   memset(pEncoder, 0, sizeof(*pEncoder));
   initEncoder(pEncoder, numDataUnits, numParityUnits);
   encode(pEncoder, dataUnits, parityUnits, chunkSize);
 
-  DecoderState* pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
+  pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
   memset(pDecoder, 0, sizeof(*pDecoder));
   initDecoder(pDecoder, numDataUnits, numParityUnits);
 
-  unsigned char* allUnits[MMAX];
   memcpy(allUnits, dataUnits, numDataUnits * (sizeof (unsigned char*)));
   memcpy(allUnits + numDataUnits, parityUnits,
                             numParityUnits * (sizeof (unsigned char*)));
-  int erasedIndexes[2];
+
   erasedIndexes[0] = 1;
   erasedIndexes[1] = 7;
 
@@ -108,6 +114,7 @@ int main(int argc, char *argv[]) {
   allUnits[7] = NULL;
 
   unsigned char* decodingOutput[2];
+
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
 

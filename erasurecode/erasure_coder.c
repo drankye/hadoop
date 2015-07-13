@@ -64,7 +64,6 @@ void initDecoder(DecoderState* pCoderState, int numDataUnits,
 
 int encode(EncoderState* pCoderState, unsigned char** dataUnits,
     unsigned char** parityUnits, int chunkSize) {
-
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
   int numParityUnits = ((CoderState*)pCoderState)->numParityUnits;
 
@@ -82,6 +81,7 @@ static void processErasures(DecoderState* pCoderState,
                                     int* erasedIndexes, int numErased) {
   int i, index;
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
+
   for (i = 0; i < numErased; i++) {
     index = erasedIndexes[i];
     pCoderState->erasedIndexes[i] = index;
@@ -96,6 +96,7 @@ static void processErasures(DecoderState* pCoderState,
 // Generate decode matrix from encode matrix
 static int generateDecodeMatrix(DecoderState* pCoderState) {
   int i, j, r, p;
+  unsigned char s;
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
 
   // Construct matrix b by removing error rows
@@ -117,7 +118,6 @@ static int generateDecodeMatrix(DecoderState* pCoderState) {
     }
   }
 
-  unsigned char s;
   for (p = pCoderState->numErasedDataUnits; p < pCoderState->numErased; p++) {
     for (i = 0; i < numDataUnits; i++) {
       s = 0;
@@ -266,5 +266,3 @@ void dumpCodingMatrix(unsigned char* buf, int n1, int n2) {
   }
   printf("\n");
 }
-
-

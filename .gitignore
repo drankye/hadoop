@@ -2,6 +2,9 @@
 *.iml
 *.ipr
 *.iws
+*.obj
+*.exe
+*.dll
 *.orig
 *.rej
 **/.keep
