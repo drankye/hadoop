@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
   unsigned char* allUnits[MMAX];
   DecoderState* pDecoder;
   unsigned char* decodingOutput[2];
+  unsigned char** backupUnits;
 
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
@@ -70,6 +71,7 @@ int main(int argc, char *argv[]) {
 
   dataUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numDataUnits);
   parityUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
+  backupUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
 
   // Allocate and generate data units
   srand(135);
@@ -103,14 +105,22 @@ int main(int argc, char *argv[]) {
 
   erasedIndexes[0] = 1;
   erasedIndexes[1] = 7;
+
+  backupUnits[0] = allUnits[0];
+  backupUnits[1] = allUnits[1];
+  backupUnits[2] = allUnits[7];
+
+  allUnits[0] = NULL; // Not to read
+  allUnits[1] = NULL;
+  allUnits[7] = NULL;
+
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
 
   decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
 
   for (i = 0; i < pDecoder->numErased; i++) {
-    if (0 != memcmp(decodingOutput[i],
-                     allUnits[pDecoder->erasedIndexes[i]], chunkSize)) {
+    if (0 != memcmp(decodingOutput[i], backupUnits[i], chunkSize)) {
       dumpDecoder(pDecoder);
       return -1;
     }

@@ -20,6 +20,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
+
+#include "config.h"
 #endif
 
 #ifdef WINDOWS
@@ -30,9 +32,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gf_util.h"
-#include "erasure_code.h"
-#include "config.h"
+
+#include "../include/gf_util.h"
+#include "../include/erasure_code.h"
 
 /**
  *  erasure_code.c
