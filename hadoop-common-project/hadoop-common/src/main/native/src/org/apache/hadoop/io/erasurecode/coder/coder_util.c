@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
 #include "org_apache_hadoop.h"
 #include "../include/erasure_code.h"
 #include "coder_util.h"
@@ -55,15 +54,16 @@ CoderState* getCoderState(JNIEnv* env, jobject thiz) {
 void getInputs(JNIEnv *env, jobjectArray inputs, jintArray inputOffsets,
                               unsigned char** destInputs, int num) {
   int numInputs = (*env)->GetArrayLength(env, inputs);
+  int* tmpInputOffsets;
+  int i;
+  jobject byteBuffer;
+
   if (numInputs != num) {
     THROW(env, "java/lang/InternalError", "Invalid inputs");
   }
 
-  int* tmpInputOffsets = (int*)(*env)->GetIntArrayElements(env,
+  tmpInputOffsets = (int*)(*env)->GetIntArrayElements(env,
                                                       inputOffsets, NULL);
-
-  int i;
-  jobject byteBuffer;
   for (i = 0; i < numInputs; i++) {
     byteBuffer = (*env)->GetObjectArrayElement(env, inputs, i);
     if (byteBuffer != NULL) {
@@ -79,15 +79,15 @@ void getInputs(JNIEnv *env, jobjectArray inputs, jintArray inputOffsets,
 void getOutputs(JNIEnv *env, jobjectArray outputs, jintArray outputOffsets,
                               unsigned char** destOutputs, int num) {
   int numOutputs = (*env)->GetArrayLength(env, outputs);
+  int i, *tmpOutputOffsets;
+  jobject byteBuffer;
+  
   if (numOutputs != num) {
     THROW(env, "java/lang/InternalError", "Invalid outputs");
   }
 
-  int* tmpOutputOffsets = (int*)(*env)->GetIntArrayElements(env,
+  tmpOutputOffsets = (int*)(*env)->GetIntArrayElements(env,
                                                           outputOffsets, NULL);
-
-  int i;
-  jobject byteBuffer;
   for (i = 0; i < numOutputs; i++) {
     byteBuffer = (*env)->GetObjectArrayElement(env, outputs, i);
     destOutputs[i] = (unsigned char *)((*env)->GetDirectBufferAddress(env,

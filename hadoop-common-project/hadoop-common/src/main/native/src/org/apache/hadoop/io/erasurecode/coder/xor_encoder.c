@@ -53,6 +53,7 @@ JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawEncoder_encodeImpl(
   JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
   jint dataLen, jobjectArray outputs, jintArray outputOffsets) {
+  int i, j;
   XOREncoderState* xorEncoder = (XOREncoderState*)getCoderState(env, thiz);
   
   int numDataUnits = ((CoderState*)xorEncoder)->numDataUnits;
@@ -63,7 +64,6 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawEncoder_encodeImpl(
   getOutputs(env, outputs, outputOffsets, xorEncoder->outputs, numParityUnits);
 
   // Get the first buffer's data.
-  int i, j;
   for (j = 0; j < chunkSize; j++) {
     xorEncoder->outputs[0][j] = xorEncoder->inputs[0][j];
   }
