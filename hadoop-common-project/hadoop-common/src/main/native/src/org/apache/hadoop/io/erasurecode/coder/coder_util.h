@@ -19,19 +19,11 @@
 #ifndef _CODER_COMMON_H_
 #define _CODER_COMMON_H_
 
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <jni.h>
-#include <pthread.h>
-#include <signal.h>
-#include <dlfcn.h>
 
 #include "erasure_coder.h"
 

@@ -92,7 +92,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;NATIVE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\winutils\include;..\..\..\target\native\javah;%JAVA_HOME%\include;%JAVA_HOME%\include\win32;.\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\winutils\include;..\native\src\org\apache\hadoop\io\erasurecode\include;..\..\..\target\native\javah;%JAVA_HOME%\include;%JAVA_HOME%\include\win32;.\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <DisableSpecificWarnings>4244</DisableSpecificWarnings>
     </ClCompile>
@@ -113,7 +113,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;NATIVE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\winutils\include;..\..\..\target\native\javah;%JAVA_HOME%\include;%JAVA_HOME%\include\win32;.\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\winutils\include;..\native\src\org\apache\hadoop\io\erasurecode\include;..\..\..\target\native\javah;%JAVA_HOME%\include;%JAVA_HOME%\include\win32;.\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <DisableSpecificWarnings>4244</DisableSpecificWarnings>
     </ClCompile>
@@ -150,6 +150,16 @@
     <ClCompile Include="src\org\apache\hadoop\yarn\server\nodemanager\windows_secure_container_executor.c">
       <AdditionalIncludeDirectories>src\org\apache\hadoop\io\nativeio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code.c">
+      <AdditionalOptions>/D HADOOP_ERASURECODE_LIBRARY=L\"isa-l.dll\"</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder_sample.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\coder_util.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_encoder.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_decoder.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_encoder.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_decoder.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\org\apache\hadoop\util\crc32c_tables.h" />
