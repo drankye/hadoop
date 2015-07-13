@@ -77,6 +77,23 @@ int encode(EncoderState* pCoderState, unsigned char** dataUnits,
   return 0;
 }
 
+static void processErasures(DecoderState* pCoderState,
+                                    int* erasedIndexes, int numErased) {
+  int i, index;
+  int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
+
+  for (i = 0; i < numErased; i++) {
+    index = erasedIndexes[i];
+    pCoderState->erasedIndexes[i] = index;
+    pCoderState->erasureFlags[index] = 1;
+    if (index < numDataUnits) {
+      pCoderState->numErasedDataUnits++;
+    }
+  }
+
+  pCoderState->numErased = numErased;
+}
+
 int decode(DecoderState* pCoderState, unsigned char** inputs,
                   int* erasedIndexes, int numErased,
                    unsigned char** outputs, int chunkSize) {
@@ -128,23 +145,6 @@ void clearDecoder(DecoderState* decoder) {
   memset(decoder->realInputs, 0, sizeof(decoder->realInputs));
   decoder->numErased = 0;
   decoder->numErasedDataUnits = 0;
-}
-
-void processErasures(DecoderState* pCoderState,
-                                    int* erasedIndexes, int numErased) {
-  int i, index;
-  int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
-
-  for (i = 0; i < numErased; i++) {
-    index = erasedIndexes[i];
-    pCoderState->erasedIndexes[i] = index;
-    pCoderState->erasureFlags[index] = 1;
-    if (index < numDataUnits) {
-      pCoderState->numErasedDataUnits++;
-    }
-  }
-
-  pCoderState->numErased = numErased;
 }
 
 // Generate decode matrix from encode matrix

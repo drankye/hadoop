@@ -41,8 +41,8 @@ static void usage(char* errorMsg) {
 int main(int argc, char *argv[]) {
   int i, j;
   int chunkSize = 1024;
-  const int numDataUnits = 6;
-  const int numParityUnits = 3;
+  int numDataUnits;
+  int numParityUnits;
   char errMsg[256];
   unsigned char** dataUnits;
   unsigned char** parityUnits;

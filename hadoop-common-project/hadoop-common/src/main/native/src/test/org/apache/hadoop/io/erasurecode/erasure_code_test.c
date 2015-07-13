@@ -60,9 +60,6 @@
 #define TEST_SEED 11
 #endif
 
-#define MMAX 30
-#define KMAX 20
-
 typedef unsigned char u8;
 
 void dump(unsigned char *buf, int len)

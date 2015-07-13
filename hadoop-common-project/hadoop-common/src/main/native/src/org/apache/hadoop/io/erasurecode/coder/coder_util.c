@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jni.h>
 
 #include "config.h"
 #include "org_apache_hadoop.h"

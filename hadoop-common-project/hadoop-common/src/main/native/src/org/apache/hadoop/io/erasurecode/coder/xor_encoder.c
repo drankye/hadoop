@@ -16,21 +16,10 @@
  * limitations under the License.
  */
 
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <jni.h>
-#include <pthread.h>
-#include <signal.h>
-#include <dlfcn.h>
-
-#include "config.h"
 #include "org_apache_hadoop.h"
 #include "../include/erasure_code.h"
 #include "../include/gf_util.h"
