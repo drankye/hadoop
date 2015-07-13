@@ -83,9 +83,6 @@ int decode(DecoderState* pCoderState, unsigned char** allUnits,
     int* erasedIndexes, int numErased,
     unsigned char** recoveredUnits, int chunkSize);
 
-void processErasures(DecoderState* pCoderState,
-                              int* erasedIndexes, int numErased);
-
 int generateDecodeMatrix(DecoderState* pCoderState);
 
 void dumpEncoder(EncoderState* pCoderState);
