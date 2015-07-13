@@ -59,7 +59,6 @@ typedef struct _DecoderState {
   unsigned char b[MMAX * KMAX];
   unsigned char invertMatrix[MMAX * KMAX];
   unsigned char decodeMatrix[MMAX * KMAX];
-  unsigned char erasureFlags[MMAX];
   int erasedIndexes[MMAX];
   int numErased;
   int numErasedDataUnits;
@@ -82,11 +81,6 @@ int encode(EncoderState* pCoderState, unsigned char** dataUnits,
 int decode(DecoderState* pCoderState, unsigned char** allUnits,
     int* erasedIndexes, int numErased,
     unsigned char** recoveredUnits, int chunkSize);
-
-void processErasures(DecoderState* pCoderState,
-                              int* erasedIndexes, int numErased);
-
-int generateDecodeMatrix(DecoderState* pCoderState);
 
 void dumpEncoder(EncoderState* pCoderState);
 

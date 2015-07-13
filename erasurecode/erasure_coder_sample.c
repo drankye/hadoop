@@ -94,10 +94,19 @@ int main(int argc, char *argv[]) {
   memcpy(allUnits, dataUnits, numDataUnits * (sizeof (unsigned char*)));
   memcpy(allUnits + numDataUnits, parityUnits,
                             numParityUnits * (sizeof (unsigned char*)));
-
   int erasedIndexes[2];
   erasedIndexes[0] = 1;
   erasedIndexes[1] = 7;
+
+  unsigned char* backupUnits[numParityUnits];
+  backupUnits[0] = allUnits[0];
+  backupUnits[1] = allUnits[1];
+  backupUnits[2] = allUnits[7];
+
+  allUnits[0] = NULL; // Not to read
+  allUnits[1] = NULL;
+  allUnits[7] = NULL;
+
   unsigned char* decodingOutput[2];
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
@@ -105,8 +114,7 @@ int main(int argc, char *argv[]) {
   decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
 
   for (i = 0; i < pDecoder->numErased; i++) {
-    if (0 != memcmp(decodingOutput[i],
-                     allUnits[pDecoder->erasedIndexes[i]], chunkSize)) {
+    if (0 != memcmp(decodingOutput[i], backupUnits[i], chunkSize)) {
       dumpDecoder(pDecoder);
       return -1;
     }

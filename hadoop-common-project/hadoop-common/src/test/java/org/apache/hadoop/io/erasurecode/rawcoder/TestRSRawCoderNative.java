@@ -34,7 +34,7 @@ public class TestRSRawCoderNative extends TestRSRawCoderBase {
 
   @Test
   public void testCoding_6x3_erasing_d0() {
-    prepare(null, 6, 3, new int[]{0, 1, 2}, new int[0], true);
+    prepare(null, 6, 3, new int[]{0}, new int[0], true);
     testCoding(false);
   }
 }
