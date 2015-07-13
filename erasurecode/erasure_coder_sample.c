@@ -113,8 +113,6 @@ int main(int argc, char *argv[]) {
   allUnits[1] = NULL;
   allUnits[7] = NULL;
 
-  unsigned char* decodingOutput[2];
-
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
 

@@ -4,6 +4,7 @@
 *.iws
 *.obj
 *.exe
+sample
 *.dll
 *.orig
 *.rej

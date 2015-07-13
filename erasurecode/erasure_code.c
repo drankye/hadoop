@@ -64,6 +64,8 @@ void *my_dlsym(void *handle, const char *symbol) {
 
 #ifdef WINDOWS
 
+#define snprintf _snprintf
+
 static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
   FARPROC func_ptr = GetProcAddress(handle, symbol);
   return func_ptr;
@@ -180,14 +182,14 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   #ifdef WINDOWS
   libec = LoadLibrary(libecName);
   if (libec == NULL) {
-    _snprintf(err, err_len, "Failed to load %s", libecName);
+    snprintf(err, err_len, "Failed to load %s", libecName);
     return;
   }
   #endif
 
   errMsg = load_functions(libec);
   if (errMsg != NULL) {
-    _snprintf(err, err_len, "Loading functions from %s failed: %s",
+    snprintf(err, err_len, "Loading functions from %s failed: %s",
                                                           libecName, errMsg);
   }
 }
