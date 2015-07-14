@@ -357,6 +357,12 @@
                           cd "${openssl.lib}"
                           $$TAR *crypto* | (cd $${TARGET_DIR}/; $$UNTAR)
                         fi
+                        if [ "${bundle.erasurecode}" = "true" ] ; then
+                          if [ X"${erasurecode.lib}" != X ]; then
+                            cd "${erasurecode.lib}"
+                            $$TAR *isa-l* | (cd $${TARGET_DIR}/; $$UNTAR)
+                          fi
+                        fi
                       fi
                       BIN_DIR="${BUILD_DIR}/bin"
                       if [ -d $${BIN_DIR} ] ; then

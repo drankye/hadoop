@@ -268,6 +268,10 @@ include_directories(
 )
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/config.h.cmake ${CMAKE_BINARY_DIR}/config.h)
 
+add_executable(check_native_lib
+    ${T}/util/check_native_lib.c
+)
+
 add_executable(test_bulk_crc32
     ${D}/util/bulk_crc32.c
     ${BULK_CRC_ARCH_SOURCE_FIlE}

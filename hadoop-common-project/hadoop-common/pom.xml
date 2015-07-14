@@ -674,28 +674,34 @@
                 <goals><goal>run</goal></goals>
                 <configuration>
                   <skip>${skipTests}</skip>
-                  <target>
-                    <property name="compile_classpath" refid="maven.compile.classpath"/>
-                    <property name="test_classpath" refid="maven.test.classpath"/>
+                  <tasks>
+                    <taskdef resource="net/sf/antcontrib/antcontrib.properties"
+                             classpathref="maven.plugin.classpath" />
                     <property name="native_dir" value="${project.build.directory}/native"/>
-                    <macrodef name="run-test">
-                      <attribute name="test"/>
-                      <sequential>
-                        <echo message="Running @{test}"/>
-                        <exec executable="${native_dir}/@{test}" failonerror="true" dir="${native_dir}">
-                          <env key="CLASSPATH" value="${test_classpath}:${compile_classpath}"/>
-                          <!-- Make sure hadoop.dll and jvm.dll are on PATH. -->
-                          <env key="PATH" value="${env.PATH};${hadoop.common.build.dir}/bin;${java.home}/jre/bin/server;${java.home}/bin/server"/>
-                        </exec>
-                        <echo message="Finished @{test}"/>
-                      </sequential>
-                    </macrodef>
-                    <run-test test="test_bulk_crc32"/>
-                    <run-test test="erasure_code_test"/>
-                  </target>
+                    <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}"/>
+                    <exec executable="${native_dir}/check_native_lib" resultproperty="erasureCodeLibAvailable" dir="${native_dir}">
+                      <arg value="HADOOP_ERASURECODE_LIBRARY"/>
+                    </exec>
+                    <if>
+                      <equals arg1="${erasureCodeLibAvailable}" arg2="0"/>
+                      <then>
+                        <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}"/>
+                      </then>
+                      <else>
+                        <echo message="Erasure code native library isn't available, test skipped: ${erasureCodeLibAvailable}" />
+                      </else>
+                    </if>
+                  </tasks>
                 </configuration>
               </execution>
             </executions>
+            <dependencies>
+              <dependency>
+                <groupId>ant-contrib</groupId>
+                <artifactId>ant-contrib</artifactId>
+                <version>20020829</version>
+              </dependency>
+            </dependencies>
           </plugin>
         </plugins>
       </build>
