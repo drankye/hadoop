@@ -24,7 +24,7 @@
 #include "coder_util.h"
 
 void loadLib(JNIEnv *env) {
-  char errMsg[256];
+  char errMsg[1024];
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
     THROW(env, "java/lang/UnsatisfiedLinkError", errMsg);
@@ -81,7 +81,7 @@ void getOutputs(JNIEnv *env, jobjectArray outputs, jintArray outputOffsets,
   int numOutputs = (*env)->GetArrayLength(env, outputs);
   int i, *tmpOutputOffsets;
   jobject byteBuffer;
-  
+
   if (numOutputs != num) {
     THROW(env, "java/lang/InternalError", "Invalid outputs");
   }
