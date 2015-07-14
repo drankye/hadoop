@@ -17,7 +17,7 @@
    limitations under the License.
 -->
 
-<Project DefaultTargets="CheckRequireSnappy;Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="CheckRequireSnappy;CheckRequireErasurecode;Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
@@ -79,10 +79,21 @@
     <IncludePath Condition="'$(SnappyEnabled)' == 'true'">$(SnappyInclude);$(IncludePath)</IncludePath>
     <IncludePath Condition="Exists('$(ZLIB_HOME)')">$(ZLIB_HOME);$(IncludePath)</IncludePath>
   </PropertyGroup>
+  <PropertyGroup>
+    <ErasurecodeLib Condition="Exists('$(CustomErasurecodePrefix)\isa-l.dll')">$(CustomErasurecodePrefix)</ErasurecodeLib>
+    <ErasurecodeLib Condition="Exists('$(CustomErasurecodePrefix)\lib\isa-l.dll') And '$(ErasurecodeLib)' == ''">$(CustomErasurecodePrefix)\lib</ErasurecodeLib>
+    <ErasurecodeLib Condition="Exists('$(CustomErasurecodeLib)') And '$(ErasurecodeLib)' == ''">$(CustomErasurecodeLib)</ErasurecodeLib>
+    <ErasurecodeEnabled Condition="'$(ErasurecodeLib)' != ''">true</ErasurecodeEnabled>
+  </PropertyGroup>
   <Target Name="CheckRequireSnappy">
     <Error
       Text="Required snappy library could not be found.  SnappyLibrary=$(SnappyLibrary), SnappyInclude=$(SnappyInclude), CustomSnappyLib=$(CustomSnappyLib), CustomSnappyInclude=$(CustomSnappyInclude), CustomSnappyPrefix=$(CustomSnappyPrefix)"
       Condition="'$(RequireSnappy)' == 'true' And '$(SnappyEnabled)' != 'true'" />
+  </Target>
+  <Target Name="CheckRequireErasurecode">
+    <Error
+      Text="Required erasurecode library could not be found. CustomErasurecodeLib=$(CustomErasurecodeLib), CustomErasurecodePrefix=$(CustomErasurecodePrefix)"
+      Condition="'$(RequireErasurecode)' == 'true' And '$(ErasurecodeEnabled)' != 'true'" />
   </Target>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -150,16 +161,16 @@
     <ClCompile Include="src\org\apache\hadoop\yarn\server\nodemanager\windows_secure_container_executor.c">
       <AdditionalIncludeDirectories>src\org\apache\hadoop\io\nativeio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code.c">
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code.c" Condition="'$(ErasurecodeEnabled)' == 'true'">
       <AdditionalOptions>/D HADOOP_ERASURECODE_LIBRARY=L\"isa-l.dll\"</AdditionalOptions>
     </ClCompile>
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder_sample.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\coder_util.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_encoder.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_decoder.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_encoder.c" />
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_decoder.c" />
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder_sample.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\coder_util.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_encoder.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\rs_decoder.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_encoder.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder\xor_decoder.c" Condition="'$(ErasurecodeEnabled)' == 'true'"/>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\org\apache\hadoop\util\crc32c_tables.h" />
