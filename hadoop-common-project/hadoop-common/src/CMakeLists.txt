@@ -140,14 +140,14 @@ CHECK_FUNCTION_EXISTS(posix_fadvise HAVE_POSIX_FADVISE)
 CHECK_LIBRARY_EXISTS(dl dlopen "" NEED_LINK_DL)
 
 SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-find_library(ERASURECODE_LIBRARY
+find_library(ISAL_LIBRARY
     NAMES isal
-     PATHS ${CUSTOM_ERASURECODE_PREFIX} ${CUSTOM_ERASURECODE_PREFIX}/lib
-              ${CUSTOM_ERASURECODE_PREFIX}/lib64 ${CUSTOM_ERASURECODE_LIB})
+     PATHS ${CUSTOM_ISAL_PREFIX} ${CUSTOM_ISAL_PREFIX}/lib
+              ${CUSTOM_ISAL_PREFIX}/lib64 ${CUSTOM_ISAL_LIB})
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ${STORED_CMAKE_FIND_LIBRARY_SUFFIXES})
-if (ERASURECODE_LIBRARY)
-    GET_FILENAME_COMPONENT(HADOOP_ERASURECODE_LIBRARY ${ERASURECODE_LIBRARY} NAME)
-    set(ERASURECODE_SOURCE_FILES
+if (ISAL_LIBRARY)
+    GET_FILENAME_COMPONENT(HADOOP_ISAL_LIBRARY ${ISAL_LIBRARY} NAME)
+    set(ISAL_SOURCE_FILES
         ${D}/io/erasurecode/erasure_code.c
         ${D}/io/erasurecode/erasure_coder.c
         ${D}/io/erasurecode/coder/coder_util.c
@@ -169,7 +169,7 @@ if (ERASURECODE_LIBRARY)
         )
         target_link_libraries(erasure_coder_sample ${CMAKE_DL_LIBS})
 
-endif (ERASURECODE_LIBRARY)
+endif (ISAL_LIBRARY)
 
 
 SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -268,10 +268,6 @@ include_directories(
 )
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/config.h.cmake ${CMAKE_BINARY_DIR}/config.h)
 
-add_executable(check_native_lib
-    ${T}/util/check_native_lib.c
-)
-
 add_executable(test_bulk_crc32
     ${D}/util/bulk_crc32.c
     ${BULK_CRC_ARCH_SOURCE_FIlE}
@@ -285,7 +281,7 @@ add_dual_library(hadoop
     ${D}/io/compress/lz4/Lz4Decompressor.c
     ${D}/io/compress/lz4/lz4.c
     ${D}/io/compress/lz4/lz4hc.c
-    ${ERASURECODE_SOURCE_FILES}
+    ${ISAL_SOURCE_FILES}
     ${SNAPPY_SOURCE_FILES}
     ${OPENSSL_SOURCE_FILES}
     ${D}/io/compress/zlib/ZlibCompressor.c
