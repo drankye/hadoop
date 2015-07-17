@@ -197,6 +197,10 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   }
 }
 
+const char* get_library_name() {
+  return HADOOP_ISAL_LIBRARY;
+}
+
 unsigned char h_gf_mul(unsigned char a, unsigned char b) {
   return d_gf_mul(a, b);
 }

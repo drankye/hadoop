@@ -38,7 +38,12 @@
  */
 
 /**
- * Initialize and load erasurecode library, returning error message if any.
+ * Get erasure code library.
+ */
+const char* get_library_name();
+
+/**
+ * Initialize and load erasure code library, returning error message if any.
  *
  * @param err     The err message buffer.
  * @param err_len The length of the message buffer.

@@ -59,6 +59,7 @@ public class NativeLibraryChecker {
     boolean nativeHadoopLoaded = NativeCodeLoader.isNativeCodeLoaded();
     boolean zlibLoaded = false;
     boolean snappyLoaded = false;
+    boolean isalLoaded = false;
     // lz4 is linked within libhadoop
     boolean lz4Loaded = nativeHadoopLoaded;
     boolean bzip2Loaded = Bzip2Factory.isNativeBzip2Loaded(conf);
@@ -69,6 +70,7 @@ public class NativeLibraryChecker {
     String hadoopLibraryName = "";
     String zlibLibraryName = "";
     String snappyLibraryName = "";
+    String isalLibraryName = "";
     String lz4LibraryName = "";
     String bzip2LibraryName = "";
     String winutilsPath = null;
