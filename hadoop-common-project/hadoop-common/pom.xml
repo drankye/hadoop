@@ -575,9 +575,9 @@
         <openssl.prefix></openssl.prefix>
         <openssl.lib></openssl.lib>
         <openssl.include></openssl.include>
-        <require.erasurecode>false</require.erasurecode>
-        <erasurecode.prefix></erasurecode.prefix>
-        <erasurecode.lib></erasurecode.lib>
+        <require.isal>false</require.isal>
+        <isal.prefix></isal.prefix>
+        <isal.lib></isal.lib>
         <require.openssl>false</require.openssl>
         <runningWithNative>true</runningWithNative>
         <bundle.openssl.in.bin>false</bundle.openssl.in.bin>
@@ -679,16 +679,13 @@
                              classpathref="maven.plugin.classpath" />
                     <property name="native_dir" value="${project.build.directory}/native"/>
                     <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}"/>
-                    <exec executable="${native_dir}/check_native_lib" resultproperty="erasureCodeLibAvailable" dir="${native_dir}">
-                      <arg value="HADOOP_ERASURECODE_LIBRARY"/>
-                    </exec>
                     <if>
-                      <equals arg1="${erasureCodeLibAvailable}" arg2="0"/>
+                      <equals arg1="${require.isal}" arg2="true"/>
                       <then>
                         <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}"/>
                       </then>
                       <else>
-                        <echo message="Erasure code native library isn't available, test skipped: ${erasureCodeLibAvailable}" />
+                        <echo message="Erasure code native library isn't available, test skipped: ${require.isal}" />
                       </else>
                     </if>
                   </tasks>
@@ -718,9 +715,9 @@
         <snappy.prefix></snappy.prefix>
         <snappy.lib></snappy.lib>
         <snappy.include></snappy.include>
-        <require.erasurecode>false</require.erasurecode>
-        <erasurecode.prefix></erasurecode.prefix>
-        <erasurecode.lib></erasurecode.lib>
+        <require.isal>false</require.isal>
+        <isal.prefix></isal.prefix>
+        <isal.lib></isal.lib>
         <require.snappy>false</require.snappy>
         <bundle.snappy.in.bin>true</bundle.snappy.in.bin>
         <openssl.prefix></openssl.prefix>
@@ -831,9 +828,9 @@
                     <argument>/p:CustomOpensslLib=${openssl.lib}</argument>
                     <argument>/p:CustomOpensslInclude=${openssl.include}</argument>
                     <argument>/p:RequireOpenssl=${require.openssl}</argument>
-                    <argument>/p:RequireErasurecode=${require.erasurecode}</argument>
-                    <argument>/p:CustomErasurecodePrefix=${erasurecode.prefix}</argument>
-                    <argument>/p:CustomErasurecodeLib=${erasurecode.lib}</argument>
+                    <argument>/p:RequireIsal=${require.isal}</argument>
+                    <argument>/p:CustomIsalPrefix=${isal.prefix}</argument>
+                    <argument>/p:CustomIsalLib=${isal.lib}</argument>
                   </arguments>
                 </configuration>
               </execution>
