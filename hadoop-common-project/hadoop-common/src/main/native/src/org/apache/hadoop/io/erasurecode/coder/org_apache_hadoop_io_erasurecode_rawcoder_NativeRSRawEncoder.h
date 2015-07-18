@@ -9,14 +9,6 @@ extern "C" {
 #endif
 /*
  * Class:     org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder
- * Method:    loadLibImpl
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder_loadLibImpl
-  (JNIEnv *, jclass);
-
-/*
- * Class:     org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder
  * Method:    initImpl
  * Signature: (II[I)V
  */

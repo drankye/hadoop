@@ -631,7 +631,7 @@
                     <javahClassName>org.apache.hadoop.io.compress.snappy.SnappyDecompressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Compressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Decompressor</javahClassName>
-                    <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.util.IsalUtil</javahClassName>
+                    <javahClassName>org.apache.hadoop.io.erasurecode.ErasureCodeNative</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeRSRawEncoder</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeRSRawDecoder</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeXORRawEncoder</javahClassName>
@@ -680,26 +680,10 @@
                              classpathref="maven.plugin.classpath" />
                     <property name="native_dir" value="${project.build.directory}/native"/>
                     <exec executable="${native_dir}/test_bulk_crc32" failonerror="true" dir="${native_dir}"/>
-                    <if>
-                      <equals arg1="${require.isal}" arg2="true"/>
-                      <then>
-                        <exec executable="${native_dir}/erasure_code_test" failonerror="true" dir="${native_dir}"/>
-                      </then>
-                      <else>
-                        <echo message="Isal native library isn't available, test skipped: ${require.isal}" />
-                      </else>
-                    </if>
                   </tasks>
                 </configuration>
               </execution>
             </executions>
-            <dependencies>
-              <dependency>
-                <groupId>ant-contrib</groupId>
-                <artifactId>ant-contrib</artifactId>
-                <version>20020829</version>
-              </dependency>
-            </dependencies>
           </plugin>
         </plugins>
       </build>
@@ -772,7 +756,7 @@
                     <javahClassName>org.apache.hadoop.io.compress.snappy.SnappyDecompressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Compressor</javahClassName>
                     <javahClassName>org.apache.hadoop.io.compress.lz4.Lz4Decompressor</javahClassName>
-                    <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.util.IsalUtil</javahClassName>
+                    <javahClassName>org.apache.hadoop.io.erasurecode.ErasureCodeNative</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeRSRawEncoder</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeRSRawDecoder</javahClassName>
                     <javahClassName>org.apache.hadoop.io.erasurecode.rawcoder.NativeXORRawEncoder</javahClassName>

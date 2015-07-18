@@ -17,18 +17,14 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.util.NativeCodeLoader;
+import org.apache.hadoop.io.erasurecode.ErasureCodeNative;
 
 import java.nio.ByteBuffer;
 
 public class NativeRSRawEncoder extends AbstractNativeRawEncoder {
 
   static {
-    if (NativeCodeLoader.isNativeCodeLoaded()) {
-      loadLibImpl();
-    } else {
-      throw new RuntimeException("Failed to load native library");
-    }
+      ErasureCodeNative.checkNativeCodeLoaded();
   }
 
   public NativeRSRawEncoder(int numDataUnits, int numParityUnits) {
@@ -47,8 +43,6 @@ public class NativeRSRawEncoder extends AbstractNativeRawEncoder {
   public void release() {
     destroyImpl();
   }
-
-  private static native void loadLibImpl();
 
   private native void initImpl(int numDataUnits, int numParityUnits);
 
