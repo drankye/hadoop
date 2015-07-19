@@ -67,7 +67,7 @@ void *my_dlsym(void *handle, const char *symbol) {
 
 #ifdef WINDOWS
 
-#define snprintf _snprintf
+//#define snprintf _snprintf
 
 static FARPROC WINAPI my_dlsym(HMODULE handle, LPCSTR symbol) {
   FARPROC func_ptr = GetProcAddress(handle, symbol);
@@ -160,7 +160,6 @@ static const char* load_functions(void* libec) {
 
 void load_erasurecode_lib(char* err, size_t err_len) {
   static void* libec = NULL;
-  const char* libecName;
   const char* errMsg;
 
   err[0] = '\0';
@@ -169,13 +168,11 @@ void load_erasurecode_lib(char* err, size_t err_len) {
     return;
   }
 
-  libecName = HADOOP_ISAL_LIBRARY;
-
   // Load Intel ISA-L
   #ifdef UNIX
-  libec = dlopen(libecName, RTLD_LAZY | RTLD_GLOBAL);
+  libec = dlopen(HADOOP_ISAL_LIBRARY, RTLD_LAZY | RTLD_GLOBAL);
   if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s! (%s)", libecName, dlerror());
+    snprintf(err, err_len, "Failed to load %s! (%s)", HADOOP_ISAL_LIBRARY, dlerror());
     return;
   }
   // Clear any existing error
@@ -183,17 +180,16 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   #endif
 
   #ifdef WINDOWS
-  libec = LoadLibrary(libecName);
+  libec = LoadLibrary(HADOOP_ISAL_LIBRARY);
   if (libec == NULL) {
-    snprintf(err, err_len, "Failed to load %s", libecName);
+    snprintf(err, err_len, "Failed to load %s", HADOOP_ISAL_LIBRARY);
     return;
   }
   #endif
 
   errMsg = load_functions(libec);
   if (errMsg != NULL) {
-    snprintf(err, err_len, "Loading functions from %s failed: %s",
-                                                          libecName, errMsg);
+    snprintf(err, err_len, "Loading functions from ISA-L failed: %s", errMsg);
   }
 }
 

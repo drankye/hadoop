@@ -32,21 +32,10 @@
 #include <string.h>
 
 #define TEST_LEN 8192
-#define TEST_SIZE (TEST_LEN/2)
-
 #define TEST_SOURCES  127
-
 #define MMAX TEST_SOURCES
 #define KMAX TEST_SOURCES
-
-#ifndef TEST_SEED
 #define TEST_SEED 11
-#endif
-
-#define MMAX 30
-#define KMAX 20
-
-typedef unsigned char u8;
 
 void dump(unsigned char *buf, int len)
 {
@@ -202,20 +191,13 @@ static int gf_gen_decode_matrix(unsigned char *encode_matrix,
  */
 int verify_and_test(char* err, size_t err_len) {
   int re = 0;
-  int i, j, p, rtest, m, k;
+  int i, j, p, m, k;
   int nerrs, nsrcerrs;
-  void *buf;
   unsigned int decode_index[MMAX];
   unsigned char *temp_buffs[TEST_SOURCES], *buffs[TEST_SOURCES];
   unsigned char *encode_matrix, *decode_matrix, *invert_matrix, *g_tbls;
   unsigned char src_in_err[TEST_SOURCES], src_err_list[TEST_SOURCES];
   unsigned char *recov[TEST_SOURCES];
-
-  int rows, align, size;
-  unsigned char *efence_buffs[TEST_SOURCES];
-  unsigned int offset;
-  u8 *ubuffs[TEST_SOURCES];
-  u8 *temp_ubuffs[TEST_SOURCES];
 
   load_erasurecode_lib(err, err_len);
   if (strlen(err) > 0) {
@@ -227,19 +209,11 @@ int verify_and_test(char* err, size_t err_len) {
 
   // Allocate the arrays
   for (i = 0; i < TEST_SOURCES; i++) {
-    if (posix_memalign(&buf, 64, TEST_LEN)) {
-      snprintf(err, err_len, "allocating test source buffer error");
-      return -1;
-    }
-    buffs[i] = buf;
+    buffs[i] = malloc(TEST_LEN);
   }
 
   for (i = 0; i < TEST_SOURCES; i++) {
-    if (posix_memalign(&buf, 64, TEST_LEN)) {
-      snprintf(err, err_len, "allocating test source temp buffer error");
-      return -1;
-    }
-    temp_buffs[i] = buf;
+    temp_buffs[i] = malloc(TEST_LEN);
   }
 
   // Test erasure code by encode and recovery
@@ -250,7 +224,7 @@ int verify_and_test(char* err, size_t err_len) {
   g_tbls = malloc(KMAX * TEST_SOURCES * 32);
   if (encode_matrix == NULL || decode_matrix == NULL
       || invert_matrix == NULL || g_tbls == NULL) {
-    snprintf(err, err_len, "allocating test matrix buffers error");
+    snprintf(err, err_len, "%s", "allocating test matrix buffers error");
     return -1;
   }
 
@@ -284,7 +258,7 @@ int verify_and_test(char* err, size_t err_len) {
           invert_matrix, decode_index, src_err_list, src_in_err,
           nerrs, nsrcerrs, k, m);
   if (re != 0) {
-    snprintf(err, err_len, "gf_gen_decode_matrix failed");
+    snprintf(err, err_len, "%s", "gf_gen_decode_matrix failed");
     return -1;
   }
   // Pack recovery array as list of valid sources
@@ -299,7 +273,7 @@ int verify_and_test(char* err, size_t err_len) {
   h_ec_encode_data(TEST_LEN, k, nerrs, g_tbls, recov, &temp_buffs[k]);
   for (i = 0; i < nerrs; i++) {
     if (0 != memcmp(temp_buffs[k + i], buffs[src_err_list[i]], TEST_LEN)) {
-      snprintf(err, err_len, "Error recovery failed");
+      snprintf(err, err_len, "%s", "Error recovery failed");
       printf("Fail error recovery (%d, %d, %d)\n", m, k, nerrs);
 
       printf(" - erase list = ");
@@ -313,11 +287,11 @@ int verify_and_test(char* err, size_t err_len) {
       }
 
       printf("\nencode_matrix:\n");
-      dump_u8xu8((u8 *) encode_matrix, m, k);
+      dump_u8xu8((unsigned char *) encode_matrix, m, k);
       printf("inv b:\n");
-      dump_u8xu8((u8 *) invert_matrix, k, k);
+      dump_u8xu8((unsigned char *) invert_matrix, k, k);
       printf("\ndecode_matrix:\n");
-      dump_u8xu8((u8 *) decode_matrix, m, k);
+      dump_u8xu8((unsigned char *) decode_matrix, m, k);
       printf("recov %d:", src_err_list[i]);
       dump(temp_buffs[k + i], 25);
       printf("orig   :");

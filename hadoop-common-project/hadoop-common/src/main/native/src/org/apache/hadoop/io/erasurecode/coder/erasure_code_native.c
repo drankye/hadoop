@@ -28,7 +28,7 @@ extern int verify_and_test(char* err, size_t err_len);
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_loadLibrary
-(JNIEnv *, jclass) {
+(JNIEnv *env, jclass myclass) {
   char errMsg[1024];
   load_erasurecode_lib(errMsg, sizeof(errMsg));
   if (strlen(errMsg) > 0) {
@@ -38,13 +38,13 @@ Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_loadLibrary
 
 JNIEXPORT jstring JNICALL
 Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_getLibraryName
-(JNIEnv *, jclass) {
+(JNIEnv *env, jclass myclass) {
  return (*env)->NewStringUTF(env, get_library_name());
 }
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_verifyTest
-(JNIEnv *, jclass) {
+(JNIEnv *env, jclass myclass) {
   char errMsg[1024];
   int ret = verify_and_test(errMsg, sizeof(errMsg));
   if (ret != 0 && strlen(errMsg) > 0) {

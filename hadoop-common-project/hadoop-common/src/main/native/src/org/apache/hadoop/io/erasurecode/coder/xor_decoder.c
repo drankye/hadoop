@@ -33,14 +33,8 @@ typedef struct _XOREncoderState {
 } XORDecoderState;
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_loadLibImpl
-  (JNIEnv *env, jclass myclass) {
-  loadLib(env);
-}
-
-JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_initImpl(
-  JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
+JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
   XORDecoderState* pCoderState =
                            (XORDecoderState*)malloc(sizeof(XORDecoderState));
   memset(pCoderState, 0, sizeof(*pCoderState));
@@ -51,9 +45,9 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_initImpl(
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_decodeImpl(
-  JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
-  jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
-                                                    jintArray outputOffsets) {
+JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
+jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
+jintArray outputOffsets) {
   XORDecoderState* xorDecoder = (XORDecoderState*)getCoderState(env, thiz);
 
   int numDataUnits = ((CoderState*)xorDecoder)->numDataUnits;
@@ -77,7 +71,7 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_decodeImpl(
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_destroyImpl
-  (JNIEnv *env, jobject thiz){
+(JNIEnv *env, jobject thiz){
   XORDecoderState* xorDecoder = (XORDecoderState*)getCoderState(env, thiz);
   free(xorDecoder);
 }

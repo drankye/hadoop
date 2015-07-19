@@ -33,14 +33,8 @@ typedef struct _RSDecoderState {
 } RSDecoderState;
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_loadLibImpl(
-  JNIEnv *env, jclass myclass) {
-  loadLib(env);
-}
-
-JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_initImpl(
-  JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
+JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
   RSDecoderState* pCoderState = (RSDecoderState*)malloc(sizeof(RSDecoderState));
   memset(pCoderState, 0, sizeof(*pCoderState));
   initDecoder((DecoderState*)pCoderState, (int)numDataUnits, (int)numParityUnits);
@@ -50,9 +44,9 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_initImpl(
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_decodeImpl(
-  JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
-  jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
-                                                jintArray outputOffsets) {
+JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
+jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
+jintArray outputOffsets) {
   RSDecoderState* rsDecoder = (RSDecoderState*)getCoderState(env, thiz);
 
   int numDataUnits = ((CoderState*)rsDecoder)->numDataUnits;
@@ -72,7 +66,7 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_decodeImpl(
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_destroyImpl(
-  JNIEnv *env, jobject thiz) {
+JNIEnv *env, jobject thiz) {
   RSDecoderState* rsDecoder = (RSDecoderState*)getCoderState(env, thiz);
   free(rsDecoder);
 }
