@@ -358,10 +358,8 @@
                           $$TAR *crypto* | (cd $${TARGET_DIR}/; $$UNTAR)
                         fi
                         if [ "${bundle.isal}" = "true" ] ; then
-                          if [ X"${isal.lib}" != X ]; then
-                            cd "${isal.lib}"
-                            $$TAR *isa-l* | (cd $${TARGET_DIR}/; $$UNTAR)
-                          fi
+                          cd "${isal.lib}"
+                          $$TAR *isa* | (cd $${TARGET_DIR}/; $$UNTAR)
                         fi
                       fi
                       BIN_DIR="${BUILD_DIR}/bin"

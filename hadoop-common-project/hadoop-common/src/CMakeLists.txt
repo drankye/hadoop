@@ -156,12 +156,6 @@ if (ISAL_LIBRARY)
         ${D}/io/erasurecode/coder/xor_encoder.c
         ${D}/io/erasurecode/coder/xor_decoder.c)
 
-        add_executable(erasure_code_test
-            ${D}/io/erasurecode/erasure_code.c
-            ${T}/io/erasurecode/erasure_code_test.c
-        )
-        target_link_libraries(erasure_code_test ${CMAKE_DL_LIBS})
-
         add_executable(erasure_coder_sample
             ${D}/io/erasurecode/erasure_code.c
             ${D}/io/erasurecode/erasure_coder.c
