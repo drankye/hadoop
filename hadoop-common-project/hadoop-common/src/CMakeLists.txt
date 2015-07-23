@@ -140,6 +140,23 @@ CHECK_FUNCTION_EXISTS(posix_fadvise HAVE_POSIX_FADVISE)
 CHECK_LIBRARY_EXISTS(dl dlopen "" NEED_LINK_DL)
 
 SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+find_library(ISAL_LIBRARY
+    NAMES isal
+     PATHS ${CUSTOM_ISAL_PREFIX} ${CUSTOM_ISAL_PREFIX}/lib
+              ${CUSTOM_ISAL_PREFIX}/lib64 ${CUSTOM_ISAL_LIB})
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ${STORED_CMAKE_FIND_LIBRARY_SUFFIXES})
+if (ISAL_LIBRARY)
+    GET_FILENAME_COMPONENT(HADOOP_ISAL_LIBRARY ${ISAL_LIBRARY} NAME)
+    set(ISAL_SOURCE_FILES
+        ${D}/io/erasurecode/erasure_code.c
+        ${D}/io/erasurecode/erasure_code_test.c
+        ${D}/io/erasurecode/coder/erasure_code_native.c)
+
+
+endif (ISAL_LIBRARY)
+
+
+SET(STORED_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 set_find_shared_library_version("1")
 find_library(SNAPPY_LIBRARY 
     NAMES snappy
@@ -229,6 +246,7 @@ include_directories(
     ${ZLIB_INCLUDE_DIRS}
     ${BZIP2_INCLUDE_DIR}
     ${SNAPPY_INCLUDE_DIR}
+    ${D}/io/erasurecode/include
     ${OPENSSL_INCLUDE_DIR}
     ${D}/util
 )
@@ -247,6 +265,7 @@ add_dual_library(hadoop
     ${D}/io/compress/lz4/Lz4Decompressor.c
     ${D}/io/compress/lz4/lz4.c
     ${D}/io/compress/lz4/lz4hc.c
+    ${ISAL_SOURCE_FILES}
     ${SNAPPY_SOURCE_FILES}
     ${OPENSSL_SOURCE_FILES}
     ${D}/io/compress/zlib/ZlibCompressor.c
