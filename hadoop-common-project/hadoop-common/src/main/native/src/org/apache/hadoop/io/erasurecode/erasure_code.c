@@ -198,7 +198,7 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   }
 }
 
-char* get_library_name() {
+const char* get_library_name() {
 #ifdef UNIX
   Dl_info dl_info;
 
