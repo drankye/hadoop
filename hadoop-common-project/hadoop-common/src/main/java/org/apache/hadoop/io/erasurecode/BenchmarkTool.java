@@ -51,7 +51,7 @@ public class BenchmarkTool {
   }
 
   public static void main(String[] args) throws Exception {
-    File testDir = null, testDataFile = null;
+    File testDir = null;
 
     if (args.length == 1) {
       testDir = new File(args[0]);
@@ -66,7 +66,7 @@ public class BenchmarkTool {
   }
 
   static int[] getCoderIndexes() {
-    return new int[] {0, 1};
+    return new int[] {1};
   }
 
   public static void performBench(File testDir) throws Exception {
@@ -92,8 +92,8 @@ public class BenchmarkTool {
   static void generateTestData(File testDataFile) throws IOException {
     FileOutputStream out = new FileOutputStream(testDataFile);
     Random random = new Random();
-    long times = 6;
-    int buffSize = 1 * 1024; // MB
+    long times = 360;
+    int buffSize = 1024 * 1024; // MB
     byte buf[] = new byte[buffSize];
 
     try {
