@@ -22,7 +22,7 @@
  *  gf_util.h
  *  Interface to functions for vector (block) multiplication in GF(2^8).
  *
- *  This file defines the interface to routines used in fast RAID rebuild and 
+ *  This file defines the interface to routines used in fast RAID rebuild and
  *  erasure codes.
  */
 
@@ -96,8 +96,8 @@ int h_gf_invert_matrix(unsigned char *in, unsigned char *out, const int n);
  * C{01}, C{02}, ... , C{0f} }, {C{00}, C{10}, C{20}, ... , C{f0} }.
  * Len and src must be aligned to 32B.
  *
- * This function determines what instruction sets are enabled 
- * and selects the appropriate version at runtime. 
+ * This function determines what instruction sets are enabled
+ * and selects the appropriate version at runtime.
  * 
  * @param len   Length of vector in bytes. Must be aligned to 32B.
  * @param gftbl Pointer to 32-byte array of pre-calculated constants based on C.
