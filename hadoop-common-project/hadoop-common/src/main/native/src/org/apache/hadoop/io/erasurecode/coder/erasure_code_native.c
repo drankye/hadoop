@@ -43,7 +43,11 @@ Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_loadLibrary
 JNIEXPORT jstring JNICALL
 Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_getLibraryName
 (JNIEnv *env, jclass myclass) {
-  return (*env)->NewStringUTF(env, HADOOP_ISAL_LIBRARY);
+  char* libName = get_library_name();
+  if (libName == NULL) {
+    libName = "Unavailable";
+  }
+  return (*env)->NewStringUTF(env, libName);
 }
 
 JNIEXPORT void JNICALL
