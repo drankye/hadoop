@@ -92,8 +92,8 @@ public class BenchmarkTool {
   static void generateTestData(File testDataFile) throws IOException {
     FileOutputStream out = new FileOutputStream(testDataFile);
     Random random = new Random();
-    long times = 36;
-    int buffSize = 1 * 1024 * 1024; // MB
+    long times = 6;
+    int buffSize = 1 * 1024; // MB
     byte buf[] = new byte[buffSize];
 
     try {
@@ -197,11 +197,6 @@ public class BenchmarkTool {
         for (ByteBuffer input : benchData.inputs) {
           input.clear();
         }
-        for (ByteBuffer output : benchData.outputs) {
-          output.clear();
-          output.put(benchData.EMPTY_CHUNK);
-          output.clear();
-        }
 
         got = inputChannel.read(benchData.inputs);
         if (got < 1) {
@@ -209,6 +204,12 @@ public class BenchmarkTool {
         }
         for (ByteBuffer input : benchData.inputs) {
           input.flip();
+        }
+
+        for (ByteBuffer output : benchData.outputs) {
+          output.clear();
+          output.put(benchData.EMPTY_CHUNK);
+          output.clear();
         }
 
         benchData.encode(encoder);
@@ -220,6 +221,9 @@ public class BenchmarkTool {
         outputChannel.write(benchData.inputs);
         outputChannel.write(benchData.outputs);
       }
+
+      inputChannel.close();
+      outputChannel.close();
     }
 
     void performDecode(File encodedDataFile, File resultDataFile,
@@ -227,17 +231,12 @@ public class BenchmarkTool {
       FileChannel inputChannel = new FileInputStream((encodedDataFile)).getChannel();
       FileChannel outputChannel = new FileOutputStream(resultDataFile).getChannel();
 
-      long got;
+      long got, written;
       while (true) {
         for (ByteBuffer input : benchData.inputs) {
           input.clear();
         }
         for (ByteBuffer output : benchData.outputs) {
-          output.clear();
-        }
-        for (ByteBuffer output : benchData.decodeOutputs) {
-          output.clear();
-          output.put(benchData.EMPTY_CHUNK);
           output.clear();
         }
 
@@ -257,6 +256,12 @@ public class BenchmarkTool {
           output.flip();
         }
 
+        for (ByteBuffer output : benchData.decodeOutputs) {
+          output.clear();
+          output.put(benchData.EMPTY_CHUNK);
+          output.clear();
+        }
+
         benchData.decode(decoder);
 
         for (ByteBuffer input : benchData.decodeInputs) {
@@ -265,8 +270,14 @@ public class BenchmarkTool {
           }
         }
 
-        outputChannel.write(benchData.inputsWithRecovered);
+        written = outputChannel.write(benchData.inputsWithRecovered);
+        if (written < 1) {
+          break;
+        }
       }
+
+      inputChannel.close();
+      outputChannel.close();
 
       if (!FileUtils.contentEquals(resultDataFile, originalDataFile)) {
         throw new RuntimeException("Decoding failed, not the same with the original file");

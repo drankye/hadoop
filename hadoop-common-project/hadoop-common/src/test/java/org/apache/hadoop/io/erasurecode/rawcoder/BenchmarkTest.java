@@ -45,6 +45,6 @@ public class BenchmarkTest {
 
   @After
   public void cleanup() throws IOException {
-    FileUtils.cleanDirectory(testDir);
+    //FileUtils.cleanDirectory(testDir);
   }
 }
