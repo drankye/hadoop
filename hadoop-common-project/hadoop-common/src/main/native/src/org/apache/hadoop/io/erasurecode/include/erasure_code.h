@@ -28,7 +28,7 @@
  *  dot product of the symbols (bytes in GF(2^8)) across a set of buffers and a
  *  set of coefficients.  Values for the coefficients are determined by the type
  *  of erasure code.  Using a general dot product means that any sequence of
- *  coefficients may be used including erasure codes based on random 
+ *  coefficients may be used including erasure codes based on random
  *  coefficients.
  *  Multiple versions of dot product are supplied to calculate 1-6 output
  *  vectors in one pass.
@@ -74,10 +74,10 @@ void h_ec_init_tables(int k, int rows, unsigned char* a, unsigned char* gftbls);
  * encoded data as specified by a matrix of GF(2^8) coefficients. When given a
  * suitable set of coefficients, this function will perform the fast generation
  * or decoding of Reed-Solomon type erasure codes.
- * 
+ *
  * This function determines what instruction sets are enabled and
  * selects the appropriate version at runtime.
- * 
+ *
  * @param len    Length of each block of data (vector) of source or dest data.
  * @param k      The number of vector sources or rows in the generator matrix
  *        for coding.
