@@ -134,6 +134,7 @@ public final class GaloisFieldUtil {
       (byte) 0xaf
   };
 
+/*
   private static byte[] gfMulBase = new byte[] {
       (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
       (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
@@ -13299,8 +13300,9 @@ public final class GaloisFieldUtil {
       (byte) 0xe8, (byte) 0x75, (byte) 0x7f, (byte) 0xff, (byte) 0x7e,
       (byte) 0xfd
   };
+*/
 
-  public static byte gfMulOld(byte a, byte b) {
+  public static byte gfMul(byte a, byte b) {
     int i, aa, bb;
 
     if ((a == 0) || (b == 0)) {
@@ -13314,21 +13316,24 @@ public final class GaloisFieldUtil {
     return result;
   }
 
+/*
   public static byte gfMul(byte a, byte b) {
     return gfMulBase[(b * 256) & 0xff + a];
   }
+*/
 
-  public static byte gfInvOld(byte a) {
+  public static byte gfInv(byte a) {
     if (a == 0)
       return 0;
 
     return (byte) (gfBase[(255 - gfLogBase[a & 0xff] & 0xff) & 0xff] & 0xff);
   }
 
+/*
   public static byte gfInv(byte a) {
     return gfInvBase[a & 0xff];
   }
-
+*/
   public static void gfInvertMatrix(byte[] inMatrix, byte[] outMatrix, int n) {
     byte temp;
 
