@@ -78,22 +78,22 @@ public class BenchmarkTool {
           + coderNames[coderIndex]);
 
       File encodedDataFile = new File(testDir,
-          "encoded-benchtest-data" + coderIndex + ".dat");
+          "encoded-benchtest-data-coder" + coderIndex + ".dat");
       File decodedDataFile = new File(testDir,
-          "decoded-benchtest-data" + coderIndex + ".dat");
+          "decoded-benchtest-data-coder" + coderIndex + ".dat");
 
       RawErasureCoderFactory coderMaker = coderMakers[coderIndex];
       CoderBench bench = new CoderBench(coderMaker);
       bench.performEncode(testDataFile, encodedDataFile);
-      //bench.performDecode(encodedDataFile, decodedDataFile, testDataFile);
+      bench.performDecode(encodedDataFile, decodedDataFile, testDataFile);
     }
   }
 
   static void generateTestData(File testDataFile) throws IOException {
     FileOutputStream out = new FileOutputStream(testDataFile);
     Random random = new Random();
-    long times = 1;
-    int buffSize = 64 * 1024 * 1024; // MB
+    long times = 36;
+    int buffSize = 1 * 1024 * 1024; // MB
     byte buf[] = new byte[buffSize];
 
     try {
@@ -107,18 +107,19 @@ public class BenchmarkTool {
   }
 
   static class BenchData {
-    final static Random rand = new Random();
     final static int numDataUnits = 6;
     final static int numParityUnits = 3;
+    final static int chunkSize = 1 * 1024;
+    final static byte[] EMPTY_CHUNK = new byte[chunkSize];
 
     final boolean useDirectBuffer;
     final int numAllUnits = numDataUnits + numParityUnits;
-    final int chunkSize = 16 * 1024 * 1024; // MB
     final int[] erasedIndexes = new int[]{0, 5, 8};
     final ByteBuffer[] inputs = new ByteBuffer[numDataUnits];
     final ByteBuffer[] outputs = new ByteBuffer[numParityUnits];
     final ByteBuffer[] decodeInputs = new ByteBuffer[numAllUnits];
     final ByteBuffer[] decodeOutputs = new ByteBuffer[erasedIndexes.length];
+    final ByteBuffer[] inputsWithRecovered = new ByteBuffer[numDataUnits];
 
     BenchData(boolean useDirectBuffer) {
       this.useDirectBuffer = useDirectBuffer;
@@ -143,6 +144,13 @@ public class BenchmarkTool {
         decodeOutputs[i] = useDirectBuffer ?
             ByteBuffer.allocateDirect(chunkSize) :
             ByteBuffer.allocate(chunkSize);
+      }
+
+      System.arraycopy(inputs, 0, inputsWithRecovered, 0, numDataUnits);
+      for (int i = 0, idx = 0; i < erasedIndexes.length; i++) {
+        if (erasedIndexes[i] < numDataUnits) {
+          inputsWithRecovered[erasedIndexes[i]] = decodeOutputs[idx++];
+        }
       }
     }
 
@@ -186,12 +194,29 @@ public class BenchmarkTool {
 
       long got;
       while (true) {
+        for (ByteBuffer input : benchData.inputs) {
+          input.clear();
+        }
+        for (ByteBuffer output : benchData.outputs) {
+          output.clear();
+          output.put(benchData.EMPTY_CHUNK);
+          output.clear();
+        }
+
         got = inputChannel.read(benchData.inputs);
         if (got < 1) {
           break;
         }
+        for (ByteBuffer input : benchData.inputs) {
+          input.flip();
+        }
 
         benchData.encode(encoder);
+
+        for (ByteBuffer input : benchData.inputs) {
+          input.flip();
+        }
+
         outputChannel.write(benchData.inputs);
         outputChannel.write(benchData.outputs);
       }
@@ -199,9 +224,51 @@ public class BenchmarkTool {
 
     void performDecode(File encodedDataFile, File resultDataFile,
                        File originalDataFile) throws IOException {
+      FileChannel inputChannel = new FileInputStream((encodedDataFile)).getChannel();
+      FileChannel outputChannel = new FileOutputStream(resultDataFile).getChannel();
 
+      long got;
+      while (true) {
+        for (ByteBuffer input : benchData.inputs) {
+          input.clear();
+        }
+        for (ByteBuffer output : benchData.outputs) {
+          output.clear();
+        }
+        for (ByteBuffer output : benchData.decodeOutputs) {
+          output.clear();
+          output.put(benchData.EMPTY_CHUNK);
+          output.clear();
+        }
 
-      if (FileUtils.contentEquals(resultDataFile, originalDataFile)) {
+        got = inputChannel.read(benchData.inputs);
+        if (got < 1) {
+          break;
+        }
+        got = inputChannel.read(benchData.outputs);
+        if (got < 1) {
+          break;
+        }
+
+        for (ByteBuffer input : benchData.inputs) {
+          input.flip();
+        }
+        for (ByteBuffer output : benchData.outputs) {
+          output.flip();
+        }
+
+        benchData.decode(decoder);
+
+        for (ByteBuffer input : benchData.decodeInputs) {
+          if (input != null) {
+            input.flip();
+          }
+        }
+
+        outputChannel.write(benchData.inputsWithRecovered);
+      }
+
+      if (!FileUtils.contentEquals(resultDataFile, originalDataFile)) {
         throw new RuntimeException("Decoding failed, not the same with the original file");
       }
     }
@@ -231,15 +298,5 @@ public class BenchmarkTool {
       System.out.println(text);
     }
     */
-
-    void readTestData(FileInputStream in,
-                             ByteBuffer[] inputBuffers) throws IOException {
-      in.getChannel().read(inputBuffers);
-    }
-
-    void writeTestData(FileOutputStream out,
-                              ByteBuffer[] outputBuffers) throws IOException {
-      out.getChannel().write(outputBuffers);
-    }
   }
 }

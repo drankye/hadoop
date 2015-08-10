@@ -19,6 +19,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.erasurecode.BenchmarkTool;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,10 +35,16 @@ public class BenchmarkTest {
         "target/ec-coder-bench");
     testDir = new File(testDirPath);
     FileUtils.forceMkdir(testDir);
+    FileUtils.cleanDirectory(testDir);
   }
 
   @Test
   public void benchmarkTest() throws Exception {
     BenchmarkTool.performBench(testDir);
+  }
+
+  @After
+  public void cleanup() throws IOException {
+    FileUtils.cleanDirectory(testDir);
   }
 }

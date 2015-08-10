@@ -358,8 +358,12 @@
                           $$TAR *crypto* | (cd $${TARGET_DIR}/; $$UNTAR)
                         fi
                         if [ "X${bundle.isal}" = "Xtrue" ] ; then
-                          cd "${isal.lib}"
-                          $$TAR *isa* | (cd $${TARGET_DIR}/; $$UNTAR)
+                          if [ "X${isal.lib}" != "X" ]; then
+                            cd "${isal.lib}"
+                            $$TAR *isa* | (cd $${TARGET_DIR}/; $$UNTAR)
+                          else
+                            echo "The required option isal.lib isn't given, bundling ISA-L skipped"
+                          fi
                         fi
                       fi
                       BIN_DIR="${BUILD_DIR}/bin"
