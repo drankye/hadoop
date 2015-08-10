@@ -40,7 +40,7 @@
 /**
  * Get the library name possibly of full path.
  */
-char* get_library_name();
+const char* get_library_name();
 
 /**
  * Initialize and load erasure code library, returning error message if any.
