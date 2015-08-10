@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
@@ -65,15 +66,20 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
                           int[] outputOffsets) {
     // parity units + data units
     byte[][] all = new byte[outputs.length + inputs.length][];
-    System.arraycopy(outputs, 0, all, 0, outputs.length);
-    System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
+    int[] allOffsets = new int[inputOffsets.length + outputOffsets.length];
 
-    int[] offsets = new int[inputOffsets.length + outputOffsets.length];
-    System.arraycopy(outputOffsets, 0, offsets, 0, outputOffsets.length);
-    System.arraycopy(inputOffsets, 0, offsets,
-        outputOffsets.length, inputOffsets.length);
+    System.arraycopy(outputs, 0, all, 0, outputs.length);
+    System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
+
+    int index;
+    for (int i = 0; i < inputs.length; i++) {
+      index = outputs.length + i;
+      all[index] =
+          Arrays.copyOfRange(inputs[i], inputOffsets[i], dataLen);
+      allOffsets[index] = 0;
+    }
 
     // Compute the remainder
-    RSUtil.GF.remainder(all, offsets, dataLen, generatingPolynomial);
+    RSUtil.GF.remainder(all, allOffsets, dataLen, generatingPolynomial);
   }
 }

@@ -66,7 +66,7 @@ public class BenchmarkTool {
   }
 
   static int[] getCoderIndexes() {
-    return new int[] {1};
+    return new int[] {0};
   }
 
   public static void performBench(File testDir) throws Exception {
@@ -92,12 +92,10 @@ public class BenchmarkTool {
   static void generateTestData(File testDataFile) throws IOException {
     FileOutputStream out = new FileOutputStream(testDataFile);
     Random random = new Random();
-    long times = 360;
-    int buffSize = 1024 * 1024; // MB
-    byte buf[] = new byte[buffSize];
+    byte buf[] = new byte[BenchData.chunkSize];
 
     try {
-      for (int i = 0; i < times; i++) {
+      for (int i = 0; i < BenchData.chunksOfTestData; i++) {
         random.nextBytes(buf);
         out.write(buf);
       }
@@ -111,6 +109,7 @@ public class BenchmarkTool {
     final static int numParityUnits = 3;
     final static int chunkSize = 1 * 1024;
     final static byte[] EMPTY_CHUNK = new byte[chunkSize];
+    final static long chunksOfTestData = 1 * numDataUnits;
 
     final boolean useDirectBuffer;
     final int numAllUnits = numDataUnits + numParityUnits;
