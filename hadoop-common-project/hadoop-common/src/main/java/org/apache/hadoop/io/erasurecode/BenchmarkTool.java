@@ -49,7 +49,9 @@ public class BenchmarkTool {
     if (message != null) {
       System.out.println(message);
     }
-    System.out.println("BenchmarkTool <testDir> <coderIndex> [dataSize-in-MB] [chunkSize-in-KB]");
+    System.out.println("BenchmarkTool <testDir> <coderIndex> " +
+        "[dataSize-in-MB] [chunkSize-in-KB]");
+    printAvailableCoders();
     System.exit(1);
   }
 
@@ -98,22 +100,20 @@ public class BenchmarkTool {
     performBench(testDir, coderIndex, dataSize, chunkSize);
   }
 
-  /*
-  static int[] getCoderIndexes() {
-    if (ErasureCodeNative.isNativeCodeLoaded()) {
-      return new int[] {0, 1, 2};
-    } else {
-      return new int[] {0, 1};
+  private static void printAvailableCoders() {
+    StringBuilder sb = new StringBuilder("Available coders with coderIndex:\n");
+    for (int i = 0; i < coderNames.length; i++) {
+      if (i == 2 && !ErasureCodeNative.isNativeCodeLoaded()) {
+        continue; // Skip the native one if not loaded successfully
+      }
+      sb.append(i).append(":").append(coderNames[i]).append("\n");
     }
-  }*/
+    System.out.println(sb.toString());
+  }
 
   public static void performBench(File testDir, int coderIndex, int dataSize,
                                   int chunkSize) throws Exception {
-    BenchData.chunkSize = chunkSize * 1024;
-    BenchData.groupSize = BenchData.chunkSize * BenchData.numDataUnits;
-    int numGroups = (dataSize * 1024) / (BenchData.numDataUnits * chunkSize) + 1;
-    BenchData.testDataChunks = numGroups * BenchData.numDataUnits;
-
+    BenchData.configure(dataSize, chunkSize);
     performBench(testDir, coderIndex);
   }
 
@@ -137,7 +137,7 @@ public class BenchmarkTool {
 
   static void generateTestData(File testDataFile) throws IOException {
     if (testDataFile.exists()) {
-      if (testDataFile.length() == BenchData.chunkSize * BenchData.testDataChunks) {
+      if (testDataFile.length() == BenchData.chunkSize * BenchData.dataChunks) {
         return;
       } else {
         FileUtils.forceDelete(testDataFile);
@@ -149,7 +149,7 @@ public class BenchmarkTool {
     byte buf[] = new byte[BenchData.chunkSize];
 
     try {
-      for (int i = 0; i < BenchData.testDataChunks; i++) {
+      for (int i = 0; i < BenchData.dataChunks; i++) {
         random.nextBytes(buf);
         out.write(buf);
       }
@@ -161,10 +161,10 @@ public class BenchmarkTool {
   static class BenchData {
     static int numDataUnits = 6;
     static int numParityUnits = 3;
-    static int chunkSize = 8 * 1024 * 1024;
-    static int groupSize;
-    static long testDataChunks = 10 * numDataUnits;
-    static long testDataSize;
+    static int chunkSize;
+    static long groupSize;
+    static int dataChunks;
+    static long dataSize;
     static byte[] emptyChunk;
 
     final boolean useDirectBuffer;
@@ -175,6 +175,18 @@ public class BenchmarkTool {
     final ByteBuffer[] decodeInputs = new ByteBuffer[numAllUnits];
     final ByteBuffer[] decodeOutputs = new ByteBuffer[erasedIndexes.length];
     final ByteBuffer[] inputsWithRecovered = new ByteBuffer[numDataUnits];
+
+    static void configure(int desiredDataSize, int desiredChunkSize) {
+      chunkSize = desiredChunkSize * 1024;
+      groupSize = chunkSize * numDataUnits;
+      dataSize = desiredDataSize * 1024 * 1024;
+      int numGroups = (int) (dataSize / groupSize);
+      if (numGroups < 1) {
+        numGroups = 1;
+      }
+      dataSize = numGroups * groupSize;
+      dataChunks = numGroups * numDataUnits;
+    }
 
     BenchData(boolean useDirectBuffer) {
       this.useDirectBuffer = useDirectBuffer;
@@ -254,7 +266,7 @@ public class BenchmarkTool {
 
       startTime = System.currentTimeMillis();
 
-      long got;
+      long got, written;
       while (true) {
         for (ByteBuffer input : benchData.inputs) {
           input.clear();
@@ -266,7 +278,7 @@ public class BenchmarkTool {
         if (got < 1) {
           break;
         }
-        if (got != BenchData.numDataUnits * BenchData.chunkSize) {
+        if (got != BenchData.groupSize) {
           throw new RuntimeException("Invalid read, less than expected");
         }
 
@@ -274,7 +286,10 @@ public class BenchmarkTool {
           input.flip();
         }
 
-        outputChannel.write(benchData.inputs);
+        written = outputChannel.write(benchData.inputs);
+        if (written != BenchData.groupSize) {
+          throw new RuntimeException("Invalid write, less than expected");
+        }
 
         for (ByteBuffer input : benchData.inputs) {
           input.flip();
@@ -297,7 +312,10 @@ public class BenchmarkTool {
           input.flip();
         }
 
-        outputChannel.write(benchData.outputs);
+        written = outputChannel.write(benchData.outputs);
+        if (written != BenchData.numParityUnits * BenchData.chunkSize) {
+          throw new RuntimeException("Invalid write, less than expected");
+        }
 
         ioFinishTime = System.currentTimeMillis();
         ioTotalTime += ioFinishTime - ioStartTime;
@@ -307,16 +325,9 @@ public class BenchmarkTool {
       outputChannel.close();
 
       finishTime = System.currentTimeMillis();
-      encodeTime = (finishTime - startTime) - ioTotalTime;
-
-      long usedData = (benchData.testDataChunks * benchData.chunkSize) / (1024 * 1024);
-      double throughput = (usedData * 1000) / encodeTime;
-
-      DecimalFormat df = new DecimalFormat("#.##");
-      String text = "Encode " + usedData + "MB data takes " + encodeTime
-          + " milliseconds, throughput:" + df.format(throughput) + "MB/s";
-
-      System.out.println(text);
+      long totalTime = finishTime - startTime;
+      encodeTime = totalTime - ioTotalTime;
+      printResult(false, totalTime, encodeTime);
     }
 
     void performDecode(File encodedDataFile, File resultDataFile,
@@ -388,20 +399,35 @@ public class BenchmarkTool {
       outputChannel.close();
 
       finishTime = System.currentTimeMillis();
-      decodeTime = (finishTime - startTime) - ioTotalTime;
-
-      long usedData = (benchData.testDataChunks * benchData.chunkSize) / (1024 * 1024);
-      double throughput = (usedData * 1000) / decodeTime;
-
-      DecimalFormat df = new DecimalFormat("#.##");
-      String text = "Decode " + usedData + "MB data takes " + decodeTime
-          + " milliseconds, throughput:" + df.format(throughput) + "MB/s";
-
-      System.out.println(text);
+      long totalTime = finishTime - startTime;
+      decodeTime = totalTime - ioTotalTime;
+      printResult(false, totalTime, decodeTime);
 
       if (!FileUtils.contentEquals(resultDataFile, originalDataFile)) {
         throw new RuntimeException("Decoding failed, not the same with the original file");
       }
+    }
+
+    private void printResult(boolean isEncode,
+                             long totalTime, long codingTime) {
+      long usedData = BenchData.dataSize / (1024 * 1024); // in MB
+      double throughput = (usedData * 1000) / codingTime;
+      String prefix = isEncode ? "Encode " : "Decode ";
+      DecimalFormat df = new DecimalFormat("#.##");
+
+      // Print time
+      String text = prefix + " test overall takes " +
+          df.format(totalTime / 1000.0f) +
+          " seconds, excluding preparing(test data generating) time; " +
+          " real coding time is " +
+          df.format(codingTime / 1000.0f) + " seconds";
+      System.out.println(text);
+
+      // Print throughput
+      text = prefix + usedData + " MB data takes " +
+          df.format(codingTime / 1000.0f) + " milliseconds, throughput:" +
+          df.format(throughput) + " MB/s";
+      System.out.println(text);
     }
   }
 }
