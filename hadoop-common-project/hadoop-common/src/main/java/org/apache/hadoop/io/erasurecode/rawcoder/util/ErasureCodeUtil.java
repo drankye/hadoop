@@ -101,6 +101,7 @@ public final class ErasureCodeUtil {
     byte s;
     final int times = dataLen / 8;
     final int extra = dataLen - dataLen % 8;
+    int[] tableLine;
 
     for (l = 0; l < numOutputs; l++) {
       output = outputs[l];
@@ -111,20 +112,21 @@ public final class ErasureCodeUtil {
         oPos = outputOffsets[l];
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
+        tableLine = GaloisField.mulTable[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
-          output[oPos + 0] ^= GaloisFieldUtil.gfMul(input[iPos + 0], s);
-          output[oPos + 1] ^= GaloisFieldUtil.gfMul(input[iPos + 1], s);
-          output[oPos + 2] ^= GaloisFieldUtil.gfMul(input[iPos + 2], s);
-          output[oPos + 3] ^= GaloisFieldUtil.gfMul(input[iPos + 3], s);
-          output[oPos + 4] ^= GaloisFieldUtil.gfMul(input[iPos + 4], s);
-          output[oPos + 5] ^= GaloisFieldUtil.gfMul(input[iPos + 5], s);
-          output[oPos + 6] ^= GaloisFieldUtil.gfMul(input[iPos + 6], s);
-          output[oPos + 7] ^= GaloisFieldUtil.gfMul(input[iPos + 7], s);
+          output[oPos + 0] ^= tableLine[0xff & input[iPos + 0]];
+          output[oPos + 1] ^= tableLine[0xff & input[iPos + 1]];
+          output[oPos + 2] ^= tableLine[0xff & input[iPos + 2]];
+          output[oPos + 3] ^= tableLine[0xff & input[iPos + 3]];
+          output[oPos + 4] ^= tableLine[0xff & input[iPos + 4]];
+          output[oPos + 5] ^= tableLine[0xff & input[iPos + 5]];
+          output[oPos + 6] ^= tableLine[0xff & input[iPos + 6]];
+          output[oPos + 7] ^= tableLine[0xff & input[iPos + 7]];
         }
 
         for (i = extra; i < dataLen; i++, iPos++, oPos++) {
-          output[oPos] ^= GaloisFieldUtil.gfMul(input[iPos], s);
+          output[oPos] ^= tableLine[0xff & input[iPos]];
         }
       }
     }
@@ -140,6 +142,7 @@ public final class ErasureCodeUtil {
     byte s;
     final int times = dataLen / 8;
     final int extra = dataLen - dataLen % 8;
+    int[] tableLine;
 
     for (l = 0; l < numOutputs; l++) {
       output = outputs[l];
@@ -150,29 +153,22 @@ public final class ErasureCodeUtil {
         oPos = output.position();
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
+        tableLine = GaloisField.mulTable[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
-          output.put(oPos + 0, (byte) (output.get(oPos + 0) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 0), s)));
-          output.put(oPos + 1, (byte) (output.get(oPos + 1) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 1), s)));
-          output.put(oPos + 2, (byte) (output.get(oPos + 2) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 2), s)));
-          output.put(oPos + 3, (byte) (output.get(oPos + 3) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 3), s)));
-          output.put(oPos + 4, (byte) (output.get(oPos + 4) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 4), s)));
-          output.put(oPos + 5, (byte) (output.get(oPos + 5) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 5), s)));
-          output.put(oPos + 6, (byte) (output.get(oPos + 6) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 6), s)));
-          output.put(oPos + 7, (byte) (output.get(oPos + 7) ^
-              GaloisFieldUtil.gfMul(input.get(iPos + 7), s)));
+          output.put(oPos + 0, (byte) (output.get(oPos + 0) ^ tableLine[0xff & input.get(iPos + 0)]));
+          output.put(oPos + 1, (byte) (output.get(oPos + 1) ^ tableLine[0xff & input.get(iPos + 1)]));
+          output.put(oPos + 2, (byte) (output.get(oPos + 2) ^ tableLine[0xff & input.get(iPos + 2)]));
+          output.put(oPos + 3, (byte) (output.get(oPos + 3) ^ tableLine[0xff & input.get(iPos + 3)]));
+          output.put(oPos + 4, (byte) (output.get(oPos + 4) ^ tableLine[0xff & input.get(iPos + 4)]));
+          output.put(oPos + 5, (byte) (output.get(oPos + 5) ^ tableLine[0xff & input.get(iPos + 5)]));
+          output.put(oPos + 6, (byte) (output.get(oPos + 6) ^ tableLine[0xff & input.get(iPos + 6)]));
+          output.put(oPos + 7, (byte) (output.get(oPos + 7) ^ tableLine[0xff & input.get(iPos + 7)]));
         }
 
         for (i = extra; i < dataLen; i++, iPos++, oPos++) {
           output.put(oPos, (byte) (output.get(oPos) ^
-              GaloisFieldUtil.gfMul(input.get(iPos), s)));
+              tableLine[0xff & input.get(iPos)]));
         }
       }
     }

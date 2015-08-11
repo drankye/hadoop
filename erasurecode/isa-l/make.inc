@@ -50,7 +50,7 @@ DEBUG_yasm = -g dwarf2
 DEBUG_nasm = -g
 
 # Default arch= build options
-CFLAGS_gcc = -Wall
+CFLAGS_gcc = -Wall -DGF_LARGE_TABLES
 ASFLAGS_   = -f elf64
 ARFLAGS_   = cr $@
 STRIP_gcc  = strip -d -R .comment $@
