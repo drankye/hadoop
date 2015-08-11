@@ -40,7 +40,7 @@ public class BenchmarkTest {
 
   @Test
   public void benchmarkTest() throws Exception {
-    BenchmarkTool.performBench(testDir);
+    BenchmarkTool.performBench(testDir, 0);
   }
 
   @After

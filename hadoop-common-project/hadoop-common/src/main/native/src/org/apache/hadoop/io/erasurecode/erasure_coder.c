@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int inited = 0;
 void initCoder(CoderState* pCoderState, int numDataUnits, int numParityUnits) {
   pCoderState->verbose = 0;
   pCoderState->numParityUnits = numParityUnits;

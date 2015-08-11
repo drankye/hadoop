@@ -75,27 +75,29 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
                      ByteBuffer[] outputs) {
     // Make copies avoiding affecting original ones;
-    ByteBuffer[] inputs2 = new ByteBuffer[inputs.length];
-    int[] erasedIndexes2 = new int[erasedIndexes.length];
-    ByteBuffer[] outputs2 = new ByteBuffer[outputs.length];
+    ByteBuffer[] newInputs = new ByteBuffer[inputs.length];
+    int[] newErasedIndexes = new int[erasedIndexes.length];
+    ByteBuffer[] newOutputs = new ByteBuffer[outputs.length];
 
     // Adjust the order to match with underlying requirements.
-    adjustOrder(inputs, inputs2,
-        erasedIndexes, erasedIndexes2, outputs, outputs2);
-    super.decode(inputs, erasedIndexes, outputs);
+    adjustOrder(inputs, newInputs,
+        erasedIndexes, newErasedIndexes, outputs, newOutputs);
+
+    super.decode(newInputs, newErasedIndexes, newOutputs);
   }
 
   @Override
   public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
     // Make copies avoiding affecting original ones;
-    byte[][] inputs2 = new byte[inputs.length][];
-    int[] erasedIndexes2 = new int[erasedIndexes.length];
-    byte[][] outputs2 = new byte[outputs.length][];
+    byte[][] newInputs = new byte[inputs.length][];
+    int[] newErasedIndexes = new int[erasedIndexes.length];
+    byte[][] newOutputs = new byte[outputs.length][];
 
     // Adjust the order to match with underlying requirements.
-    adjustOrder(inputs, inputs2,
-        erasedIndexes, erasedIndexes2, outputs, outputs2);
-    super.decode(inputs2, erasedIndexes2, outputs2);
+    adjustOrder(inputs, newInputs,
+        erasedIndexes, newErasedIndexes, outputs, newOutputs);
+
+    super.decode(newInputs, newErasedIndexes, newOutputs);
   }
 
   private void doDecodeImpl(ByteBuffer[] inputs, int[] erasedIndexes,
@@ -114,18 +116,9 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   private void doDecodeImpl(byte[][] inputs, int[] inputOffsets,
                           int dataLen, int[] erasedIndexes,
                           byte[][] outputs, int[] outputOffsets) {
-    byte[][] newInputs = new byte[inputs.length][];
-    int[] newInputOffsets = new int[inputOffsets.length];
-
-    for (int i = 0; i < inputs.length; i++) {
-      if (inputs[i] != null) {
-        newInputs[i] = Arrays.copyOfRange(inputs[i], inputOffsets[i], dataLen);
-      }
-    }
-
     for (int i = 0; i < erasedIndexes.length; i++) {
       errSignature[i] = primitivePower[erasedIndexes[i]];
-      RSUtil.GF.substitute(newInputs, newInputOffsets, dataLen, outputs[i],
+      RSUtil.GF.substitute(inputs, inputOffsets, dataLen, outputs[i],
           outputOffsets[i], primitivePower[i]);
     }
 
