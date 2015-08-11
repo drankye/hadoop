@@ -53,8 +53,22 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
     // parity units + data units
     ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
-    System.arraycopy(outputs, 0, all, 0, outputs.length);
-    System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
+
+    if (allowInputDataDirty) {
+      System.arraycopy(outputs, 0, all, 0, outputs.length);
+      System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
+    } else {
+      System.arraycopy(outputs, 0, all, 0, outputs.length);
+      ByteBuffer tmp;
+      for (int i = 0; i < inputs.length; i++) {
+        inputs[i].mark();
+        tmp = ByteBuffer.allocate(inputs[i].remaining());
+        tmp.put(inputs[i]);
+        inputs[i].reset();
+        tmp.flip();
+        all[outputs.length + i] = tmp;
+      }
+    }
 
     // Compute the remainder
     RSUtil.GF.remainder(all, generatingPolynomial);
@@ -68,12 +82,21 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     byte[][] all = new byte[outputs.length + inputs.length][];
     int[] allOffsets = new int[outputOffsets.length + inputOffsets.length];
 
-    System.arraycopy(outputs, 0, all, 0, outputs.length);
-    System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
+    if (allowInputDataDirty) {
+      System.arraycopy(outputs, 0, all, 0, outputs.length);
+      System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
 
-    for (int i = 0; i < inputs.length; i++) {
-      all[outputs.length + i] = Arrays.copyOfRange(inputs[i],
-          inputOffsets[i], inputOffsets[i] + dataLen);
+      System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
+      System.arraycopy(inputOffsets, 0, allOffsets,
+          outputOffsets.length, inputOffsets.length);
+    } else {
+      System.arraycopy(outputs, 0, all, 0, outputs.length);
+      System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
+
+      for (int i = 0; i < inputs.length; i++) {
+        all[outputs.length + i] = Arrays.copyOfRange(inputs[i],
+            inputOffsets[i], inputOffsets[i] + dataLen);
+      }
     }
 
     // Compute the remainder

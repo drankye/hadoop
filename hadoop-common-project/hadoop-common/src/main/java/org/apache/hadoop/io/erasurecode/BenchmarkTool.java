@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.DecimalFormat;
 import java.util.Random;
 
 public class BenchmarkTool {
@@ -66,7 +67,7 @@ public class BenchmarkTool {
   }
 
   static int[] getCoderIndexes() {
-    return new int[] {0};
+    return new int[] {0, 1, 2};
   }
 
   public static void performBench(File testDir) throws Exception {
@@ -107,9 +108,9 @@ public class BenchmarkTool {
   static class BenchData {
     final static int numDataUnits = 6;
     final static int numParityUnits = 3;
-    final static int chunkSize = 1 * 1024;
+    final static int chunkSize = 8 * 1024 * 1024;
     final static byte[] EMPTY_CHUNK = new byte[chunkSize];
-    final static long chunksOfTestData = 1 * numDataUnits;
+    final static long chunksOfTestData = 10 * numDataUnits;
 
     final boolean useDirectBuffer;
     final int numAllUnits = numDataUnits + numParityUnits;
@@ -191,16 +192,30 @@ public class BenchmarkTool {
       FileChannel inputChannel = new FileInputStream((testDataFile)).getChannel();
       FileChannel outputChannel = new FileOutputStream(resultDataFile).getChannel();
 
+      long startTime, ioStartTime, ioTotalTime = 0;
+      long finishTime, ioFinishTime, encodeTime = 0;
+
+      startTime = System.currentTimeMillis();
+
       long got;
       while (true) {
         for (ByteBuffer input : benchData.inputs) {
           input.clear();
         }
 
+        ioStartTime = System.currentTimeMillis();
+
         got = inputChannel.read(benchData.inputs);
         if (got < 1) {
           break;
         }
+
+        for (ByteBuffer input : benchData.inputs) {
+          input.flip();
+        }
+
+        outputChannel.write(benchData.inputs);
+
         for (ByteBuffer input : benchData.inputs) {
           input.flip();
         }
@@ -211,18 +226,37 @@ public class BenchmarkTool {
           output.clear();
         }
 
+        ioFinishTime = System.currentTimeMillis();
+        ioTotalTime += ioFinishTime - ioStartTime;
+
         benchData.encode(encoder);
+
+        ioStartTime = System.currentTimeMillis();
 
         for (ByteBuffer input : benchData.inputs) {
           input.flip();
         }
 
-        outputChannel.write(benchData.inputs);
         outputChannel.write(benchData.outputs);
+
+        ioFinishTime = System.currentTimeMillis();
+        ioTotalTime += ioFinishTime - ioStartTime;
       }
 
       inputChannel.close();
       outputChannel.close();
+
+      finishTime = System.currentTimeMillis();
+      encodeTime = (finishTime - startTime) - ioTotalTime;
+
+      long usedData = (benchData.chunksOfTestData * benchData.chunkSize) / (1024 * 1024);
+      double throughput = (usedData * 1000) / encodeTime;
+
+      DecimalFormat df = new DecimalFormat("#.##");
+      String text = "Encode " + usedData + "MB data takes " + encodeTime
+          + " milliseconds, throughput:" + df.format(throughput) + "MB/s";
+
+      System.out.println(text);
     }
 
     void performDecode(File encodedDataFile, File resultDataFile,
@@ -230,8 +264,15 @@ public class BenchmarkTool {
       FileChannel inputChannel = new FileInputStream((encodedDataFile)).getChannel();
       FileChannel outputChannel = new FileOutputStream(resultDataFile).getChannel();
 
+      long startTime, ioStartTime, ioTotalTime = 0;
+      long finishTime, ioFinishTime, decodeTime = 0;
+
+      startTime = System.currentTimeMillis();
+
       long got, written;
       while (true) {
+        ioStartTime = System.currentTimeMillis();
+
         for (ByteBuffer input : benchData.inputs) {
           input.clear();
         }
@@ -261,7 +302,12 @@ public class BenchmarkTool {
           output.clear();
         }
 
+        ioFinishTime = System.currentTimeMillis();
+        ioTotalTime += ioFinishTime - ioStartTime;
+
         benchData.decode(decoder);
+
+        ioStartTime = System.currentTimeMillis();
 
         for (ByteBuffer input : benchData.decodeInputs) {
           if (input != null) {
@@ -273,40 +319,29 @@ public class BenchmarkTool {
         if (written < 1) {
           break;
         }
+
+        ioFinishTime = System.currentTimeMillis();
+        ioTotalTime += ioFinishTime - ioStartTime;
       }
 
       inputChannel.close();
       outputChannel.close();
 
+      finishTime = System.currentTimeMillis();
+      decodeTime = (finishTime - startTime) - ioTotalTime;
+
+      long usedData = (benchData.chunksOfTestData * benchData.chunkSize) / (1024 * 1024);
+      double throughput = (usedData * 1000) / decodeTime;
+
+      DecimalFormat df = new DecimalFormat("#.##");
+      String text = "Decode " + usedData + "MB data takes " + decodeTime
+          + " milliseconds, throughput:" + df.format(throughput) + "MB/s";
+
+      System.out.println(text);
+
       if (!FileUtils.contentEquals(resultDataFile, originalDataFile)) {
         throw new RuntimeException("Decoding failed, not the same with the original file");
       }
     }
-
-    /*
-    private void performCoding(boolean isEncode) {
-      long begin = System.currentTimeMillis();
-      for (int i = 0; i < testTimes; i++) {
-        if (isEncode) {
-          benchData.encode(encoder);
-        } else {
-          benchData.decode(decoder);
-        }
-      }
-      long end = System.currentTimeMillis();
-
-      double usedTime = end - begin;
-      long usedData = (testTimes * benchData.numDataUnits *
-          benchData.chunkSize) / (1024 * 1024);
-      double throughput = (usedData * 1000) / usedTime;
-
-      DecimalFormat df = new DecimalFormat("#.##");
-      String text = isEncode ? "Encode " : "Decode ";
-      text += usedData + "MB data takes " + usedTime
-          + " milliseconds, throughput:" + df.format(throughput) + "MB/s";
-
-      System.out.println(text);
-    }
-    */
   }
 }
