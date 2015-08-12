@@ -109,9 +109,10 @@ public class BenchmarkTool {
 
   public static void performBench(File testDir, int coderIndex, int dataSize,
                                   int chunkSize) throws Exception {
+    BenchData.chunkSize = chunkSize * 1024;
+    BenchData.groupSize = BenchData.chunkSize * BenchData.numDataUnits;
     int numGroups = (dataSize * 1024) / (BenchData.numDataUnits * chunkSize) + 1;
     BenchData.testDataChunks = numGroups * BenchData.numDataUnits;
-    BenchData.chunkSize = chunkSize * 1024;
 
     performBench(testDir, coderIndex);
   }
@@ -161,8 +162,10 @@ public class BenchmarkTool {
     static int numDataUnits = 6;
     static int numParityUnits = 3;
     static int chunkSize = 8 * 1024 * 1024;
-    static byte[] emptyChunk;
+    static int groupSize;
     static long testDataChunks = 10 * numDataUnits;
+    static long testDataSize;
+    static byte[] emptyChunk;
 
     final boolean useDirectBuffer;
     final int numAllUnits = numDataUnits + numParityUnits;
@@ -262,6 +265,9 @@ public class BenchmarkTool {
         got = inputChannel.read(benchData.inputs);
         if (got < 1) {
           break;
+        }
+        if (got != BenchData.numDataUnits * BenchData.chunkSize) {
+          throw new RuntimeException("Invalid read, less than expected");
         }
 
         for (ByteBuffer input : benchData.inputs) {
