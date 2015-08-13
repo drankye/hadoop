@@ -121,18 +121,20 @@ public class BenchmarkTool {
     File testDataFile = new File(testDir, "generated-benchtest-data.dat");
     generateTestData(testDataFile);
 
-    System.out.println("Performing benchmark test for "
-        + coderNames[coderIndex]);
+    System.out.println("Performing benchmark test for " + coderNames[coderIndex]);
 
-    File encodedDataFile = new File(testDir,
-        "encoded-benchtest-data-coder" + coderIndex + ".dat");
-    File decodedDataFile = new File(testDir,
-        "decoded-benchtest-data-coder" + coderIndex + ".dat");
+    File encodedDataFile = File.createTempFile(
+        "encoded-benchtest-data-coder" + coderIndex, ".dat", testDir);
+    File decodedDataFile = File.createTempFile(
+        "decoded-benchtest-data-coder" + coderIndex, ".dat", testDir);
 
     RawErasureCoderFactory coderMaker = coderMakers[coderIndex];
     CoderBench bench = new CoderBench(coderMaker);
     bench.performEncode(testDataFile, encodedDataFile);
     bench.performDecode(encodedDataFile, decodedDataFile, testDataFile);
+
+    FileUtils.forceDelete(encodedDataFile);
+    FileUtils.forceDelete(decodedDataFile);
   }
 
   static void generateTestData(File testDataFile) throws IOException {
