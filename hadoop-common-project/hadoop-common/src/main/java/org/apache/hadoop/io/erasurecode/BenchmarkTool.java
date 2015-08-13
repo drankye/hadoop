@@ -133,8 +133,12 @@ public class BenchmarkTool {
     bench.performEncode(testDataFile, encodedDataFile);
     bench.performDecode(encodedDataFile, decodedDataFile, testDataFile);
 
-    FileUtils.forceDelete(encodedDataFile);
-    FileUtils.forceDelete(decodedDataFile);
+    try {
+      FileUtils.forceDelete(encodedDataFile);
+      FileUtils.forceDelete(decodedDataFile);
+    } catch (IOException e) {
+      // Ignore
+    }
   }
 
   static void generateTestData(File testDataFile) throws IOException {
@@ -142,8 +146,11 @@ public class BenchmarkTool {
       if (testDataFile.length() / (1024 * 1024) == BenchData.dataSize) {
         System.out.println("Reuse existing test data file");
         return;
-      } else {
+      }
+      try {
         FileUtils.forceDelete(testDataFile);
+      } catch (IOException e) {
+        // Ignore
       }
     }
 
