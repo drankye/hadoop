@@ -165,27 +165,14 @@ public final class GF256 {
     return gfBase[tmp];
   }
 
-/*
-  public static byte gfMul(byte a, byte b) {
-    return gfMulBase[(b * 256) & 0xff + a];
-  }
-*/
-
   public static byte gfInv(byte a) {
-    /*
-    if (a == 0)
+    if (a == 0) {
       return 0;
+    }
 
-    return (byte) (gfBase[(255 - gfLogBase[a & 0xff] & 0xff) & 0xff] & 0xff);
-    */
-    return (byte) GaloisField.getInstance().divide(1, a & 0xff);
+    return gfBase[255 - gfLogBase[a & 0xff] & 0xff];
   }
 
-/*
-  public static byte gfInv(byte a) {
-    return gfInvBase[a & 0xff];
-  }
-*/
   public static void gfInvertMatrix(byte[] inMatrix, byte[] outMatrix, int n) {
     byte temp;
 

@@ -35,8 +35,8 @@ public class GaloisField {
       new HashMap<Integer, GaloisField>();
   private final int[] logTable;
   private final int[] powTable;
-  public static int[][] mulTable;
-  public static int[][] divTable;
+  private final int[][] mulTable;
+  private final int[][] divTable;
   private final int fieldSize;
   private final int primitivePeriod;
   private final int primitivePolynomial;

@@ -101,7 +101,7 @@ public final class ErasureCodeUtil {
     byte s;
     final int times = dataLen / 8;
     final int extra = dataLen - dataLen % 8;
-    int[] tableLine;
+    byte[] tableLine;
 
     for (l = 0; l < numOutputs; l++) {
       output = outputs[l];
@@ -112,7 +112,7 @@ public final class ErasureCodeUtil {
         oPos = outputOffsets[l];
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
-        tableLine = GaloisField.mulTable[s & 0xff];
+        tableLine = GF256.gfMulTab[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
           output[oPos + 0] ^= tableLine[0xff & input[iPos + 0]];
@@ -142,7 +142,7 @@ public final class ErasureCodeUtil {
     byte s;
     final int times = dataLen / 8;
     final int extra = dataLen - dataLen % 8;
-    int[] tableLine;
+    byte[] tableLine;
 
     for (l = 0; l < numOutputs; l++) {
       output = outputs[l];
@@ -153,7 +153,7 @@ public final class ErasureCodeUtil {
         oPos = output.position();
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
-        tableLine = GaloisField.mulTable[s & 0xff];
+        tableLine = GF256.gfMulTab[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
           output.put(oPos + 0, (byte) (output.get(oPos + 0) ^ tableLine[0xff & input.get(iPos + 0)]));
