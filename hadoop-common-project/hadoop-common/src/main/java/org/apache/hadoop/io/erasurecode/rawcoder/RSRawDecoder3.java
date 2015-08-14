@@ -57,18 +57,28 @@ public class RSRawDecoder3 extends AbstractRawErasureDecoder {
     int outputIdx = 0;
 
     // Decode erased data units
+    ByteBuffer[] realInputs = new ByteBuffer[numDataUnits];
+    ByteBuffer[] sources = new ByteBuffer[numDataUnits];
     for (int i = 0; i < numDataUnits; i++) {
+      realInputs[i] = inputs[validIndexes[i]];
+    }
+
+    for (int i = 0; i < numDataUnits; i++) {
+      sources[i] = inputs[i];
       if (erasureFlags[i]) {
-        //ErasureCodeUtil.decodeDotprod(numDataUnits, decodeMatrix, i *
-        //    numDataUnits, validIndexes, inputs, outputs[outputIdx++]);
+        int tmpIdx = outputIdx++;
+        ErasureCodeUtil.encodeDotprod(decodeMatrix, i * numDataUnits,
+            realInputs, outputs[tmpIdx]);
+        sources[i] = outputs[tmpIdx];
       }
     }
 
     // Decode erased parity units by re-encoding
     for (int i = 0; i < numParityUnits; i++) {
       if (erasureFlags[numDataUnits + i]) {
-        //ErasureCodeUtil.encodeDotprod(numDataUnits, encodeMatrix, i * numDataUnits,
-        //    inputs, outputs[outputIdx++]);
+        int tmpIdx = outputIdx++;
+        ErasureCodeUtil.encodeDotprod(encodeMatrix, i * numDataUnits,
+            sources, outputs[tmpIdx]);
       }
     }
   }

@@ -205,17 +205,23 @@ public final class ErasureCodeUtil {
   public static void encodeDotprod(byte[] matrix, int matrixOffset,
                                    ByteBuffer[] inputs, ByteBuffer output) {
     ByteBuffer input;
+    int iPos;
+    int oPos = output.position();
+
     //First copy or xor any data that does not need to be multiplied by a factor
     boolean init = true;
     for (int i = 0; i < inputs.length; i++) {
       if (matrix[matrixOffset + i] == 1) {
         input = inputs[i];
+        iPos = input.position();
         if (init) {
           output.put(input);
+          output.position(oPos);
           init = false;
         } else {
           for (int j = 0; j < input.remaining(); j++) {
-            output.put(j, (byte) ((output.get(j) ^ input.get(j)) & 0xff));
+            output.put(oPos + j,
+                (byte) ((output.get(oPos + j) ^ input.get(iPos + j)) & 0xff));
           }
         }
       }
@@ -281,14 +287,20 @@ public final class ErasureCodeUtil {
 
   public static void regionMultiply(ByteBuffer input, byte multiply,
                                     ByteBuffer output, boolean init) {
+    int iPos = input.position();
+    int oPos = output.position();
     if (init) {
-      for (int i = 0; i < input.limit(); i++) {
-        output.put(i, GF256.gfMul(input.get(i), multiply));
+      for (int i = 0; i < input.remaining(); i++) {
+        output.put(oPos + i, GF256.gfMul(input.get(iPos + i), multiply));
       }
     } else {
-      for (int i = 0; i < input.limit(); i++) {
-        byte tmp = GF256.gfMul(input.get(i), multiply);
-        output.put(i, (byte) ((output.get(i) ^ tmp) & 0xff));
+      for (int i = 0; i < input.remaining(); i++) {
+        byte tmp = GF256.gfMul(input.get(iPos + i), multiply);
+        try {
+          output.put(oPos + i, (byte) ((output.get(oPos + i) ^ tmp) & 0xff));
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
     }
   }
