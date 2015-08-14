@@ -33,12 +33,14 @@ public abstract class AbstractRawErasureCoder
 
   protected final int numDataUnits;
   protected final int numParityUnits;
+  protected final int numAllUnits;
 
   protected boolean allowInputDataDirty = true;
 
   public AbstractRawErasureCoder(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
+    this.numAllUnits = numDataUnits + numParityUnits;
   }
 
   @Override

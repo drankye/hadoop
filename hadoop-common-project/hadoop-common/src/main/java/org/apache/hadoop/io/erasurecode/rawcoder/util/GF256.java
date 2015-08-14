@@ -18,13 +18,13 @@
 package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
 /**
- * A GaloisField util class.
+ * A GaloisField util class only caring of 256.
  */
-public final class GaloisFieldUtil {
+public final class GF256 {
 
-  private GaloisFieldUtil() { }
+  private GF256() { }
 
-  private static byte[] gfBase = new byte[] {
+  public static final byte[] gfBase = new byte[] {
       (byte) 0x01, (byte) 0x02, (byte) 0x04, (byte) 0x08, (byte) 0x10,
       (byte) 0x20, (byte) 0x40, (byte) 0x80, (byte) 0x1d, (byte) 0x3a,
       (byte) 0x74, (byte) 0xe8, (byte) 0xcd, (byte) 0x87, (byte) 0x13,
@@ -79,7 +79,7 @@ public final class GaloisFieldUtil {
       (byte) 0x01
   };
 
-  private static byte[] gfLogBase = new byte[] {
+  public static final byte[] gfLogBase = new byte[] {
       (byte) 0x00, (byte) 0xff, (byte) 0x01, (byte) 0x19, (byte) 0x02,
       (byte) 0x32, (byte) 0x1a, (byte) 0xc6, (byte) 0x03, (byte) 0xdf,
       (byte) 0x33, (byte) 0xee, (byte) 0x1b, (byte) 0x68, (byte) 0xc7,
@@ -134,44 +134,45 @@ public final class GaloisFieldUtil {
       (byte) 0xaf
   };
 
-  public static byte gfMul(byte a, byte b) {
-    /*
-    int i, aa, bb;
+  public static byte[][] gfMulTab;
+  private static final Boolean inited = false;
 
+  public synchronized static void init() {
+    if (inited) {
+      return;
+    }
+
+    synchronized (inited) {
+      gfMulTab = new byte[256][256];
+      for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 256; j++) {
+          gfMulTab[i][j] = gfMul((byte) i, (byte) j);
+        }
+      }
+    }
+  }
+
+  public static byte gfMul(byte a, byte b) {
     if ((a == 0) || (b == 0)) {
       return 0;
     }
-    aa = gfLogBase[a & 0xff] & 0xff;
-    bb = gfLogBase[b & 0xff] & 0xff;
-    i = aa + bb;
-    byte tmp = (byte) (i > 254 ? i - 255 : i);
-    byte result = gfBase[tmp & 0xff];
-    return result;
-    */
-    return (byte) GaloisField.getInstance().multiply(a & 0xff, b & 0xff);
-  }
 
-/*
-  public static byte gfMul(byte a, byte b) {
-    return gfMulBase[(b * 256) & 0xff + a];
+    int tmp = (gfLogBase[a & 0xff] & 0xff) + (gfLogBase[b & 0xff] & 0xff);
+    if (tmp > 254) {
+      tmp -= 255;
+    }
+
+    return gfBase[tmp];
   }
-*/
 
   public static byte gfInv(byte a) {
-    /*
-    if (a == 0)
+    if (a == 0) {
       return 0;
+    }
 
-    return (byte) (gfBase[(255 - gfLogBase[a & 0xff] & 0xff) & 0xff] & 0xff);
-    */
-    return (byte) GaloisField.getInstance().divide(1, a & 0xff);
+    return gfBase[255 - gfLogBase[a & 0xff] & 0xff];
   }
 
-/*
-  public static byte gfInv(byte a) {
-    return gfInvBase[a & 0xff];
-  }
-*/
   public static void gfInvertMatrix(byte[] inMatrix, byte[] outMatrix, int n) {
     byte temp;
 
@@ -227,110 +228,6 @@ public final class GaloisFieldUtil {
         for (int k = 0; k < n; k++) {
           outMatrix[j * n + k] ^= gfMul(temp, outMatrix[i * n + k]);
           inMatrix[j * n + k] ^= gfMul(temp, inMatrix[i * n + k]);
-        }
-      }
-    }
-  }
-
-  public static byte my_gfMul(byte a, byte b) {
-    int ia = a & 0xff;
-    int ib = b & 0xff;
-    int result = gfMul(a, b) & 0xff;
-    return (byte) result;
-  }
-
-  public static void gfInvertMatrix_JE(byte[] inMatrix, byte[] outMatrix, int rows) {
-    int cols, i, j, k, x, rs2;
-    int row_start;
-    byte tmp, inverse;
-
-    cols = rows;
-
-    /*
-    for (i = 0; i < 10; i++) {
-      int temp = my_gfMul((byte)71, (byte)3) & 0xff;
-      int val = temp;
-    }*/
-
-    k = 0;
-    for (i = 0; i < rows; i++) {
-      for (j = 0; j < cols; j++) {
-        outMatrix[k] = (byte) ((i == j) ? 1 : 0);
-        k++;
-      }
-    }
-
-  /* First -- convert into upper triangular  */
-    for (i = 0; i < cols; i++) {
-      row_start = cols*i;
-
-    /* Swap rows if we ave a zero i,i element.  If we can't swap, then the
-       matrix was not invertible  */
-
-      if (inMatrix[row_start+i] == 0) {
-        for (j = i+1; j < rows && inMatrix[cols*j+i] == 0; j++) ;
-        if (j == rows) {
-          throw new RuntimeException("Not invertible");
-        }
-        rs2 = j*cols;
-        for (k = 0; k < cols; k++) {
-          tmp = inMatrix[row_start+k];
-          inMatrix[row_start+k] = inMatrix[rs2+k];
-          inMatrix[rs2+k] = tmp;
-          tmp = outMatrix[row_start+k];
-          outMatrix[row_start+k] = outMatrix[rs2+k];
-          outMatrix[rs2+k] = tmp;
-        }
-      }
-
-    /* Multiply the row by 1/element i,i  */
-      tmp = inMatrix[row_start+i];
-      if (tmp != 1) {
-        inverse = gfInv(tmp);
-        for (j = 0; j < cols; j++) {
-          inMatrix[row_start+j] = my_gfMul(inMatrix[row_start + j], inverse);
-          outMatrix[row_start+j] = my_gfMul(outMatrix[row_start + j], inverse);
-        }
-      }
-      //DumpUtil.dumpMatrix_JE(inMatrix, rows, rows);
-      //DumpUtil.dumpMatrix_JE(outMatrix, rows, rows);
-
-    /* Now for each j>i, add A_ji*Ai to Aj  */
-      k = row_start+i;
-      for (j = i+1; j != cols; j++) {
-        k += cols;
-        if (inMatrix[k] != 0) {
-          if (inMatrix[k] == 1) {
-            rs2 = cols*j;
-            for (x = 0; x < cols; x++) {
-              inMatrix[rs2+x] ^= inMatrix[row_start+x];
-              outMatrix[rs2+x] ^= outMatrix[row_start+x];
-            }
-          } else {
-            tmp = inMatrix[k];
-            rs2 = cols*j;
-            for (x = 0; x < cols; x++) {
-              inMatrix[rs2+x] ^= my_gfMul(tmp, inMatrix[row_start + x]);
-              outMatrix[rs2+x] ^= my_gfMul(tmp, outMatrix[row_start + x]);
-            }
-          }
-        }
-      }
-    }
-    DumpUtil.dumpMatrix_JE(outMatrix, rows, rows);
-
-  /* Now the matrix is upper triangular.  Start at the top and multiply down  */
-
-    for (i = rows-1; i >= 0; i--) {
-      row_start = i*cols;
-      for (j = 0; j < i; j++) {
-        rs2 = j*cols;
-        if (inMatrix[rs2+i] != 0) {
-          tmp = inMatrix[rs2+i];
-          inMatrix[rs2+i] = 0;
-          for (k = 0; k < cols; k++) {
-            outMatrix[rs2+k] ^= my_gfMul(tmp, outMatrix[row_start+k]);
-          }
         }
       }
     }

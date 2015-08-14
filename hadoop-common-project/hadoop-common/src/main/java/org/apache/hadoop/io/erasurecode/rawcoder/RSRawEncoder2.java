@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.ErasureCodeUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
@@ -41,7 +42,8 @@ public class RSRawEncoder2 extends AbstractRawErasureEncoder {
           "Invalid numDataUnits and numParityUnits");
     }
 
-    int numAllUnits = numDataUnits + numParityUnits;
+    GF256.init();
+
     encodeMatrix = new byte[numAllUnits * numDataUnits];
     ErasureCodeUtil.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
     //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
