@@ -33,7 +33,7 @@ public final class ErasureCodeUtil {
     int offset = 0, idx = matrixOffset;
     for (i = 0; i < rows; i++) {
       for (j = 0; j < k; j++) {
-        GaloisFieldUtil.gfVectMulInit(codingMatrix[idx++], gftbls, offset);
+        GF256.gfVectMulInit(codingMatrix[idx++], gftbls, offset);
         offset += 32;
       }
     }
@@ -51,9 +51,9 @@ public final class ErasureCodeUtil {
       p = 1;
       for (j = 0; j < k; j++) {
         a[k * i + j] = p;
-        p = GaloisFieldUtil.gfMul(p, gen);
+        p = GF256.gfMul(p, gen);
       }
-      gen = GaloisFieldUtil.gfMul(gen, (byte) 0x10);
+      gen = GF256.gfMul(gen, (byte) 0x10);
     }
   }
 
@@ -70,7 +70,7 @@ public final class ErasureCodeUtil {
     int pos = k * k;
     for (i = k; i < m; i++) {
       for (j = 0; j < k; j++) {
-        a[pos++] = GaloisFieldUtil.gfInv((byte) (i ^ j));
+        a[pos++] = GF256.gfInv((byte) (i ^ j));
       }
     }
   }
@@ -86,7 +86,7 @@ public final class ErasureCodeUtil {
     for (int i = 0; i < numParityUnits; i++) {
       for (int j = 0; j < numDataUnits; j++) {
         matrix[i * numDataUnits + j] =
-                GaloisFieldUtil.gfInv((byte) (i ^ (numParityUnits + j)));
+                GF256.gfInv((byte) (i ^ (numParityUnits + j)));
       }
     }
   }
@@ -269,11 +269,11 @@ public final class ErasureCodeUtil {
                                     boolean init) {
     if (init) {
       for (int i = 0; i < dataLen; i++) {
-        output[outputOffset + i] = GaloisFieldUtil.gfMul(input[inputOffset + i], multiply);
+        output[outputOffset + i] = GF256.gfMul(input[inputOffset + i], multiply);
       }
     } else {
       for (int i = 0; i < dataLen; i++) {
-        byte tmp = GaloisFieldUtil.gfMul(input[inputOffset + i], multiply);
+        byte tmp = GF256.gfMul(input[inputOffset + i], multiply);
         output[outputOffset + i] = (byte) ((output[outputOffset + i] ^ tmp) & 0xff);
       }
     }
@@ -283,11 +283,11 @@ public final class ErasureCodeUtil {
                                     ByteBuffer output, boolean init) {
     if (init) {
       for (int i = 0; i < input.limit(); i++) {
-        output.put(i, GaloisFieldUtil.gfMul(input.get(i), multiply));
+        output.put(i, GF256.gfMul(input.get(i), multiply));
       }
     } else {
       for (int i = 0; i < input.limit(); i++) {
-        byte tmp = GaloisFieldUtil.gfMul(input.get(i), multiply);
+        byte tmp = GF256.gfMul(input.get(i), multiply);
         output.put(i, (byte) ((output.get(i) ^ tmp) & 0xff));
       }
     }

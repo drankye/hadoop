@@ -20,7 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.ErasureCodeUtil;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisFieldUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
@@ -143,7 +143,7 @@ public class RSRawDecoder3 extends AbstractRawErasureDecoder {
     }
     DumpUtil.dumpMatrix_JE(tmpMatrix, numDataUnits, numDataUnits);
 
-    GaloisFieldUtil.gfInvertMatrix_JE(tmpMatrix, decodeMatrix, numDataUnits);
+    GF256.gfInvertMatrix_JE(tmpMatrix, decodeMatrix, numDataUnits);
   }
 
 }

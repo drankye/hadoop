@@ -18,13 +18,13 @@
 package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
 /**
- * A GaloisField util class.
+ * A GaloisField util class only caring of 256.
  */
-public final class GaloisFieldUtil {
+public final class GF256 {
 
-  private GaloisFieldUtil() { }
+  private GF256() { }
 
-  private static byte[] gfBase = new byte[] {
+  public static final byte[] gfBase = new byte[] {
       (byte) 0x01, (byte) 0x02, (byte) 0x04, (byte) 0x08, (byte) 0x10,
       (byte) 0x20, (byte) 0x40, (byte) 0x80, (byte) 0x1d, (byte) 0x3a,
       (byte) 0x74, (byte) 0xe8, (byte) 0xcd, (byte) 0x87, (byte) 0x13,
@@ -79,7 +79,7 @@ public final class GaloisFieldUtil {
       (byte) 0x01
   };
 
-  private static byte[] gfLogBase = new byte[] {
+  public static final byte[] gfLogBase = new byte[] {
       (byte) 0x00, (byte) 0xff, (byte) 0x01, (byte) 0x19, (byte) 0x02,
       (byte) 0x32, (byte) 0x1a, (byte) 0xc6, (byte) 0x03, (byte) 0xdf,
       (byte) 0x33, (byte) 0xee, (byte) 0x1b, (byte) 0x68, (byte) 0xc7,
@@ -134,21 +134,35 @@ public final class GaloisFieldUtil {
       (byte) 0xaf
   };
 
-  public static byte gfMul(byte a, byte b) {
-    /*
-    int i, aa, bb;
+  public static byte[][] gfMulTab;
+  private static final Boolean inited = false;
 
+  public synchronized static void init() {
+    if (inited) {
+      return;
+    }
+
+    synchronized (inited) {
+      gfMulTab = new byte[256][256];
+      for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 256; j++) {
+          gfMulTab[i][j] = gfMul((byte) i, (byte) j);
+        }
+      }
+    }
+  }
+
+  public static byte gfMul(byte a, byte b) {
     if ((a == 0) || (b == 0)) {
       return 0;
     }
-    aa = gfLogBase[a & 0xff] & 0xff;
-    bb = gfLogBase[b & 0xff] & 0xff;
-    i = aa + bb;
-    byte tmp = (byte) (i > 254 ? i - 255 : i);
-    byte result = gfBase[tmp & 0xff];
-    return result;
-    */
-    return (byte) GaloisField.getInstance().multiply(a & 0xff, b & 0xff);
+
+    int tmp = (gfLogBase[a & 0xff] & 0xff) + (gfLogBase[b & 0xff] & 0xff);
+    if (tmp > 254) {
+      tmp -= 255;
+    }
+
+    return gfBase[tmp];
   }
 
 /*

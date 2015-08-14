@@ -20,7 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.ErasureCodeUtil;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.GaloisFieldUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
@@ -50,10 +50,12 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
               "Invalid numDataUnits and numParityUnits");
     }
 
+    GF256.init();
+
     int numAllUnits = numDataUnits + numParityUnits;
     encodeMatrix = new byte[numAllUnits * numDataUnits];
     ErasureCodeUtil.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
-    //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
+    DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
   }
 
   @Override
@@ -134,7 +136,7 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
       }
     }
 
-    GaloisFieldUtil.gfInvertMatrix(tmpMatrix, invertMatrix, numDataUnits);
+    GF256.gfInvertMatrix(tmpMatrix, invertMatrix, numDataUnits);
 
     for (i = 0; i < numErasedDataUnits; i++) {
       for (j = 0; j < numDataUnits; j++) {
@@ -147,7 +149,7 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
       for (i = 0; i < numDataUnits; i++) {
         s = 0;
         for (j = 0; j < numDataUnits; j++) {
-          s ^= GaloisFieldUtil.gfMul(invertMatrix[j * numDataUnits + i],
+          s ^= GF256.gfMul(invertMatrix[j * numDataUnits + i],
               encodeMatrix[numDataUnits * erasedIndexes[p] + j]);
         }
         decodeMatrix[numDataUnits * p + i] = s;

@@ -30,11 +30,9 @@ import java.util.Arrays;
  */
 public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
     implements RawErasureDecoder {
-  protected final int numAllUnits;
 
   public AbstractRawErasureDecoder(int numDataUnits, int numParityUnits) {
     super(numDataUnits, numParityUnits);
-    numAllUnits = numDataUnits + numParityUnits;
   }
 
   @Override
