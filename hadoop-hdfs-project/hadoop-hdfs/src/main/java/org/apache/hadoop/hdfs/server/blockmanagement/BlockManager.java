@@ -85,7 +85,7 @@ import org.apache.hadoop.hdfs.server.protocol.KeyUpdateCommand;
 import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo;
 import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
 import org.apache.hadoop.hdfs.util.LightWeightLinkedSet;
-import org.apache.hadoop.io.erasurecode.ECSchema;
+import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.BLOCK_STRIPED_CELL_SIZE;
 import static org.apache.hadoop.hdfs.util.StripedBlockUtil.getInternalBlockLength;
@@ -948,14 +948,13 @@ public class BlockManager {
       ErasureCodingZone ecZone)
       throws IOException {
     assert namesystem.hasReadLock();
-    final ECSchema schema = ecZone != null ? ecZone.getSchema() : null;
-    final int cellSize = ecZone != null ? ecZone.getCellSize() : 0;
+    final ErasureCodingPolicy ecPolicy = ecZone != null ? ecZone
+        .getErasureCodingPolicy() : null;
     if (blocks == null) {
       return null;
     } else if (blocks.length == 0) {
       return new LocatedBlocks(0, isFileUnderConstruction,
-          Collections.<LocatedBlock> emptyList(), null, false, feInfo, schema,
-          cellSize);
+          Collections.<LocatedBlock> emptyList(), null, false, feInfo, ecPolicy);
     } else {
       if (LOG.isDebugEnabled()) {
         LOG.debug("blocks = " + java.util.Arrays.asList(blocks));
@@ -980,7 +979,7 @@ public class BlockManager {
       }
       return new LocatedBlocks(fileSizeExcludeBlocksUnderConstruction,
           isFileUnderConstruction, locatedblocks, lastlb, isComplete, feInfo,
-          schema, cellSize);
+          ecPolicy);
     }
   }
 
@@ -1597,7 +1596,7 @@ public class BlockManager {
                   .warn("Failed to get the EC zone for the file {} ", src);
             }
             if (ecZone == null) {
-              blockLog.warn("No EC schema found for the file {}. "
+              blockLog.warn("No erasure coding policy found for the file {}. "
                   + "So cannot proceed for recovery", src);
               // TODO: we may have to revisit later for what we can do better to
               // handle this case.
@@ -1607,7 +1606,7 @@ public class BlockManager {
                 new ExtendedBlock(namesystem.getBlockPoolId(), block),
                 rw.srcNodes, rw.targets,
                 ((ErasureCodingWork) rw).liveBlockIndicies,
-                ecZone.getSchema(), ecZone.getCellSize());
+                ecZone.getErasureCodingPolicy());
           } else {
             rw.srcNodes[0].addBlockToBeReplicated(block, targets);
           }
@@ -3135,14 +3134,13 @@ public class BlockManager {
     assert namesystem.hasWriteLock();
     // first form a rack to datanodes map and
     BlockCollection bc = getBlockCollection(storedBlock);
-    final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(
-        bc.getStoragePolicyID());
-    final List<StorageType> excessTypes = storagePolicy.chooseExcess(
-        replication, DatanodeStorageInfo.toStorageTypes(nonExcess));
     if (storedBlock.isStriped()) {
-      chooseExcessReplicasStriped(bc, nonExcess, storedBlock, delNodeHint,
-          excessTypes);
+      chooseExcessReplicasStriped(bc, nonExcess, storedBlock, delNodeHint);
     } else {
+      final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(
+          bc.getStoragePolicyID());
+      final List<StorageType> excessTypes = storagePolicy.chooseExcess(
+          replication, DatanodeStorageInfo.toStorageTypes(nonExcess));
       chooseExcessReplicasContiguous(bc, nonExcess, storedBlock,
           replication, addedNode, delNodeHint, excessTypes);
     }
@@ -3216,8 +3214,7 @@ public class BlockManager {
   private void chooseExcessReplicasStriped(BlockCollection bc,
       final Collection<DatanodeStorageInfo> nonExcess,
       BlockInfo storedBlock,
-      DatanodeDescriptor delNodeHint,
-      List<StorageType> excessTypes) {
+      DatanodeDescriptor delNodeHint) {
     assert storedBlock instanceof BlockInfoStriped;
     BlockInfoStriped sblk = (BlockInfoStriped) storedBlock;
     short groupSize = sblk.getTotalBlockNum();
@@ -3237,6 +3234,14 @@ public class BlockManager {
       found.set(index);
       storage2index.put(storage, index);
     }
+    // the number of target left replicas equals to the of number of the found
+    // indices.
+    int numOfTarget = found.cardinality();
+
+    final BlockStoragePolicy storagePolicy = storagePolicySuite.getPolicy(
+        bc.getStoragePolicyID());
+    final List<StorageType> excessTypes = storagePolicy.chooseExcess(
+        (short)numOfTarget, DatanodeStorageInfo.toStorageTypes(nonExcess));
 
     // use delHint only if delHint is duplicated
     final DatanodeStorageInfo delStorageHint =

@@ -20,44 +20,25 @@ package org.apache.hadoop.hdfs;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.fs.ChecksumException;
 import org.apache.hadoop.fs.ReadOption;
-import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
-import org.apache.hadoop.hdfs.protocol.datatransfer.InvalidEncryptionKeyException;
+import org.apache.hadoop.hdfs.protocol.*;
+import org.apache.hadoop.hdfs.protocol.datatransfer
+    .InvalidEncryptionKeyException;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockIdManager;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
 import org.apache.hadoop.io.ByteBufferPool;
-
-import static org.apache.hadoop.hdfs.util.StripedBlockUtil.AlignedStripe;
-import static org.apache.hadoop.hdfs.util.StripedBlockUtil.StripingChunk;
-import static org.apache.hadoop.hdfs.util.StripedBlockUtil.StripingChunkReadResult;
-
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
-import org.apache.hadoop.io.erasurecode.ECSchema;
-
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 import org.apache.hadoop.util.DirectBufferPool;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.Collection;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
+
+import static org.apache.hadoop.hdfs.util.StripedBlockUtil.*;
 
 /**
  * DFSStripedInputStream reads from striped block groups
@@ -149,7 +130,7 @@ public class DFSStripedInputStream extends DFSInputStream {
   /** the buffer for a complete stripe */
   private ByteBuffer curStripeBuf;
   private ByteBuffer parityBuf;
-  private final ECSchema schema;
+  private final ErasureCodingPolicy ecPolicy;
   private final RawErasureDecoder decoder;
 
   /**
@@ -160,15 +141,15 @@ public class DFSStripedInputStream extends DFSInputStream {
   private final CompletionService<Void> readingService;
 
   DFSStripedInputStream(DFSClient dfsClient, String src,
-      boolean verifyChecksum, ECSchema schema, int cellSize,
+      boolean verifyChecksum, ErasureCodingPolicy ecPolicy,
       LocatedBlocks locatedBlocks) throws IOException {
     super(dfsClient, src, verifyChecksum, locatedBlocks);
 
-    assert schema != null;
-    this.schema = schema;
-    this.cellSize = cellSize;
-    dataBlkNum = (short) schema.getNumDataUnits();
-    parityBlkNum = (short) schema.getNumParityUnits();
+    assert ecPolicy != null;
+    this.ecPolicy = ecPolicy;
+    this.cellSize = ecPolicy.getCellSize();
+    dataBlkNum = (short) ecPolicy.getNumDataUnits();
+    parityBlkNum = (short) ecPolicy.getNumParityUnits();
     groupSize = dataBlkNum + parityBlkNum;
     blockReaders = new BlockReaderInfo[groupSize];
     curStripeRange = new StripeRange(0, 0);
@@ -218,49 +199,13 @@ public class DFSStripedInputStream extends DFSInputStream {
     currentLocatedBlock = targetBlockGroup;
   }
 
-  /**
-   * @throws IOException only when failing to refetch block token, which happens
-   * when this client cannot get located block information from NameNode. This
-   * method returns null instead of throwing exception when failing to connect
-   * to the DataNode.
-   */
-  private BlockReader getBlockReaderWithRetry(LocatedBlock targetBlock,
-      long offsetInBlock, long length, InetSocketAddress targetAddr,
-      StorageType storageType, DatanodeInfo datanode, long offsetInFile,
-      ReaderRetryPolicy retry) throws IOException {
-    // only need to get a new access token or a new encryption key once
-    while (true) {
-      try {
-        return getBlockReader(targetBlock, offsetInBlock, length, targetAddr,
-            storageType, datanode);
-      } catch (IOException e) {
-        if (e instanceof InvalidEncryptionKeyException &&
-            retry.shouldRefetchEncryptionKey()) {
-          DFSClient.LOG.info("Will fetch a new encryption key and retry, "
-              + "encryption key was invalid when connecting to " + targetAddr
-              + " : " + e);
-          dfsClient.clearDataEncryptionKey();
-          retry.refetchEncryptionKey();
-        } else if (retry.shouldRefetchToken() &&
-            tokenRefetchNeeded(e, targetAddr)) {
-          fetchBlockAt(offsetInFile);
-          retry.refetchToken();
-        } else {
-          DFSClient.LOG.warn("Failed to connect to " + targetAddr + " for block"
-              + ", add to deadNodes and continue.", e);
-          // Put chosen node into dead list, continue
-          addToDeadNodes(datanode);
-          return null;
-        }
-      }
-    }
-  }
-
   @Override
   public synchronized void close() throws IOException {
     super.close();
-    bufferPool.returnBuffer(curStripeBuf);
-    curStripeBuf = null;
+    if (curStripeBuf != null) {
+      bufferPool.returnBuffer(curStripeBuf);
+      curStripeBuf = null;
+    }
     if (parityBuf != null) {
       bufferPool.returnBuffer(parityBuf);
       parityBuf = null;
@@ -316,13 +261,13 @@ public class DFSStripedInputStream extends DFSInputStream {
     final int stripeBufOffset = (int) (offsetInBlockGroup % stripeLen);
     final int stripeLimit = (int) Math.min(currentLocatedBlock.getBlockSize()
         - (stripeIndex * stripeLen), stripeLen);
-    curStripeRange = new StripeRange(offsetInBlockGroup,
+    StripeRange stripeRange = new StripeRange(offsetInBlockGroup,
         stripeLimit - stripeBufOffset);
 
     LocatedStripedBlock blockGroup = (LocatedStripedBlock) currentLocatedBlock;
-    AlignedStripe[] stripes = StripedBlockUtil.divideOneStripe(schema, cellSize,
+    AlignedStripe[] stripes = StripedBlockUtil.divideOneStripe(ecPolicy, cellSize,
         blockGroup, offsetInBlockGroup,
-        offsetInBlockGroup + curStripeRange.length - 1, curStripeBuf);
+        offsetInBlockGroup + stripeRange.length - 1, curStripeBuf);
     final LocatedBlock[] blks = StripedBlockUtil.parseStripedBlockGroup(
         blockGroup, cellSize, dataBlkNum, parityBlkNum);
     // read the whole stripe
@@ -334,6 +279,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
     curStripeBuf.position(stripeBufOffset);
     curStripeBuf.limit(stripeLimit);
+    curStripeRange = stripeRange;
   }
 
   private Callable<Void> readCells(final BlockReader reader,
@@ -446,7 +392,6 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
     Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
         new ConcurrentHashMap<>();
-    failures = 0;
     if (pos < getFileLength()) {
       try {
         if (pos > blockEnd) {
@@ -546,7 +491,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     LocatedStripedBlock blockGroup = getBlockGroupAt(block.getStartOffset());
 
     AlignedStripe[] stripes = StripedBlockUtil.divideByteRangeIntoStripes(
-        schema, cellSize, blockGroup, start, end, buf);
+        ecPolicy, cellSize, blockGroup, start, end, buf);
     CompletionService<Void> readService = new ExecutorCompletionService<>(
         dfsClient.getStripedReadsThreadPool());
     final LocatedBlock[] blks = StripedBlockUtil.parseStripedBlockGroup(
@@ -644,13 +589,46 @@ public class DFSStripedInputStream extends DFSInputStream {
 
     boolean createBlockReader(LocatedBlock block, int chunkIndex)
         throws IOException {
-      DNAddrPair dnInfo = getBestNodeDNAddrPair(block, null);
-      if (dnInfo != null) {
-        BlockReader reader = getBlockReaderWithRetry(block,
-            alignedStripe.getOffsetInBlock(),
-            block.getBlockSize() - alignedStripe.getOffsetInBlock(),
-            dnInfo.addr, dnInfo.storageType, dnInfo.info,
-            block.getStartOffset(), new ReaderRetryPolicy());
+      BlockReader reader = null;
+      final ReaderRetryPolicy retry = new ReaderRetryPolicy();
+      DNAddrPair dnInfo = new DNAddrPair(null, null, null);
+
+      while(true) {
+        try {
+          // the cached block location might have been re-fetched, so always
+          // get it from cache.
+          block = refreshLocatedBlock(block);
+          targetBlocks[chunkIndex] = block;
+
+          // internal block has one location, just rule out the deadNodes
+          dnInfo = getBestNodeDNAddrPair(block, null);
+          if (dnInfo == null) {
+            break;
+          }
+          reader = getBlockReader(block, alignedStripe.getOffsetInBlock(),
+              block.getBlockSize() - alignedStripe.getOffsetInBlock(),
+              dnInfo.addr, dnInfo.storageType, dnInfo.info);
+        } catch (IOException e) {
+          if (e instanceof InvalidEncryptionKeyException &&
+              retry.shouldRefetchEncryptionKey()) {
+            DFSClient.LOG.info("Will fetch a new encryption key and retry, "
+                + "encryption key was invalid when connecting to " + dnInfo.addr
+                + " : " + e);
+            dfsClient.clearDataEncryptionKey();
+            retry.refetchEncryptionKey();
+          } else if (retry.shouldRefetchToken() &&
+              tokenRefetchNeeded(e, dnInfo.addr)) {
+            fetchBlockAt(block.getStartOffset());
+            retry.refetchToken();
+          } else {
+            //TODO: handles connection issues
+            DFSClient.LOG.warn("Failed to connect to " + dnInfo.addr + " for " +
+                "block" + block.getBlock(), e);
+            // re-fetch the block in case the block has been moved
+            fetchBlockAt(block.getStartOffset());
+            addToDeadNodes(dnInfo.info);
+          }
+        }
         if (reader != null) {
           readerInfos[chunkIndex] = new BlockReaderInfo(reader, block,
               dnInfo.info, alignedStripe.getOffsetInBlock());
@@ -857,10 +835,9 @@ public class DFSStripedInputStream extends DFSInputStream {
       }
       final int decodeIndex = StripedBlockUtil.convertIndex4Decode(index,
           dataBlkNum, parityBlkNum);
-      final int parityIndex = decodeIndex - dataBlkNum;
       ByteBuffer buf = getParityBuffer().duplicate();
-      buf.position(cellSize * parityIndex);
-      buf.limit(cellSize * parityIndex + (int) alignedStripe.range.spanInBlock);
+      buf.position(cellSize * decodeIndex);
+      buf.limit(cellSize * decodeIndex + (int) alignedStripe.range.spanInBlock);
       decodeInputs[decodeIndex] = buf.slice();
       alignedStripe.chunks[index] = new StripingChunk(false, decodeInputs[decodeIndex]);
       return true;
