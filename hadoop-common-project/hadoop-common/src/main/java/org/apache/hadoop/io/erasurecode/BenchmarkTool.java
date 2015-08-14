@@ -133,6 +133,11 @@ public class BenchmarkTool {
     bench.performEncode(testDataFile, encodedDataFile);
     bench.performDecode(encodedDataFile, decodedDataFile, testDataFile);
 
+    if (!FileUtils.contentEquals(decodedDataFile, testDataFile)) {
+      throw new RuntimeException("Decoding verifying failed, " +
+          "not the same with the original file");
+    }
+
     try {
       FileUtils.forceDelete(encodedDataFile);
       FileUtils.forceDelete(decodedDataFile);
@@ -147,11 +152,7 @@ public class BenchmarkTool {
         System.out.println("Reuse existing test data file");
         return;
       }
-      try {
-        FileUtils.forceDelete(testDataFile);
-      } catch (IOException e) {
-        // Ignore
-      }
+      FileUtils.forceDelete(testDataFile);
     }
 
     System.out.println("Generating test data file");
@@ -390,10 +391,6 @@ public class BenchmarkTool {
       outputChannel.close();
 
       printResult(false, codingTime);
-
-      if (!FileUtils.contentEquals(resultDataFile, originalDataFile)) {
-        throw new RuntimeException("Decoding failed, not the same with the original file");
-      }
     }
 
     private void printResult(boolean isEncode, long codingTime) {
