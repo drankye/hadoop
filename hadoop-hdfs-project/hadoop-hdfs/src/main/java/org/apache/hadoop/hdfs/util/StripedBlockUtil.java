@@ -293,9 +293,9 @@ public class StripedBlockUtil {
       final StripingChunk chunk = alignedStripe.chunks[i];
       final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
       if (chunk != null && chunk.state == StripingChunk.FETCHED) {
-        //chunk.copyTo(decodeInputs[decodeIndex]);
-        //decodeInputs[decodeIndex] = chunk.useByteBuffer() ? chunk.getByteBuffer() :
-        //    chunk.getChunkBuffer().getChunk();
+        if (chunk.useChunkBuffer()) {
+          chunk.getChunkBuffer().copyTo(decodeInputs[decodeIndex]);
+        }
       } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
         //chunk.getByteBuffer().put(
         //    new byte[chunk.getByteBuffer().remaining()]); //Zero it
@@ -842,6 +842,10 @@ public class StripedBlockUtil {
       return byteBuffer != null;
     }
 
+    public boolean useChunkBuffer() {
+      return chunkBuffer != null;
+    }
+
     public ByteBuffer getByteBuffer() {
       assert byteBuffer != null;
       return byteBuffer;
@@ -881,6 +885,7 @@ public class StripedBlockUtil {
         target.put(slice);
         slice.reset();
       }
+      target.flip();
     }
 
     void copyFrom(ByteBuffer src) {

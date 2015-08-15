@@ -1480,14 +1480,19 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       = new HashMap<ExtendedBlock, Set<DatanodeInfo>>();
     for (LocatedBlock blk : blockRange) {
       long targetStart = position - blk.getStartOffset();
-      long bytesToRead = Math.min(remaining, blk.getBlockSize() - targetStart);
+      long targetEnd;
+      int bytesToRead = (int) Math.min(remaining,
+          blk.getBlockSize() - targetStart);
       try {
+        targetEnd = targetStart + bytesToRead - 1;
+        ByteBuffer dup = buffer.duplicate();
+        dup.limit(dup.position() + bytesToRead);
         if (dfsClient.isHedgedReadsEnabled() && !blk.isStriped()) {
           hedgedFetchBlockByteRange(blk, targetStart,
-              targetStart + bytesToRead - 1, buffer, corruptedBlockMap);
+              targetEnd, dup.slice(), corruptedBlockMap);
         } else {
-          fetchBlockByteRange(blk, targetStart, targetStart + bytesToRead - 1,
-              buffer, corruptedBlockMap);
+          fetchBlockByteRange(blk, targetStart, targetEnd,
+              dup.slice(), corruptedBlockMap);
         }
       } finally {
         // Check and report if any block replicas are corrupted.
@@ -1498,6 +1503,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
       remaining -= bytesToRead;
       position += bytesToRead;
+      buffer.position(buffer.position() + bytesToRead);
     }
     assert remaining == 0 : "Wrong number of bytes read.";
     if (dfsClient.stats != null) {
