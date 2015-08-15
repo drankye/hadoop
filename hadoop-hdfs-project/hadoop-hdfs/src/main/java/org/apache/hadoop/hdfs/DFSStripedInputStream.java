@@ -775,16 +775,13 @@ public class DFSStripedInputStream extends DFSInputStream {
     boolean prepareParityChunk(int index) {
       Preconditions.checkState(index >= dataBlkNum &&
           alignedStripe.chunks[index] == null);
-      final int decodeIndex = StripedBlockUtil.convertIndex4Decode(index,
-          dataBlkNum, parityBlkNum);
-      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[decodeIndex]);
+      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[index]);
       return true;
     }
 
     @Override
     void decode() {
-      StripedBlockUtil.finalizeDecodeInputs(decodeInputs, dataBlkNum,
-          parityBlkNum, alignedStripe);
+      StripedBlockUtil.finalizeDecodeInputs(decodeInputs, alignedStripe);
       StripedBlockUtil.decodeAndFillBuffer(decodeInputs, alignedStripe,
           dataBlkNum, parityBlkNum, decoder);
     }
@@ -812,11 +809,9 @@ public class DFSStripedInputStream extends DFSInputStream {
           int pos = (int) (range.offsetInBlock % cellSize + cellSize * i);
           cur.position(pos);
           cur.limit((int) (pos + range.spanInBlock));
-          final int decodeIndex = StripedBlockUtil.convertIndex4Decode(i,
-              dataBlkNum, parityBlkNum);
-          decodeInputs[decodeIndex] = cur.slice();
+          decodeInputs[i] = cur.slice();
           if (alignedStripe.chunks[i] == null) {
-            alignedStripe.chunks[i] = new StripingChunk(decodeInputs[decodeIndex]);
+            alignedStripe.chunks[i] = new StripingChunk(decodeInputs[i]);
           }
         }
       }
@@ -831,13 +826,11 @@ public class DFSStripedInputStream extends DFSInputStream {
         // we have failed the block reader before
         return false;
       }
-      final int decodeIndex = StripedBlockUtil.convertIndex4Decode(index,
-          dataBlkNum, parityBlkNum);
       ByteBuffer buf = getParityBuffer().duplicate();
-      buf.position(cellSize * decodeIndex);
-      buf.limit(cellSize * decodeIndex + (int) alignedStripe.range.spanInBlock);
-      decodeInputs[decodeIndex] = buf.slice();
-      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[decodeIndex]);
+      buf.position(cellSize * index);
+      buf.limit(cellSize * index + (int) alignedStripe.range.spanInBlock);
+      decodeInputs[index] = buf.slice();
+      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[index]);
       return true;
     }
 
@@ -846,18 +839,16 @@ public class DFSStripedInputStream extends DFSInputStream {
       // TODO no copy for data chunks. this depends on HADOOP-12047
       final int span = (int) alignedStripe.getSpanInBlock();
       for (int i = 0; i < alignedStripe.chunks.length; i++) {
-        final int decodeIndex = StripedBlockUtil.convertIndex4Decode(i,
-            dataBlkNum, parityBlkNum);
         if (alignedStripe.chunks[i] != null &&
             alignedStripe.chunks[i].state == StripingChunk.ALLZERO) {
           for (int j = 0; j < span; j++) {
-            decodeInputs[decodeIndex].put((byte) 0);
+            decodeInputs[i].put((byte) 0);
           }
-          decodeInputs[decodeIndex].flip();
+          decodeInputs[i].flip();
         } else if (alignedStripe.chunks[i] != null &&
             alignedStripe.chunks[i].state == StripingChunk.FETCHED) {
-          decodeInputs[decodeIndex].position(0);
-          decodeInputs[decodeIndex].limit(span);
+          decodeInputs[i].position(0);
+          decodeInputs[i].limit(span);
         }
       }
       int[] decodeIndices = new int[parityBlkNum];
@@ -865,12 +856,10 @@ public class DFSStripedInputStream extends DFSInputStream {
       for (int i = 0; i < alignedStripe.chunks.length; i++) {
         if (alignedStripe.chunks[i] != null &&
             alignedStripe.chunks[i].state == StripingChunk.MISSING) {
-          int  decodeIndex = StripedBlockUtil.convertIndex4Decode(i,
-              dataBlkNum, parityBlkNum);
           if (i < dataBlkNum) {
-            decodeIndices[pos++] = decodeIndex;
+            decodeIndices[pos++] = i;
           } else {
-            decodeInputs[decodeIndex] = null;
+            decodeInputs[i] = null;
           }
         }
       }
