@@ -306,6 +306,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         for (ByteBufferStrategy strategy : strategies) {
           result += readToBuffer(reader, datanode, strategy, currentBlock,
               corruptedBlockMap);
+          strategy.getReadBuffer().flip();
         }
         return null;
       }
@@ -776,9 +777,9 @@ public class DFSStripedInputStream extends DFSInputStream {
           alignedStripe.chunks[index] == null);
       final int decodeIndex = StripedBlockUtil.convertIndex4Decode(index,
           dataBlkNum, parityBlkNum);
-      alignedStripe.chunks[index] = new StripingChunk(true, decodeInputs[decodeIndex]);
-      alignedStripe.chunks[index].addByteBufferSlice(0,
-          (int) alignedStripe.getSpanInBlock());
+      alignedStripe.chunks[index] = new StripingChunk(false, decodeInputs[decodeIndex]);
+      //alignedStripe.chunks[index].addByteBufferSlice(0,
+      //    (int) alignedStripe.getSpanInBlock());
       return true;
     }
 

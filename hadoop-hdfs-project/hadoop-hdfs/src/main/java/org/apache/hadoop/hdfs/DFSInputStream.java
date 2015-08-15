@@ -807,6 +807,10 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.targetLength = readBuffer.remaining();
     }
 
+    public ByteBuffer getReadBuffer() {
+      return readBuffer;
+    }
+
     @Override
     public int read(BlockReader blockReader) throws IOException {
       return read(blockReader, readBuffer.remaining());
@@ -1443,15 +1447,14 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     TraceScope scope =
         dfsClient.getPathTraceScope("DFSInputStream#byteArrayPread", src);
     try {
-      ByteBuffer bb = ByteBuffer.wrap(buffer);
-      bb.position(offset);
-      return pread(position, bb, length);
+      ByteBuffer bb = ByteBuffer.wrap(buffer, offset, length);
+      return pread(position, bb.slice());
     } finally {
       scope.close();
     }
   }
 
-  private int pread(long position, ByteBuffer buffer, int length)
+  private int pread(long position, ByteBuffer buffer)
       throws IOException {
     // sanity checks
     dfsClient.checkOpen();
@@ -1463,6 +1466,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
     if ((position < 0) || (position >= filelen)) {
       return -1;
     }
+    int length = buffer.remaining();
     int realLen = length;
     if ((position + length) > filelen) {
       realLen = (int)(filelen - position);

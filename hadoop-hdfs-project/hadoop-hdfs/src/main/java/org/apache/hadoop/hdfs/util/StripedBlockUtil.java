@@ -266,18 +266,18 @@ public class StripedBlockUtil {
       int dataBlkNum, int parityBlkNum) {
     // read the full data aligned stripe
     ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
-    for (int i = dataBlkNum; i < decodeInputs.length; i++) {
+    for (int i = 0; i < decodeInputs.length; i++) {
       decodeInputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
     }
-    /*
+
     for (int i = 0; i < dataBlkNum; i++) {
       if (alignedStripe.chunks[i] == null) {
         final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
-        alignedStripe.chunks[i] = new StripingChunk(true, decodeInputs[decodeIndex]);
-        alignedStripe.chunks[i].addByteBufferSlice(0, (int) alignedStripe
-            .getSpanInBlock());
+        alignedStripe.chunks[i] = new StripingChunk(false, decodeInputs[decodeIndex]);
+        //alignedStripe.chunks[i].addByteBufferSlice(0, (int) alignedStripe
+        //    .getSpanInBlock());
       }
-    }*/
+    }
     return decodeInputs;
   }
 
@@ -295,10 +295,12 @@ public class StripedBlockUtil {
       final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
       if (chunk != null && chunk.state == StripingChunk.FETCHED) {
         //chunk.copyTo(decodeInputs[decodeIndex]);
-        decodeInputs[decodeIndex] = chunk.getChunkBuffer().getChunk();
+        //decodeInputs[decodeIndex] = chunk.useByteBuffer() ? chunk.getByteBuffer() :
+        //    chunk.getChunkBuffer().getChunk();
       } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
-        decodeInputs[decodeIndex].put(
-            new byte[decodeInputs[decodeIndex].remaining()]); //Zero it
+        //chunk.getByteBuffer().put(
+        //    new byte[chunk.getByteBuffer().remaining()]); //Zero it
+        //chunk.getByteBuffer().flip();
       } else {
         decodeInputs[decodeIndex] = null;
       }
@@ -851,8 +853,11 @@ public class StripedBlockUtil {
     }
 
     void copyTo(ByteBuffer target) {
-      assert chunkBuffer != null;
-      chunkBuffer.copyTo(target);
+      if(chunkBuffer != null) {
+        chunkBuffer.copyTo(target);
+      } else {
+        target.put(byteBuffer);
+      }
     }
 
     void copyFrom(ByteBuffer src) {
