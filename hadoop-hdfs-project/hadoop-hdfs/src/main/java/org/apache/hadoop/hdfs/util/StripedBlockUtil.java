@@ -267,17 +267,17 @@ public class StripedBlockUtil {
     // read the full data aligned stripe
     ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
     for (int i = 0; i < decodeInputs.length; i++) {
-      decodeInputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
+      decodeInputs[i] = ByteBuffer.allocateDirect((int) alignedStripe
+          .getSpanInBlock());
     }
 
     for (int i = 0; i < dataBlkNum; i++) {
       if (alignedStripe.chunks[i] == null) {
         final int decodeIndex = convertIndex4Decode(i, dataBlkNum, parityBlkNum);
-        alignedStripe.chunks[i] = new StripingChunk(false, decodeInputs[decodeIndex]);
-        //alignedStripe.chunks[i].addByteBufferSlice(0, (int) alignedStripe
-        //    .getSpanInBlock());
+        alignedStripe.chunks[i] = new StripingChunk(decodeInputs[decodeIndex]);
       }
     }
+
     return decodeInputs;
   }
 
@@ -345,20 +345,24 @@ public class StripedBlockUtil {
       }
     }
     decodeIndices = Arrays.copyOf(decodeIndices, pos);
-    ByteBuffer[] decodeOutputs = new ByteBuffer[decodeIndices.length];
 
-    // Step 2: fill original application buffer with decoded data
+    ByteBuffer[] decodeOutputs = new ByteBuffer[decodeIndices.length];
+    for (int i = 0; i < decodeOutputs.length; i++) {
+      decodeOutputs[i] = ByteBuffer.allocateDirect((int) alignedStripe.getSpanInBlock());
+    }
+
+    // Step 2: decode into prepared output buffers
+    decoder.decode(decodeInputs, decodeIndices, decodeOutputs);
+
+    // Step 3: fill original application buffer with decoded data
     for (int i = 0; i < decodeIndices.length; i++) {
       int missingBlkIdx = convertDecodeIndexBack(decodeIndices[i],
           dataBlkNum, parityBlkNum);
       StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
       if (chunk.state == StripingChunk.MISSING) {
-        decodeOutputs[i] = chunk.getChunkBuffer().getChunk();
+        chunk.getChunkBuffer().copyFrom(decodeOutputs[i]);
       }
     }
-
-    // Step 3: decode into prepared output buffers
-    decoder.decode(decodeInputs, decodeIndices, decodeOutputs);
   }
 
   /**
@@ -397,7 +401,7 @@ public class StripedBlockUtil {
           final int pos = (int) (bufOffset + overlapStart - cellStart);
           buf.position(pos);
           buf.limit(pos + overLapLen);
-          s.chunks[cell.idxInStripe] = new StripingChunk(false, buf.slice());
+          s.chunks[cell.idxInStripe] = new StripingChunk(buf.slice());
         }
       }
       bufOffset += cell.size;
@@ -587,9 +591,9 @@ public class StripedBlockUtil {
           continue;
         }
         if (s.chunks[cell.idxInStripe] == null) {
-          s.chunks[cell.idxInStripe] = new StripingChunk(true, buf.duplicate());
+          s.chunks[cell.idxInStripe] = new StripingChunk();
         }
-        s.chunks[cell.idxInStripe].addByteBufferSlice((int) (done +
+        s.chunks[cell.idxInStripe].getChunkBuffer().addSlice(buf, (int) (done +
             overlapStart - cellStart), overLapLen);
       }
       done += cell.size;
@@ -816,14 +820,14 @@ public class StripedBlockUtil {
     private final ByteBuffer byteBuffer;
     private final ChunkByteBuffer chunkBuffer;
 
-    public StripingChunk(boolean useChunkBuffer, ByteBuffer buf) {
-      if (useChunkBuffer) {
-        this.byteBuffer = null;
-        this.chunkBuffer = new ChunkByteBuffer(buf);
-      } else {
-        this.byteBuffer = buf;
-        this.chunkBuffer = null;
-      }
+    public StripingChunk() {
+      this.byteBuffer = null;
+      this.chunkBuffer = new ChunkByteBuffer();
+    }
+
+    public StripingChunk(ByteBuffer buf) {
+      this.byteBuffer = buf;
+      this.chunkBuffer = null;
     }
 
     public StripingChunk(int state) {
@@ -845,151 +849,49 @@ public class StripedBlockUtil {
       assert chunkBuffer != null;
       return chunkBuffer;
     }
-
-    public void addByteBufferSlice(int offset, int length) {
-      assert chunkBuffer != null;
-      chunkBuffer.offsetsInBuf.add(offset);
-      chunkBuffer.lengthsInBuf.add(length);
-    }
-
-    void copyTo(ByteBuffer target) {
-      if(chunkBuffer != null) {
-        chunkBuffer.copyTo(target);
-      } else {
-        target.put(byteBuffer);
-      }
-    }
-
-    void copyFrom(ByteBuffer src) {
-      assert chunkBuffer != null;
-      chunkBuffer.copyFrom(src);
-    }
   }
 
   public static class ChunkByteBuffer {
-    private final ByteBuffer buf;
-    private final List<Integer> offsetsInBuf;
-    private final List<Integer> lengthsInBuf;
+    private final List<ByteBuffer> slices;
 
-    ChunkByteBuffer(ByteBuffer buf) {
-      this.buf = buf;
-      this.offsetsInBuf = new ArrayList<>();
-      this.lengthsInBuf = new ArrayList<>();
+    ChunkByteBuffer() {
+      this.slices = new ArrayList<>();
     }
 
-    public ByteBuffer getSegment(int i) {
-      int off = offsetsInBuf.get(i);
-      int len = lengthsInBuf.get(i);
-      ByteBuffer bb = buf.duplicate();
-      bb.position(off);
-      bb.limit(off + len);
-      return bb.slice();
+    public void addSlice(ByteBuffer buffer, int offset, int len) {
+      ByteBuffer tmp = buffer.duplicate();
+      tmp.position(offset).limit(offset + len);
+      slices.add(tmp.slice());
     }
 
-    public int[] getOffsets() {
-      int[] offsets = new int[offsetsInBuf.size()];
-      for (int i = 0; i < offsets.length; i++) {
-        offsets[i] = offsetsInBuf.get(i);
-      }
-      return offsets;
+    public ByteBuffer getSlice(int i) {
+      return slices.get(i);
     }
 
-    public int[] getLengths() {
-      int[] lens = new int[this.lengthsInBuf.size()];
-      for (int i = 0; i < lens.length; i++) {
-        lens[i] = this.lengthsInBuf.get(i);
-      }
-      return lens;
-    }
-
-    public ByteBuffer buf() {
-      return buf;
+    public List<ByteBuffer> getSlices() {
+      return slices;
     }
 
     void copyTo(ByteBuffer target) {
-      for (int i = 0; i < offsetsInBuf.size(); i++) {
-        //System.arraycopy(buf, offsetsInBuf.get(i),
-        //    target, posInBuf, lengthsInBuf.get(i));
-        ByteBuffer tmp = buf.duplicate();
-        tmp.position(offsetsInBuf.get(i));
-        tmp.limit(lengthsInBuf.get(i));
-        target.put(tmp);
+      for (ByteBuffer slice : slices) {
+        slice.mark();
+        target.put(slice);
+        slice.reset();
       }
-    }
-
-    ByteBuffer getChunk() {
-      int pos = offsetsInBuf.get(0);
-      int len = 0;
-      for (int i = 0; i < lengthsInBuf.size(); i++) {
-        len += lengthsInBuf.get(i);
-      }
-
-      ByteBuffer tmp = buf.duplicate();
-      tmp.position(pos);
-      tmp.limit(pos + len);
-      return tmp.slice();
     }
 
     void copyFrom(ByteBuffer src) {
-      for (int i = 0; i < offsetsInBuf.size(); i++) {
-        ByteBuffer tmp = buf.duplicate();
-        tmp.position(offsetsInBuf.get(i));
-        tmp.limit(offsetsInBuf.get(i) + lengthsInBuf.get(i));
-        tmp.put(src);
+      ByteBuffer tmp;
+      int len;
+      for (ByteBuffer slice : slices) {
+        len = slice.remaining();
+        tmp = src.duplicate();
+        tmp.limit(tmp.position() + len);
+        slice.put(tmp);
+        src.position(src.position() + len);
       }
     }
   }
-
-  /*
-  public static class ChunkByteArray {
-    private final byte[] buf;
-    private final List<Integer> offsetsInBuf;
-    private final List<Integer> lengthsInBuf;
-
-    ChunkByteArray(byte[] buf) {
-      this.buf = buf;
-      this.offsetsInBuf = new ArrayList<>();
-      this.lengthsInBuf = new ArrayList<>();
-    }
-
-    public int[] getOffsets() {
-      int[] offsets = new int[offsetsInBuf.size()];
-      for (int i = 0; i < offsets.length; i++) {
-        offsets[i] = offsetsInBuf.get(i);
-      }
-      return offsets;
-    }
-
-    public int[] getLengths() {
-      int[] lens = new int[this.lengthsInBuf.size()];
-      for (int i = 0; i < lens.length; i++) {
-        lens[i] = this.lengthsInBuf.get(i);
-      }
-      return lens;
-    }
-
-    public byte[] buf() {
-      return buf;
-    }
-
-    void copyTo(byte[] target) {
-      int posInBuf = 0;
-      for (int i = 0; i < offsetsInBuf.size(); i++) {
-        System.arraycopy(buf, offsetsInBuf.get(i),
-            target, posInBuf, lengthsInBuf.get(i));
-        posInBuf += lengthsInBuf.get(i);
-      }
-    }
-
-    void copyFrom(byte[] src) {
-      int srcPos = 0;
-      for (int j = 0; j < offsetsInBuf.size(); j++) {
-        System.arraycopy(src, srcPos, buf, offsetsInBuf.get(j),
-            lengthsInBuf.get(j));
-        srcPos += lengthsInBuf.get(j);
-      }
-    }
-  }*/
 
   /**
    * This class represents result from a striped read request.

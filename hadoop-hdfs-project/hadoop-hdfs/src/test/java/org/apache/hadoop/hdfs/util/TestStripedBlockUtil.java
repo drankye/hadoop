@@ -258,12 +258,12 @@ public class TestStripedBlockUtil {
                 continue;
               }
               int done = 0;
-              for (int j = 0; j < chunk.getChunkBuffer().getLengths().length; j++) {
-                ByteBuffer segment = chunk.getChunkBuffer().getSegment(j);
-                segment.put(internalBlkBufs[i],
-                    (int) stripe.getOffsetInBlock() + done,
-                    chunk.getChunkBuffer().getLengths()[j]);
-                done += chunk.getChunkBuffer().getLengths()[j];
+              int len;
+              for (ByteBuffer slice : chunk.getChunkBuffer().getSlices()) {
+                len = slice.remaining();
+                slice.put(internalBlkBufs[i],
+                    (int) stripe.getOffsetInBlock() + done, len);
+                done += len;
               }
             }
           }

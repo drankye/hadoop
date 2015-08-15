@@ -645,9 +645,9 @@ public class DFSStripedInputStream extends DFSInputStream {
         return new ByteBufferStrategy[]{strategy};
       } else {
         ByteBufferStrategy[] strategies =
-            new ByteBufferStrategy[chunk.getChunkBuffer().getOffsets().length];
+            new ByteBufferStrategy[chunk.getChunkBuffer().getSlices().size()];
         for (int i = 0; i < strategies.length; i++) {
-          ByteBuffer buffer = chunk.getChunkBuffer().getSegment(i);
+          ByteBuffer buffer = chunk.getChunkBuffer().getSlice(i);
           strategies[i] = new ByteBufferStrategy(buffer);
         }
         return strategies;
@@ -777,9 +777,7 @@ public class DFSStripedInputStream extends DFSInputStream {
           alignedStripe.chunks[index] == null);
       final int decodeIndex = StripedBlockUtil.convertIndex4Decode(index,
           dataBlkNum, parityBlkNum);
-      alignedStripe.chunks[index] = new StripingChunk(false, decodeInputs[decodeIndex]);
-      //alignedStripe.chunks[index].addByteBufferSlice(0,
-      //    (int) alignedStripe.getSpanInBlock());
+      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[decodeIndex]);
       return true;
     }
 
@@ -818,8 +816,7 @@ public class DFSStripedInputStream extends DFSInputStream {
               dataBlkNum, parityBlkNum);
           decodeInputs[decodeIndex] = cur.slice();
           if (alignedStripe.chunks[i] == null) {
-            alignedStripe.chunks[i] = new StripingChunk(false,
-                decodeInputs[decodeIndex]);
+            alignedStripe.chunks[i] = new StripingChunk(decodeInputs[decodeIndex]);
           }
         }
       }
@@ -840,7 +837,7 @@ public class DFSStripedInputStream extends DFSInputStream {
       buf.position(cellSize * decodeIndex);
       buf.limit(cellSize * decodeIndex + (int) alignedStripe.range.spanInBlock);
       decodeInputs[decodeIndex] = buf.slice();
-      alignedStripe.chunks[index] = new StripingChunk(false, decodeInputs[decodeIndex]);
+      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[decodeIndex]);
       return true;
     }
 

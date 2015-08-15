@@ -788,8 +788,8 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
     @Override
     public int read(ByteBuffer src, int length) {
-      ByteBuffer writeSlice = src.duplicate();
-      writeSlice.get(buf, offset, length);
+      ByteBuffer dup = src.duplicate();
+      dup.get(buf, offset, length);
       offset += length;
       return length;
     }
@@ -843,11 +843,11 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
     @Override
     public int read(ByteBuffer src, int length) {
-      ByteBuffer writeSlice = src.duplicate();
-      int newLen = Math.min(src.remaining(), writeSlice.remaining());
+      ByteBuffer dup = src.duplicate();
+      int newLen = Math.min(readBuffer.remaining(), dup.remaining());
       newLen = Math.min(newLen, length);
-      writeSlice.limit(writeSlice.position() + newLen);
-      readBuffer.put(writeSlice);
+      dup.limit(dup.position() + newLen);
+      readBuffer.put(dup);
       return newLen;
     }
   }
