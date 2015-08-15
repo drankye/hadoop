@@ -267,8 +267,7 @@ public class StripedBlockUtil {
     // read the full data aligned stripe
     ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
     for (int i = 0; i < decodeInputs.length; i++) {
-      decodeInputs[i] = ByteBuffer.allocateDirect((int) alignedStripe
-          .getSpanInBlock());
+      decodeInputs[i] = ByteBuffer.allocateDirect((int) alignedStripe.getSpanInBlock());
     }
 
     for (int i = 0; i < dataBlkNum; i++) {
@@ -582,6 +581,7 @@ public class StripedBlockUtil {
     for (StripingCell cell : cells) {
       long cellStart = cell.idxInInternalBlk * cellSize + cell.offset;
       long cellEnd = cellStart + cell.size - 1;
+      StripingChunk chunk;
       for (AlignedStripe s : stripes) {
         long stripeEnd = s.getOffsetInBlock() + s.getSpanInBlock() - 1;
         long overlapStart = Math.max(cellStart, s.getOffsetInBlock());
@@ -590,11 +590,13 @@ public class StripedBlockUtil {
         if (overLapLen <= 0) {
           continue;
         }
-        if (s.chunks[cell.idxInStripe] == null) {
-          s.chunks[cell.idxInStripe] = new StripingChunk();
+
+        chunk = s.chunks[cell.idxInStripe];
+        if (chunk == null) {
+          chunk = s.chunks[cell.idxInStripe] = new StripingChunk();
         }
-        s.chunks[cell.idxInStripe].getChunkBuffer().addSlice(buf, (int) (done +
-            overlapStart - cellStart), overLapLen);
+        chunk.getChunkBuffer().addSlice(buf,
+            (int) (done + overlapStart - cellStart), overLapLen);
       }
       done += cell.size;
     }
@@ -860,7 +862,8 @@ public class StripedBlockUtil {
 
     public void addSlice(ByteBuffer buffer, int offset, int len) {
       ByteBuffer tmp = buffer.duplicate();
-      tmp.position(offset).limit(offset + len);
+      tmp.position(offset);
+      tmp.limit(offset + len);
       slices.add(tmp.slice());
     }
 

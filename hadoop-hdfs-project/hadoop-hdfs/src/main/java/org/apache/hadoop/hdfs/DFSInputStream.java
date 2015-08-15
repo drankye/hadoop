@@ -1448,7 +1448,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
         dfsClient.getPathTraceScope("DFSInputStream#byteArrayPread", src);
     try {
       ByteBuffer bb = ByteBuffer.wrap(buffer, offset, length);
-      return pread(position, bb.slice());
+      return pread(position, bb);
     } finally {
       scope.close();
     }
