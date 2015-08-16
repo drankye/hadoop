@@ -267,7 +267,7 @@ public class StripedBlockUtil {
     // read the full data aligned stripe
     ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
     for (int i = 0; i < decodeInputs.length; i++) {
-      decodeInputs[i] = ByteBuffer.allocateDirect((int) alignedStripe.getSpanInBlock());
+      decodeInputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
     }
 
     for (int i = 0; i < dataBlkNum; i++) {
@@ -321,7 +321,7 @@ public class StripedBlockUtil {
 
     ByteBuffer[] decodeOutputs = new ByteBuffer[decodeIndices.length];
     for (int i = 0; i < decodeOutputs.length; i++) {
-      decodeOutputs[i] = ByteBuffer.allocateDirect((int) alignedStripe.getSpanInBlock());
+      decodeOutputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
     }
 
     // Step 2: decode into prepared output buffers
@@ -854,9 +854,7 @@ public class StripedBlockUtil {
 
     void copyTo(ByteBuffer target) {
       for (ByteBuffer slice : slices) {
-        slice.mark();
         target.put(slice);
-        slice.reset();
       }
       target.flip();
     }
