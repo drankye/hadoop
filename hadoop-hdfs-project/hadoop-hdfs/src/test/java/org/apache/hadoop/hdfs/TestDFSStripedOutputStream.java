@@ -279,8 +279,7 @@ public class TestDFSStripedOutputStream {
         System.arraycopy(tmp, 0, dataBytes[i], 0, tmp.length);
       }
     }
-    final RawErasureEncoder encoder =
-            CodecUtil.createRSRawEncoder(conf,
+    final RawErasureEncoder encoder = CodecUtil.createRSRawEncoder(conf,
                 dataBytes.length, parityBytes.length);
     encoder.encode(dataBytes, expectedParityBytes);
     for (int i = 0; i < parityBytes.length; i++) {
