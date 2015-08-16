@@ -693,6 +693,7 @@ public class DFSStripedInputStream extends DFSInputStream {
           }
         }
       }
+
       // There are missing block locations at this stage. Thus we need to read
       // the full stripe and one more parity block.
       if (alignedStripe.missingChunksNum > 0) {

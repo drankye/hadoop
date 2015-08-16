@@ -21,7 +21,6 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configured;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -30,6 +29,8 @@ import java.util.Arrays;
  */
 public abstract class AbstractRawErasureCoder
     extends Configured implements RawErasureCoder {
+
+  private static byte[] emptyChunk = new byte[4096];
 
   protected final int numDataUnits;
   protected final int numParityUnits;
@@ -41,6 +42,23 @@ public abstract class AbstractRawErasureCoder
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
     this.numAllUnits = numDataUnits + numParityUnits;
+  }
+
+  /**
+   * Make sure to return an empty chunk buffer for the desired length.
+   * @param desiredLength
+   * @return empty chunk of zero bytes
+   */
+  protected static byte[] getEmptyChunk(int desiredLength) {
+    if (emptyChunk.length >= desiredLength) {
+      return emptyChunk; // In most time
+    }
+
+    synchronized (AbstractRawErasureCoder.class) {
+      emptyChunk = new byte[desiredLength];
+    }
+
+    return emptyChunk;
   }
 
   @Override
@@ -127,9 +145,11 @@ public abstract class AbstractRawErasureCoder
    * @param allowNull whether to allow any element to be null or not
    * @param dataLen the length of data available in the buffer to ensure with
    * @param isDirectBuffer is direct buffer or not to ensure with
+   * @param isOutputs is output buffer or not
    */
-  protected void ensureLengthAndType(ByteBuffer[] buffers, boolean allowNull,
-                                     int dataLen, boolean isDirectBuffer) {
+  protected void checkParameterBuffers(ByteBuffer[] buffers, boolean
+      allowNull, int dataLen, boolean isDirectBuffer, boolean isOutputs) {
+    byte[] empty = getEmptyChunk(dataLen);
     for (ByteBuffer buffer : buffers) {
       if (buffer == null && !allowNull) {
         throw new HadoopIllegalArgumentException(
@@ -143,18 +163,26 @@ public abstract class AbstractRawErasureCoder
           throw new HadoopIllegalArgumentException(
               "Invalid buffer, isDirect should be " + isDirectBuffer);
         }
+        if (isOutputs) {
+          buffer.mark();
+          buffer.put(empty);
+          buffer.reset();
+        }
       }
     }
   }
 
   /**
-   * Check and ensure the buffers are of the length specified by dataLen.
+   * Check and ensure the buffers are of the length specified by dataLen. If is
+   * output buffers, ensure they will be ZEROed.
    * @param buffers the buffers to check
    * @param allowNull whether to allow any element to be null or not
    * @param dataLen the length of data available in the buffer to ensure with
+   * @param isOutputs is output buffer or not
    */
-  protected void ensureLength(byte[][] buffers,
-                              boolean allowNull, int dataLen) {
+  protected void checkParameterBuffers(byte[][] buffers, boolean allowNull,
+                                       int dataLen, boolean isOutputs) {
+    byte[] empty = getEmptyChunk(dataLen);
     for (byte[] buffer : buffers) {
       if (buffer == null && !allowNull) {
         throw new HadoopIllegalArgumentException(
@@ -162,6 +190,8 @@ public abstract class AbstractRawErasureCoder
       } else if (buffer != null && buffer.length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);
+      } else if (isOutputs) {
+        System.arraycopy(empty, 0, buffer, 0, dataLen);
       }
     }
   }
