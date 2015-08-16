@@ -149,7 +149,7 @@ public abstract class AbstractRawErasureCoder
    */
   protected void checkParameterBuffers(ByteBuffer[] buffers, boolean
       allowNull, int dataLen, boolean isDirectBuffer, boolean isOutputs) {
-    byte[] empty = getEmptyChunk(dataLen);
+    ByteBuffer empty = ByteBuffer.wrap(getEmptyChunk(dataLen), 0, dataLen);
     for (ByteBuffer buffer : buffers) {
       if (buffer == null && !allowNull) {
         throw new HadoopIllegalArgumentException(
@@ -164,6 +164,7 @@ public abstract class AbstractRawErasureCoder
               "Invalid buffer, isDirect should be " + isDirectBuffer);
         }
         if (isOutputs) {
+          empty.position(0);
           buffer.mark();
           buffer.put(empty);
           buffer.reset();
