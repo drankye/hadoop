@@ -827,9 +827,11 @@ public class DFSStripedInputStream extends DFSInputStream {
         // we have failed the block reader before
         return false;
       }
+
+      int parityIndex = index - dataBlkNum;
       ByteBuffer buf = getParityBuffer().duplicate();
-      buf.position(cellSize * index);
-      buf.limit(cellSize * index + (int) alignedStripe.range.spanInBlock);
+      buf.position(cellSize * parityIndex);
+      buf.limit(cellSize * parityIndex + (int) alignedStripe.range.spanInBlock);
       decodeInputs[index] = buf.slice();
       alignedStripe.chunks[index] = new StripingChunk(decodeInputs[index]);
       return true;

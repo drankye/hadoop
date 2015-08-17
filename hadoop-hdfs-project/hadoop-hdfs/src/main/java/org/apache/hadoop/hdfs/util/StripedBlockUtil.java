@@ -331,7 +331,7 @@ public class StripedBlockUtil {
     for (int i = 0; i < decodeIndices.length; i++) {
       int missingBlkIdx = decodeIndices[i];
       StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
-      if (chunk.state == StripingChunk.MISSING) {
+      if (chunk.state == StripingChunk.MISSING && chunk.useChunkBuffer()) {
         chunk.getChunkBuffer().copyFrom(decodeOutputs[i]);
       }
     }
