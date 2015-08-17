@@ -24,63 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int inited = 0;
-static unsigned char* mulTab[256];
-
-static void initTab() {
-  int i, j;
-  if (inited == 1) {
-    return;
-  }
-
-  inited = 1;
-
-  for (i = 0; i < 256; i++) {
-    mulTab[i] = (unsigned char*)malloc(256);
-    for (j = 0; j < 256; j++) {
-      mulTab[i][j] = h_gf_mul(i, j);
-    }
-  }
-}
-
-static void ec_encode_data(int len, int srcs, int dests, unsigned char *gftbls,
-             unsigned char **src, unsigned char **dest)
-{
-    int i, j, l, iPos, oPos;
-    unsigned char s;
-    unsigned char *pdest, *psrc, *tab;
-
-    for (l = 0; l < dests; l++) {
-      pdest = dest[l];
-
-      for (j = 0; j < srcs; j++) {
-        psrc = src[j];
-        iPos = oPos = 0;
-
-        s = gftbls[j * 32 + l * srcs * 32 + 1];
-        tab = mulTab[s];
-
-        for (i = 0; i < len; i++, iPos++, oPos++) {
-          pdest[oPos] ^= tab[psrc[iPos]];
-        }
-      }
-    }
-
-    /*
-    for (l = 0; l < dests; l++) {
-        for (i = 0; i < len; i++) {
-            s = 0;
-            for (j = 0; j < srcs; j++)
-                s ^= gf_mul(src[j][i], v[j * 32 + l * srcs * 32 + 1]);
-
-            dest[l][i] = s;
-        }
-    }*/
-}
-
 void initCoder(CoderState* pCoderState, int numDataUnits, int numParityUnits) {
-  initTab();
-
   pCoderState->verbose = 0;
   pCoderState->numParityUnits = numParityUnits;
   pCoderState->numDataUnits = numDataUnits;
@@ -127,7 +71,7 @@ int encode(EncoderState* pCoderState, unsigned char** dataUnits,
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
   int numParityUnits = ((CoderState*)pCoderState)->numParityUnits;
 
-  ec_encode_data(chunkSize, numDataUnits, numParityUnits,
+  h_ec_encode_data(chunkSize, numDataUnits, numParityUnits,
                          pCoderState->gftbls, dataUnits, parityUnits);
 
   return 0;
@@ -212,7 +156,7 @@ int decode(DecoderState* pCoderState, unsigned char** inputs,
 
   processErasures(pCoderState, inputs, erasedIndexes, numErased);
 
-  ec_encode_data(chunkSize, numDataUnits, pCoderState->numErased,
+  h_ec_encode_data(chunkSize, numDataUnits, pCoderState->numErased,
       pCoderState->gftbls, pCoderState->realInputs, outputs);
 
   return 0;
@@ -220,6 +164,8 @@ int decode(DecoderState* pCoderState, unsigned char** inputs,
 
 // Clear variables used per decode call
 void clearDecoder(DecoderState* decoder) {
+  decoder->numErasedDataUnits = 0;
+  decoder->numErased = 0;
   memset(decoder->gftbls, 0, sizeof(decoder->gftbls));
   memset(decoder->decodeMatrix, 0, sizeof(decoder->decodeMatrix));
   memset(decoder->tmpMatrix, 0, sizeof(decoder->tmpMatrix));
