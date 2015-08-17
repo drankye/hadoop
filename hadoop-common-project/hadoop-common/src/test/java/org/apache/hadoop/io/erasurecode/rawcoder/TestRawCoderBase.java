@@ -68,9 +68,9 @@ public abstract class TestRawCoderBase extends TestCoderBase {
      * The following runs will use 3 different chunkSize for inputs and outputs,
      * to verify the same encoder/decoder can process variable width of data.
      */
-    performTestCoding(baseChunkSize, true, false, false);
-    performTestCoding(baseChunkSize - 17, false, false, false);
-    performTestCoding(baseChunkSize + 16, true, false, false);
+    performTestCoding(baseChunkSize, true, false, false, false);
+    performTestCoding(baseChunkSize - 17, false, false, false, true);
+    performTestCoding(baseChunkSize + 16, true, false, false, false);
   }
 
   /**
@@ -82,7 +82,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     prepareCoders();
 
     try {
-      performTestCoding(baseChunkSize, false, true, false);
+      performTestCoding(baseChunkSize, false, true, false, true);
       Assert.fail("Encoding test with bad input should fail");
     } catch (Exception e) {
       // Expected
@@ -98,7 +98,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     prepareCoders();
 
     try {
-      performTestCoding(baseChunkSize, false, false, true);
+      performTestCoding(baseChunkSize, false, false, true, true);
       Assert.fail("Decoding test with bad output should fail");
     } catch (Exception e) {
       // Expected
@@ -123,9 +123,11 @@ public abstract class TestRawCoderBase extends TestCoderBase {
   }
 
   private void performTestCoding(int chunkSize, boolean usingSlicedBuffer,
-                                 boolean useBadInput, boolean useBadOutput) {
+                                 boolean useBadInput, boolean useBadOutput,
+                                 boolean allowChangeInputs) {
     setChunkSize(chunkSize);
     prepareBufferAllocator(usingSlicedBuffer);
+    setAllowChangeInputs(allowChangeInputs);
 
     dumpSetting();
 
@@ -145,6 +147,10 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     encoder.encode(dataChunks, parityChunks);
     dumpChunks("Encoded parity chunks", parityChunks);
 
+    if (!allowChangeInputs) {
+      compareAndVerify(clonedDataChunks, dataChunks);
+    }
+
     // Backup and erase some chunks
     ECChunk[] backupChunks = backupAndEraseChunks(clonedDataChunks, parityChunks);
 
@@ -160,12 +166,27 @@ public abstract class TestRawCoderBase extends TestCoderBase {
       corruptSomeChunk(recoveredChunks);
     }
 
+    ECChunk[] clonedInputChunks = null;
+    if (!allowChangeInputs) {
+      clonedInputChunks = cloneChunksWithData(inputChunks);
+    }
+
     dumpChunks("Decoding input chunks", inputChunks);
     decoder.decode(inputChunks, getErasedIndexesForDecoding(), recoveredChunks);
     dumpChunks("Decoded/recovered chunks", recoveredChunks);
 
+    if (!allowChangeInputs) {
+      compareAndVerify(clonedInputChunks, inputChunks);
+    }
+
     // Compare
     compareAndVerify(backupChunks, recoveredChunks);
+  }
+
+  private void setAllowChangeInputs(boolean allowChangeInputs) {
+    this.allowChangeInputs = allowChangeInputs;
+    encoder.setCoderOption(CoderOption.ALLOW_CHANGE_INPUTS, allowChangeInputs);
+    decoder.setCoderOption(CoderOption.ALLOW_CHANGE_INPUTS, allowChangeInputs);
   }
 
   private void prepareCoders() {

@@ -21,7 +21,8 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configured;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -34,9 +35,37 @@ public abstract class AbstractRawErasureCoder
   private final int numDataUnits;
   private final int numParityUnits;
 
+  private final Map<CoderOption, Object> coderOptions;
+
   public AbstractRawErasureCoder(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
+    this.coderOptions = new HashMap<>(3);
+
+    coderOptions.put(CoderOption.PREFER_DIRECT_BUFFER, preferDirectBuffer());
+    coderOptions.put(CoderOption.ALLOW_CHANGE_INPUTS, false);
+    coderOptions.put(CoderOption.ALLOW_DUMP, false);
+  }
+
+  @Override
+  public Object getCoderOption(CoderOption option) {
+    if (option == null) {
+      throw new HadoopIllegalArgumentException("Invalid option");
+    }
+    return coderOptions.get(option);
+  }
+
+  @Override
+  public void setCoderOption(CoderOption option, Object value) {
+    if (option == null || value == null) {
+      throw new HadoopIllegalArgumentException("Invalid option or option value");
+    }
+    if (option.isReadOnly()) {
+      throw new HadoopIllegalArgumentException("The option is read-only: " +
+          option.name());
+    }
+
+    coderOptions.put(option, value);
   }
 
   @Override
@@ -50,13 +79,35 @@ public abstract class AbstractRawErasureCoder
   }
 
   @Override
-  public boolean preferDirectBuffer() {
+  public void release() {
+    // Nothing to do by default
+  }
+
+  /**
+   * Tell if direct buffer is preferred or not. It's for callers to
+   * decide how to allocate coding chunk buffers, using DirectByteBuffer or
+   * bytes array. It will return false by default.
+   * @return true if native buffer is preferred for performance consideration,
+   * otherwise false.
+   */
+  protected boolean preferDirectBuffer() {
     return false;
   }
 
-  @Override
-  public void release() {
-    // Nothing to do by default
+  protected boolean allowChangeInputs() {
+    Object value = getCoderOption(CoderOption.ALLOW_CHANGE_INPUTS);
+    if (value != null && value instanceof Boolean) {
+      return (boolean) value;
+    }
+    return false;
+  }
+
+  protected boolean allowDump() {
+    Object value = getCoderOption(CoderOption.ALLOW_DUMP);
+    if (value != null && value instanceof Boolean) {
+      return (boolean) value;
+    }
+    return false;
   }
 
   /**
