@@ -164,6 +164,8 @@ int decode(DecoderState* pCoderState, unsigned char** inputs,
 
 // Clear variables used per decode call
 void clearDecoder(DecoderState* decoder) {
+  decoder->numErasedDataUnits = 0;
+  decoder->numErased = 0;
   memset(decoder->gftbls, 0, sizeof(decoder->gftbls));
   memset(decoder->decodeMatrix, 0, sizeof(decoder->decodeMatrix));
   memset(decoder->tmpMatrix, 0, sizeof(decoder->tmpMatrix));
