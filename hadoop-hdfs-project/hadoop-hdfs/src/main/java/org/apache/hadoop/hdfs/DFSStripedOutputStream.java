@@ -209,7 +209,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
       buffers = new ByteBuffer[numAllBlocks];
       for (int i = 0; i < buffers.length; i++) {
         //buffers[i] = ByteBuffer.wrap(byteArrayManager.newByteArray(cellSize));
-        buffers[i] = ByteBuffer.allocate(cellSize);
+        buffers[i] = ByteBuffer.allocateDirect(cellSize);
       }
     }
 
