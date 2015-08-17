@@ -227,7 +227,7 @@ public class TestDFSStripedInputStream {
       }
       for (int k = 0; k < CELLSIZE; k++) {
         int posInBlk = i * CELLSIZE + k;
-        decodeInputs[6][k] = SimulatedFSDataset.simulatedByte(
+        decodeInputs[DATA_BLK_NUM][k] = SimulatedFSDataset.simulatedByte(
             new Block(bg.getBlock().getBlockId() + DATA_BLK_NUM), posInBlk);
       }
       for (int m : missingBlkIdx) {
