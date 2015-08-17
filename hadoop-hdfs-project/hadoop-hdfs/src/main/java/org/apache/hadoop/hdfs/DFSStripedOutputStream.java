@@ -554,7 +554,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     if (!current.isFailed()) {
       try {
         DataChecksum sum = getDataChecksum();
-        ByteBuffer newChecksumBuf = ByteBuffer.allocate(checksumBuf.length);
+        ByteBuffer newChecksumBuf = ByteBuffer.allocateDirect(checksumBuf.length);
         sum.calculateChunkedSums(buffer, newChecksumBuf);
         newChecksumBuf.get(checksumBuf);
         for (int i = 0; i < len; i += sum.getBytesPerChecksum()) {
