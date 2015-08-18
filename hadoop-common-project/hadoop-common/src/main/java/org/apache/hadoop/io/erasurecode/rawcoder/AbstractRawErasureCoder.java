@@ -30,6 +30,8 @@ import java.nio.ByteBuffer;
 public abstract class AbstractRawErasureCoder
     extends Configured implements RawErasureCoder {
 
+  private static byte[] emptyChunk = new byte[4096];
+  
   protected final int numDataUnits;
   protected final int numParityUnits;
   protected final int numAllUnits;
