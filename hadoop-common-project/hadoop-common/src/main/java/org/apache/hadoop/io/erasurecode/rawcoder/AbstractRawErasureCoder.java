@@ -21,6 +21,8 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configured;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -40,6 +42,31 @@ public abstract class AbstractRawErasureCoder
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
     this.numAllUnits = numDataUnits + numParityUnits;
+
+    this.coderOptions = new HashMap<>(3);
+    coderOptions.put(CoderOption.PREFER_DIRECT_BUFFER, preferDirectBuffer());
+    coderOptions.put(CoderOption.ALLOW_CHANGE_INPUTS, false);
+    coderOptions.put(CoderOption.ALLOW_DUMP, false);
+  }
+
+  @Override
+  public Object getCoderOption(CoderOption option) {
+    if (option == null) {
+      throw new HadoopIllegalArgumentException("Invalid option");
+    }
+    return coderOptions.get(option);
+  }
+
+  @Override
+  public void setCoderOption(CoderOption option, Object value) {
+    if (option == null || value == null) {
+      throw new HadoopIllegalArgumentException("Invalid option or option value");
+    }
+    if (option.isReadOnly()) {
+      throw new HadoopIllegalArgumentException("The option is read-only: " +
+          option.name());
+    }
+    coderOptions.put(option, value);
   }
 
   /**
