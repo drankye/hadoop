@@ -251,6 +251,22 @@ public abstract class TestCoderBase {
     }
   }
 
+  protected void markChunks(ECChunk[] chunks) {
+    for (int i = 0; i < chunks.length; i++) {
+      if (chunks[i] != null) {
+        chunks[i].getBuffer().mark();
+      }
+    }
+  }
+
+  protected void restoreChunksFromMark(ECChunk[] chunks) {
+    for (int i = 0; i < chunks.length; i++) {
+      if (chunks[i] != null) {
+        chunks[i].getBuffer().reset();
+      }
+    }
+  }
+
   /**
    * Clone chunks along with copying the associated data. It respects how the
    * chunk buffer is allocated, direct or non-direct. It avoids affecting the

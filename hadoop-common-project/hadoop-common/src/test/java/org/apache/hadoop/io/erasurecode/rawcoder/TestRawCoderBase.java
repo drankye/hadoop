@@ -143,11 +143,13 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     // Backup all the source chunks for later recovering because some coders
     // may affect the source data.
     ECChunk[] clonedDataChunks = cloneChunksWithData(dataChunks);
+    markChunks(dataChunks);
 
     encoder.encode(dataChunks, parityChunks);
     dumpChunks("Encoded parity chunks", parityChunks);
 
     if (!allowChangeInputs) {
+      restoreChunksFromMark(dataChunks);
       compareAndVerify(clonedDataChunks, dataChunks);
     }
 
@@ -168,6 +170,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
 
     ECChunk[] clonedInputChunks = null;
     if (!allowChangeInputs) {
+      markChunks(inputChunks);
       clonedInputChunks = cloneChunksWithData(inputChunks);
     }
 
@@ -176,6 +179,7 @@ public abstract class TestRawCoderBase extends TestCoderBase {
     dumpChunks("Decoded/recovered chunks", recoveredChunks);
 
     if (!allowChangeInputs) {
+      restoreChunksFromMark(inputChunks);
       compareAndVerify(clonedInputChunks, inputChunks);
     }
 
