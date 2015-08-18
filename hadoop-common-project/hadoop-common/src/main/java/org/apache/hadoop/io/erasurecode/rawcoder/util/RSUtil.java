@@ -18,7 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
 /**
- * Some utilities for Reed-Solomon coding.
+ * Utilities for implementing Reed-Solomon code, used by RS coder.
  */
 public class RSUtil {
 
