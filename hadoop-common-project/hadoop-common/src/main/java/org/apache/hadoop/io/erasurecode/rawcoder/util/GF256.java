@@ -233,9 +233,11 @@ public final class GF256 {
     }
   }
 
-  // Calculates const table gftbl in GF(2^8) from single input A
-  // gftbl(A) = {A{00}, A{01}, A{02}, ... , A{0f} }, {A{00}, A{10}, A{20}, ... , A{f0} }
-
+  /**
+   * Calculates const table gftbl in GF(2^8) from single input A
+   * gftbl(A) = {A{00}, A{01}, A{02}, ... , A{0f} }, {A{00}, A{10}, A{20},
+   * ... , A{f0} }
+   */
   public static void gfVectMulInit(byte c, byte[] tbl, int offset) {
     byte c2 = (byte) ((c << 1) ^ ((c & 0x80) != 0 ? 0x1d : 0)); //Mult by GF{2}
     byte c4 = (byte) ((c2 << 1) ^ ((c2 & 0x80) != 0 ? 0x1d : 0)); //Mult by GF{2}

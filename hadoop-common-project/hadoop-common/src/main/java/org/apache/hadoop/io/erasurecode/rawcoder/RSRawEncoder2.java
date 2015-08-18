@@ -18,8 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.ErasureCodeUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil2;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
@@ -28,7 +27,8 @@ import java.nio.ByteBuffer;
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This new Java coder is about 5X faster than the one originated
+ * from HDFS-RAID, and also compatible with the native/ISA-L coder.
  */
 public class RSRawEncoder2 extends AbstractRawErasureEncoder {
   private byte[] encodeMatrix;
@@ -45,23 +45,23 @@ public class RSRawEncoder2 extends AbstractRawErasureEncoder {
     GF256.init();
 
     encodeMatrix = new byte[numAllUnits * numDataUnits];
-    ErasureCodeUtil.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
+    RSUtil2.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
     //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
     gftbls = new byte[numAllUnits * numDataUnits * 32];
-    ErasureCodeUtil.initTables(numDataUnits, numParityUnits, encodeMatrix,
+    RSUtil2.initTables(numDataUnits, numParityUnits, encodeMatrix,
         numDataUnits * numDataUnits, gftbls);
     //System.out.println(DumpUtil.bytesToHex(gftbls, 9999999));
   }
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    ErasureCodeUtil.encodeData(gftbls, inputs, outputs);
+    RSUtil2.encodeData(gftbls, inputs, outputs);
   }
 
   @Override
   protected void doEncode(byte[][] inputs, int[] inputOffsets,
                           int dataLen, byte[][] outputs, int[] outputOffsets) {
-    ErasureCodeUtil.encodeData(gftbls, dataLen, inputs, inputOffsets,
-        outputs, outputOffsets);
+    RSUtil2.encodeData(gftbls, dataLen, inputs, inputOffsets, outputs,
+        outputOffsets);
   }
 }

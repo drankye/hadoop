@@ -17,46 +17,12 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
-import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import org.junit.Test;
 
 /**
  * Test base for raw Reed-solomon coders.
  */
 public abstract class TestRSRawCoderBase extends TestRawCoderBase {
-
-  private static int symbolSize = 0;
-  private static int symbolMax = 0;
-
-  private static int RS_FIXED_DATA_GENERATOR = 0;
-
-  static {
-    symbolSize = (int) Math.round(Math.log(
-        RSUtil.GF.getFieldSize()) / Math.log(2));
-    symbolMax = (int) Math.pow(2, symbolSize);
-  }
-
-  @Override
-  protected byte[] generateData(int len) {
-    byte[] buffer = new byte[len];
-    for (int i = 0; i < buffer.length; i++) {
-      buffer[i] = (byte) RAND.nextInt(symbolMax);
-    }
-    return buffer;
-  }
-
-  @Override
-  protected byte[] generateFixedData(int len) {
-    byte[] buffer = new byte[len];
-    RS_FIXED_DATA_GENERATOR = 0;
-    for (int i = 0; i < buffer.length; i++) {
-      buffer[i] = (byte) RS_FIXED_DATA_GENERATOR++;
-      if (RS_FIXED_DATA_GENERATOR == symbolMax) {
-        RS_FIXED_DATA_GENERATOR = 0;
-      }
-    }
-    return buffer;
-  }
 
   @Test
   public void testCoding_6x3_erasing_all_d() {

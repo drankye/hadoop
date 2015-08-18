@@ -20,8 +20,8 @@ package org.apache.hadoop.io.erasurecode.rawcoder.util;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 /**
- * A dump utility class for debugging data erasure coding/decoding issues. Don't
- * suggest they are used in runtime production codes.
+ * A dump utility class for debugging data erasure coding/decoding issues.
+ * Don't suggest they are used in runtime production codes.
  */
 public final class DumpUtil {
   private static final String HEX_CHARS_STR = "0123456789ABCDEF";
@@ -52,20 +52,6 @@ public final class DumpUtil {
     }
 
     return new String(hexChars);
-  }
-
-  public static void dumpMatrix_JE(byte[] matrix,
-                                int numDataUnits, int numParityUnits) {
-    System.out.println();
-    for (int i = 0; i < numParityUnits; i++) {
-      for (int j = 0; j < numDataUnits; j++) {
-        if (j != 0) {
-          System.out.print(" ");
-        }
-        System.out.print(0xff & matrix[i * numDataUnits + j]);
-      }
-      System.out.println();
-    }
   }
 
   public static void dumpMatrix(byte[] matrix,

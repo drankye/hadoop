@@ -19,7 +19,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
-import org.apache.hadoop.io.erasurecode.rawcoder.util.ErasureCodeUtil;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil2;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
@@ -29,7 +29,8 @@ import java.util.Arrays;
 /**
  * A raw erasure decoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This new Java coder is about 5X faster than the one originated
+ * from HDFS-RAID, and also compatible with the native/ISA-L coder.
  */
 public class RSRawDecoder2 extends AbstractRawErasureDecoder {
   private byte[] encodeMatrix;
@@ -54,7 +55,7 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
 
     int numAllUnits = numDataUnits + numParityUnits;
     encodeMatrix = new byte[numAllUnits * numDataUnits];
-    ErasureCodeUtil.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
+    RSUtil2.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
     DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
   }
 
@@ -67,7 +68,7 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
     for (int i = 0; i < numDataUnits; i++) {
       realInputs[i] = inputs[validIndexes[i]];
     }
-    ErasureCodeUtil.encodeData(gftbls, realInputs, outputs);
+    RSUtil2.encodeData(gftbls, realInputs, outputs);
   }
 
   @Override
@@ -82,7 +83,7 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
       realInputs[i] = inputs[validIndexes[i]];
       realInputOffsets[i] = inputOffsets[validIndexes[i]];
     }
-    ErasureCodeUtil.encodeData(gftbls, dataLen, realInputs, realInputOffsets,
+    RSUtil2.encodeData(gftbls, dataLen, realInputs, realInputOffsets,
         outputs, outputOffsets);
   }
 
@@ -118,8 +119,8 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
 
     generateDecodeMatrix(erasedIndexes);
 
-    ErasureCodeUtil.initTables(numDataUnits, erasedIndexes.length,
-        decodeMatrix, 0, gftbls);
+    RSUtil2.initTables(numDataUnits, erasedIndexes.length, decodeMatrix, 0,
+        gftbls);
     //System.out.println(DumpUtil.bytesToHex(gftbls, 9999999));
   }
 

@@ -45,7 +45,7 @@ public abstract class AbstractNativeRawDecoder
     for (int i = 0; i < outputs.length; ++i) {
       buffer = outputs[i];
       outputOffsets[i] = buffer.position();
-      outputs[i] = resetBuffer(buffer);
+      outputs[i] = resetBuffer(buffer, dataLen);
     }
 
     performDecodeImpl(inputs, inputOffsets, dataLen, erasedIndexes, outputs,

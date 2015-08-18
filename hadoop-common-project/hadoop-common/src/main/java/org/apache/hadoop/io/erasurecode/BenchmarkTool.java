@@ -256,7 +256,7 @@ public class BenchmarkTool {
           benchData.numParityUnits);
       decoder = coderMaker.createDecoder(benchData.numDataUnits,
           benchData.numParityUnits);
-      if (encoder.preferDirectBuffer()) {
+      if (encoder.getCoderOption(CoderOption.PREFER_DIRECT_BUFFER) == true) {
         if (directBufferBenchData == null) {
           directBufferBenchData = new BenchData(true);
         }

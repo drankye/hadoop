@@ -25,7 +25,8 @@ import java.util.Arrays;
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This one originated from HDFS-RAID in its core algorithm. Note
+ * it's not compatible with the native/ISA-L coder.
  */
 public class RSRawEncoder extends AbstractRawErasureEncoder {
   private int[] generatingPolynomial;
@@ -54,7 +55,7 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     // parity units + data units
     ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
 
-    if (allowInputDataDirty) {
+    if (allowChangeInputs()) {
       System.arraycopy(outputs, 0, all, 0, outputs.length);
       System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
     } else {
@@ -82,7 +83,7 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     byte[][] all = new byte[outputs.length + inputs.length][];
     int[] allOffsets = new int[outputOffsets.length + inputOffsets.length];
 
-    if (allowInputDataDirty) {
+    if (allowChangeInputs()) {
       System.arraycopy(outputs, 0, all, 0, outputs.length);
       System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
 
