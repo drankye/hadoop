@@ -21,7 +21,6 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configured;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * A common class of basic facilities to be shared by encoder and decoder
@@ -31,12 +30,14 @@ import java.util.Arrays;
 public abstract class AbstractRawErasureCoder
     extends Configured implements RawErasureCoder {
 
-  private final int numDataUnits;
-  private final int numParityUnits;
+  protected final int numDataUnits;
+  protected final int numParityUnits;
+  protected final int numAllUnits;
 
   public AbstractRawErasureCoder(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
+    this.numAllUnits = numDataUnits + numParityUnits;
   }
 
   @Override
