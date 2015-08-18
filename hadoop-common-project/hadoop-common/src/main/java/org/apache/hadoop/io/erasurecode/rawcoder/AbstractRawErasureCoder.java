@@ -70,13 +70,35 @@ public abstract class AbstractRawErasureCoder
   }
 
   @Override
-  public boolean preferDirectBuffer() {
+  public void release() {
+    // Nothing to do by default
+  }
+
+  /**
+   * Tell if direct buffer is preferred or not. It's for callers to
+   * decide how to allocate coding chunk buffers, using DirectByteBuffer or
+   * bytes array. It will return false by default.
+   * @return true if native buffer is preferred for performance consideration,
+   * otherwise false.
+   */
+  protected boolean preferDirectBuffer() {
     return false;
   }
 
-  @Override
-  public void release() {
-    // Nothing to do by default
+  protected boolean allowChangeInputs() {
+    Object value = getCoderOption(CoderOption.ALLOW_CHANGE_INPUTS);
+    if (value != null && value instanceof Boolean) {
+      return (boolean) value;
+    }
+    return false;
+  }
+
+  protected boolean allowDump() {
+    Object value = getCoderOption(CoderOption.ALLOW_DUMP);
+    if (value != null && value instanceof Boolean) {
+      return (boolean) value;
+    }
+    return false;
   }
 
   /**
