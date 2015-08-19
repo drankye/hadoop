@@ -41,6 +41,7 @@ import org.apache.hadoop.io.erasurecode.CodecUtil;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
 import org.apache.hadoop.util.DataChecksum;
+import org.apache.hadoop.util.DirectBufferPool;
 import org.apache.hadoop.util.Progressable;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Trace;
@@ -55,6 +56,9 @@ import com.google.common.base.Preconditions;
  */
 @InterfaceAudience.Private
 public class DFSStripedOutputStream extends DFSOutputStream {
+
+  private static final DirectBufferPool bufferPool = new DirectBufferPool();
+
   static class MultipleBlockingQueue<T> {
     private final List<BlockingQueue<T>> queues;
 
@@ -208,8 +212,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
       buffers = new ByteBuffer[numAllBlocks];
       for (int i = 0; i < buffers.length; i++) {
-        //buffers[i] = ByteBuffer.wrap(byteArrayManager.newByteArray(cellSize));
-        buffers[i] = ByteBuffer.allocateDirect(cellSize);
+        buffers[i] = bufferPool.getBuffer(cellSize);
       }
     }
 
@@ -232,15 +235,12 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     private void clear() {
       for (int i = 0; i< numAllBlocks; i++) {
         buffers[i].clear();
-        if (i >= numDataBlocks) {
-          //Arrays.fill(buffers[i].array(), (byte) 0);
-        }
       }
     }
 
     private void release() {
       for (int i = 0; i < numAllBlocks; i++) {
-        //byteArrayManager.release(buffers[i].array());
+        bufferPool.returnBuffer(buffers[i]);
       }
     }
 
@@ -548,15 +548,16 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   void writeParity(int index, ByteBuffer buffer, byte[] checksumBuf
       ) throws IOException {
     final StripedDataStreamer current = setCurrentStreamer(index);
-    final int len = buffer.limit();
+    final int len = buffer.remaining();
 
     final long oldBytes = current.getBytesCurBlock();
     if (!current.isFailed()) {
       try {
         DataChecksum sum = getDataChecksum();
-        ByteBuffer newChecksumBuf = ByteBuffer.allocateDirect(checksumBuf.length);
+        ByteBuffer newChecksumBuf = bufferPool.getBuffer(checksumBuf.length);
         sum.calculateChunkedSums(buffer, newChecksumBuf);
         newChecksumBuf.get(checksumBuf);
+        bufferPool.returnBuffer(newChecksumBuf);
         for (int i = 0; i < len; i += sum.getBytesPerChecksum()) {
           int chunkLen = Math.min(sum.getBytesPerChecksum(), len - i);
           int ckOffset = i / sum.getBytesPerChecksum() * getChecksumSize();

@@ -391,18 +391,18 @@ public class DFSOutputStream extends FSOutputSummer
   // @see FSOutputSummer#writeChunk()
   @Override
   protected synchronized void writeChunk(byte[] b, int offset, int len,
-      byte[] checksum, int ckoff, int cklen) throws IOException {
+                                         byte[] checksum, int ckoff, int cklen) throws IOException {
     dfsClient.checkOpen();
     checkClosed();
 
     if (len > bytesPerChecksum) {
       throw new IOException("writeChunk() buffer size is " + len +
-                            " is larger than supported  bytesPerChecksum " +
-                            bytesPerChecksum);
+          " is larger than supported  bytesPerChecksum " +
+          bytesPerChecksum);
     }
     if (cklen != 0 && cklen != getChecksumSize()) {
       throw new IOException("writeChunk() checksum size is supposed to be " +
-                            getChecksumSize() + " but found to be " + cklen);
+          getChecksumSize() + " but found to be " + cklen);
     }
 
     if (currentPacket == null) {
@@ -436,8 +436,10 @@ public class DFSOutputStream extends FSOutputSummer
     dfsClient.checkOpen();
     checkClosed();
 
-    if (buffer.remaining() > bytesPerChecksum) {
-      throw new IOException("writeChunk() buffer size is " + buffer.remaining() +
+    int len = buffer.remaining();
+
+    if (len > bytesPerChecksum) {
+      throw new IOException("writeChunk() buffer size is " + len +
           " is larger than supported  bytesPerChecksum " +
           bytesPerChecksum);
     }
@@ -459,7 +461,6 @@ public class DFSOutputStream extends FSOutputSummer
       }
     }
 
-    int len = buffer.remaining();
     currentPacket.writeChecksum(checksum, ckoff, cklen);
     currentPacket.writeData(buffer, len);
     currentPacket.incNumChunks();
