@@ -1092,9 +1092,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       }
     }
     if (chosenNode == null) {
-      DFSClient.LOG.warn("No live nodes contain block " + block.getBlock() +
-          " after checking nodes = " + Arrays.toString(nodes) +
-          ", ignoredNodes = " + ignoredNodes);
+      //DFSClient.LOG.warn("No live nodes contain block " + block.getBlock() +
+      //    " after checking nodes = " + Arrays.toString(nodes) +
+      //    ", ignoredNodes = " + ignoredNodes);
       return null;
     }
     final String dnAddr =

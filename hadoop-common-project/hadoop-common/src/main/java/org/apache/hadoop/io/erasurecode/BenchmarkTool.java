@@ -56,8 +56,6 @@ public class BenchmarkTool {
   }
 
   public static void main(String[] args) throws Exception {
-    GaloisField.getInstance();
-
     File testDir = null;
     int coderIndex = 0;
     int dataSize = 1024; //MB
@@ -73,7 +71,7 @@ public class BenchmarkTool {
       if (tmp >= 0 && tmp <= 2) {
         coderIndex = tmp;
       } else {
-        usage("Invalid coder index, should be one of [0, 1, 2]");
+        usage("Invalid coder index, should be in the list");
       }
     } else {
       usage(null);
