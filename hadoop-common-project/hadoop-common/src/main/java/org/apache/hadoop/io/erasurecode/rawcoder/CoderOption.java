@@ -15,25 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.erasurecode.rawcoder.util;
+package org.apache.hadoop.io.erasurecode.rawcoder;
 
 /**
- * Utilities for implementing Reed-Solomon code, used by RS coder.
+ * Supported erasure coder options.
  */
-public class RSUtil {
+public enum CoderOption {
+  /* If direct buffer is preferred, for perf consideration */
+  PREFER_DIRECT_BUFFER(true),    // READ-ONLY
+  /* Allow changing input buffer content. Maybe better perf if allowed */
+  ALLOW_CHANGE_INPUTS(false),    // READ-WRITE
+  /* Allow dump verbose debug info or not */
+  ALLOW_DUMP(false);             // READ-WRITE
 
-  // We always use the byte system (with symbol size 8, field size 256,
-  // primitive polynomial 285, and primitive root 2).
-  public static GaloisField GF = GaloisField.getInstance();
-  public static final int PRIMITIVE_ROOT = 2;
+  private boolean isReadOnly = false;
 
-  public static int[] getPrimitivePower(int numDataUnits, int numParityUnits) {
-    int[] primitivePower = new int[numDataUnits + numParityUnits];
-    // compute powers of the primitive root
-    for (int i = 0; i < numDataUnits + numParityUnits; i++) {
-      primitivePower[i] = GF.power(PRIMITIVE_ROOT, i);
-    }
-    return primitivePower;
+  CoderOption(boolean isReadOnly) {
+    this.isReadOnly = isReadOnly;
   }
 
-}
+  public boolean isReadOnly() {
+    return isReadOnly;
+  }
+};

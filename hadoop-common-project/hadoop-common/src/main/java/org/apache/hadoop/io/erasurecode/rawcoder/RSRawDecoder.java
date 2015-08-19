@@ -24,9 +24,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * A raw erasure decoder in RS code scheme in pure Java in case native one
+ * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This one originated from HDFS-RAID in its core algorithm. Note
+ * it's not compatible with the native/ISA-L coder.
  *
  * Currently this implementation will compute and decode not to read units
  * unnecessarily due to the underlying implementation limit in GF. This will be
@@ -123,7 +124,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs, outputOffsets,
-        erasedIndexes.length, dataLen);
+            erasedIndexes.length, dataLen);
   }
 
   @Override
@@ -205,7 +206,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
         if (erasedIndexes[i] == erasedOrNotToReadIndexes[j]) {
           found = true;
           adjustedDirectBufferOutputsParameter[j] =
-              resetBuffer(outputs[outputIdx++]);
+              resetBuffer(outputs[outputIdx++], dataLen);
         }
       }
       if (!found) {
@@ -219,7 +220,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
         ByteBuffer buffer = checkGetDirectBuffer(bufferIdx, dataLen);
         buffer.position(0);
         buffer.limit(dataLen);
-        adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer);
+        adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer, dataLen);
         bufferIdx++;
       }
     }

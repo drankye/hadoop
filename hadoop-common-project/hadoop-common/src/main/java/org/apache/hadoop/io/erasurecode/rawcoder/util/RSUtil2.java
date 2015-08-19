@@ -20,11 +20,11 @@ package org.apache.hadoop.io.erasurecode.rawcoder.util;
 import java.nio.ByteBuffer;
 
 /**
- * An erasure code util class.
+ * Utilities for implementing Reed-Solomon code, used by RS2 coder.
  */
-public final class ErasureCodeUtil {
+public final class RSUtil2 {
 
-  private ErasureCodeUtil() { }
+  private RSUtil2() { }
 
   public static void initTables(int k, int rows, byte[] codingMatrix,
                                 int matrixOffset, byte[] gftbls) {
@@ -39,7 +39,7 @@ public final class ErasureCodeUtil {
     }
   }
 
-  public static void genRSMatrix(byte[] a, int m, int k) {
+  public static void genReedSolomonMatrix(byte[] a, int m, int k) {
     int i, j;
     byte p, gen = 1;
 
