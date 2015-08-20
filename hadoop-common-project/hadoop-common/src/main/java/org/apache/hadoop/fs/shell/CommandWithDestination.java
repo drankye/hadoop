@@ -462,19 +462,19 @@ abstract class CommandWithDestination extends FsCommand {
     }
 
     void writeStreamToFile(InputStream in, PathData target,
-            boolean lazyPersist, boolean isPut, boolean isGet) throws IOException {
+                           boolean lazyPersist, boolean isPut, boolean isGet) throws IOException {
       FSDataOutputStream out = null;
-      try {
-        out = create(target, lazyPersist);
-        if (isPut) {
-          IOUtils.generateAndCopy(out, getConf());
-        } else if (isGet) {
+      out = create(target, lazyPersist);
+      if (isPut) {
+        IOUtils.generateAndCopy(out, getConf());
+      } else if (isGet) {
+        try {
           IOUtils.copyAndDiscard(in, getConf());
-        } else {
-          IOUtils.copyBytes(in, out, getConf(), true);
+        } catch (Exception e) {
+          throw new IOException("Failed to copyAndDiscard", e);
         }
-      } finally {
-        IOUtils.closeStream(out); // just in case copyBytes didn't
+      } else {
+        IOUtils.copyBytes(in, out, getConf(), true);
       }
     }
     
