@@ -186,6 +186,15 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
+   * Tell if output buffers need to be initialized with ZERO bytes.
+   * Note native coders don't want to init output buffers in the Java layer,
+   * because doing it in native codes will be much efficient via memset.
+   */
+  protected boolean initOutputs() {
+    return true;
+  }
+
+  /**
    * Check and ensure the buffers are of the length specified by dataLen, also
    * ensure the buffers are direct buffers or not according to isDirectBuffer.
    * @param buffers the buffers to check
@@ -209,7 +218,7 @@ public abstract class AbstractRawErasureCoder
           throw new HadoopIllegalArgumentException(
               "Invalid buffer, isDirect should be " + isDirectBuffer);
         }
-        if (isOutputs) {
+        if (isOutputs && initOutputs()) {
           resetBuffer(buffer, dataLen);
         }
       }
@@ -233,7 +242,7 @@ public abstract class AbstractRawErasureCoder
       } else if (buffer != null && buffer.length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);
-      } else if (isOutputs) {
+      } else if (isOutputs && initOutputs()) {
         resetBuffer(buffer, 0, dataLen);
       }
     }

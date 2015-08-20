@@ -73,7 +73,12 @@ public abstract class AbstractNativeRawDecoder
   }
 
   @Override
-  public boolean preferDirectBuffer() {
+  protected boolean initOutputs() {
+    return false;
+  }
+
+  @Override
+  protected boolean preferDirectBuffer() {
     return true;
   }
 

@@ -64,7 +64,12 @@ public abstract class AbstractNativeRawEncoder
   }
 
   @Override
-  public boolean preferDirectBuffer() {
+  protected boolean initOutputs() {
+    return false;
+  }
+
+  @Override
+  protected boolean preferDirectBuffer() {
     return true;
   }
 
