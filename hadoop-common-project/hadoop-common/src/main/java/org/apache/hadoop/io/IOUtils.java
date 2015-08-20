@@ -19,6 +19,7 @@
 package org.apache.hadoop.io;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -125,7 +126,7 @@ public class IOUtils {
     long read = 0;
 
     if (!positionalRead || preadMethod == null) { // Stateful read
-      System.out.println("We're going to do stateful read:positionalRead" +
+      System.out.println("We're going to do stateful read:positionalRead=" +
           positionalRead + " preadMethod=" + preadMethod);
       try {
         while (read < times * buffSize) {
@@ -145,9 +146,18 @@ public class IOUtils {
       }
     }
 
+    long dataCopyTime = 0;
+    try {
+      Class cls = Class.forName("org.apache.hadoop.hdfs.util.StripedBlockUtil");
+      Field fld = cls.getField("dataCopyTime");
+      dataCopyTime = fld.getLong(null);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     System.out.println("Using " + conf.get(CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY));
     if (read == times * buffSize) {
-      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk)");
+      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk), dataCopyTime = " + dataCopyTime);
     } else {
       System.out.println("Failed reading from HDFS and throwing away 12GB data (no local disk)");
     }

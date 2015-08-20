@@ -75,6 +75,8 @@ public class StripedBlockUtil {
   private static DirectBufferPool bufferPool = new DirectBufferPool();
   private static ByteBuffer[] decodeInputs;
 
+  public static long dataCopyTime = 10;
+
   /**
    * This method parses a striped block group into individual blocks.
    *
@@ -296,7 +298,9 @@ public class StripedBlockUtil {
       final StripingChunk chunk = alignedStripe.chunks[i];
       if (chunk != null && chunk.state == StripingChunk.FETCHED) {
         if (chunk.useChunkBuffer()) {
+          long start = System.currentTimeMillis();
           chunk.getChunkBuffer().copyTo(decodeInputs[i]);
+          StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
         }
       } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
         //ZERO it?
@@ -336,7 +340,9 @@ public class StripedBlockUtil {
       int missingBlkIdx = decodeIndices[i];
       StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
       if (chunk.state == StripingChunk.MISSING && chunk.useChunkBuffer()) {
+        long start = System.currentTimeMillis();
         chunk.getChunkBuffer().copyFrom(decodeOutputs[i]);
+        StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
       }
     }
 

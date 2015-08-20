@@ -46,6 +46,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -95,8 +96,7 @@ public class TestDFSStripedInputStream {
   @Test
   public void testRefreshBlock() throws Exception {
     final int numBlocks = 4;
-    DFSTestUtil.createStripedFile(cluster, filePath, null, numBlocks,
-        NUM_STRIPE_PER_BLOCK, false);
+    DFSTestUtil.createStripedFile(cluster, filePath, null, numBlocks, NUM_STRIPE_PER_BLOCK, false);
     LocatedBlocks lbs = fs.getClient().namenode.getBlockLocations(
         filePath.toString(), 0, BLOCK_GROUP_SIZE * numBlocks);
     final DFSStripedInputStream in = new DFSStripedInputStream(fs.getClient(),

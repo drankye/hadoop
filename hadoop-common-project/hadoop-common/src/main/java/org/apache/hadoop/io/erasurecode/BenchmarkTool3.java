@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,7 @@ import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
 
 import java.nio.ByteBuffer;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -38,18 +39,9 @@ import java.util.concurrent.Future;
 public class BenchmarkTool3 {
   private static final int DATA_BUFFER_SIZE = 126; //MB
 
-  private static RawErasureCoderFactory[] coderMakers =
-      new RawErasureCoderFactory[]{
-          new RSRawErasureCoderFactory(),
-          new RSRawErasureCoderFactory2(),
-          new NativeRSRawErasureCoderFactory()
-      };
+  private static RawErasureCoderFactory[] coderMakers = new RawErasureCoderFactory[]{new RSRawErasureCoderFactory(), new RSRawErasureCoderFactory2(), new NativeRSRawErasureCoderFactory()};
 
-  private static String[] coderNames = new String[]{
-      "hdfs-raid coder",
-      "new Java coder",
-      "isa-l coder",
-  };
+  private static String[] coderNames = new String[]{"hdfs-raid coder", "new Java coder", "isa-l coder",};
 
   private static void printAvailableCoders() {
     StringBuilder sb = new StringBuilder("Available coders with coderIndex:\n");
@@ -66,8 +58,7 @@ public class BenchmarkTool3 {
     if (message != null) {
       System.out.println(message);
     }
-    System.out.println("BenchmarkTool <encode/decode> <coderIndex> [numClients]" +
-        "[dataSize-in-MB] [chunkSize-in-KB]");
+    System.out.println("BenchmarkTool <encode/decode> <coderIndex> [numClients]" + "[dataSize-in-MB] [chunkSize-in-KB]");
     printAvailableCoders();
     System.exit(1);
   }
@@ -131,7 +122,7 @@ public class BenchmarkTool3 {
 
     List<CoderBenchCallable> callables = new ArrayList<>(numClients);
     for (int i = 0; i < numClients; i++) {
-      callables.add(new CoderBenchCallable(type, coderIndex, testData));
+      callables.add(new CoderBenchCallable(type, coderIndex, testData.duplicate()));
     }
     ExecutorService executor = Executors.newFixedThreadPool(numClients);
     List<Future<Long>> futures = new ArrayList<>(numClients);
@@ -145,9 +136,10 @@ public class BenchmarkTool3 {
       }
       long duration = System.currentTimeMillis() - start;
       long totalDataSize = dataSize * numClients;
-      System.out.println(type.toUpperCase() + totalDataSize + "MB data, with chunk size " + chunkSize / 1024 + "MB");
-      System.out.println("Total time: " + duration / 1000.0 + "s.");
-      System.out.println("Total throughput: " + totalDataSize / duration * 1000.0 + "MB/s");
+      DecimalFormat df = new DecimalFormat("#.##");
+      System.out.println(coderNames[coderIndex] + " " + type + " " + totalDataSize + "MB data, with chunk size " + chunkSize / 1024 + "MB");
+      System.out.println("Total time: " + df.format(duration / 1000.0) + " s.");
+      System.out.println("Total throughput: " + df.format(totalDataSize * 1.0 / duration * 1000.0) + " MB/s");
     } catch (Exception e) {
       System.out.println("Error waiting for client to finish." + e.getMessage());
     } finally {
@@ -164,9 +156,9 @@ public class BenchmarkTool3 {
     int bufferSize = DATA_BUFFER_SIZE * 1024 * 1024;
     byte tmp[] = new byte[bufferSize];
     random.nextBytes(tmp);
-    ByteBuffer data = needDirectBuffer(coderIndex) ?
-        ByteBuffer.allocateDirect(bufferSize) : ByteBuffer.allocate(bufferSize);
+    ByteBuffer data = needDirectBuffer(coderIndex) ? ByteBuffer.allocateDirect(bufferSize) : ByteBuffer.allocate(bufferSize);
     data.put(tmp);
+    data.flip();
     return data;
   }
 
@@ -192,8 +184,7 @@ public class BenchmarkTool3 {
 
     BenchData(boolean useDirectBuffer) {
       for (int i = 0; i < outputs.length; i++) {
-        outputs[i] = useDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) :
-            ByteBuffer.allocate(chunkSize);
+        outputs[i] = useDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
       }
     }
 
@@ -225,12 +216,13 @@ public class BenchmarkTool3 {
         decoder = coderMakers[coderIndex].createDecoder(BenchData.numDataUnits, BenchData.numParityUnits);
       }
       benchData = new BenchData(needDirectBuffer(coderIndex));
-      this.testData = testData.duplicate();
+      this.testData = testData;
     }
 
     @Override
     public Long call() throws Exception {
       int times = (int) (BenchData.dataSize / DATA_BUFFER_SIZE);
+
 
       long start = System.currentTimeMillis();
       for (int i = 0; i < times; i++) {
@@ -242,7 +234,8 @@ public class BenchmarkTool3 {
           for (int j = 0; j < benchData.inputs.length; j++) {
             benchData.inputs[j] = testData.duplicate();
             benchData.inputs[j].limit(testData.position() + BenchData.chunkSize);
-            testData.position(testData.position() + BenchData.chunkSize);
+            benchData.inputs[j] = benchData.inputs[j].slice();
+            testData.position(tes2tData.position() + BenchData.chunkSize);
           }
 
           if (!isEncode) {
