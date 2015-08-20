@@ -235,7 +235,7 @@ public class BenchmarkTool3 {
             benchData.inputs[j] = testData.duplicate();
             benchData.inputs[j].limit(testData.position() + BenchData.chunkSize);
             benchData.inputs[j] = benchData.inputs[j].slice();
-            testData.position(tes2tData.position() + BenchData.chunkSize);
+            testData.position(testData.position() + BenchData.chunkSize);
           }
 
           if (!isEncode) {
