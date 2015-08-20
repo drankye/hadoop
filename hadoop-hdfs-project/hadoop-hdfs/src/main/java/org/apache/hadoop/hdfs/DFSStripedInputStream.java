@@ -413,7 +413,9 @@ public class DFSStripedInputStream extends DFSInputStream {
           if (!curStripeRange.include(getOffsetInBlockGroup())) {
             readOneStripe(corruptedBlockMap);
           }
+          long start = System.currentTimeMillis();
           int ret = copyToTargetBuf(strategy, realLen - result);
+          StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
           result += ret;
           pos += ret;
         }

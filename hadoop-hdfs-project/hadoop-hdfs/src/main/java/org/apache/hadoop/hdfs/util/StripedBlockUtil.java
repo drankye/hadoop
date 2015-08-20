@@ -73,6 +73,9 @@ import java.util.concurrent.TimeUnit;
 public class StripedBlockUtil {
 
   private static DirectBufferPool bufferPool = new DirectBufferPool();
+  private static ByteBuffer[] decodeInputs;
+
+  public static long dataCopyTime = 10;
 
   /**
    * This method parses a striped block group into individual blocks.
@@ -265,9 +268,12 @@ public class StripedBlockUtil {
   public static ByteBuffer[] initDecodeInputs(AlignedStripe alignedStripe,
       int dataBlkNum, int parityBlkNum) {
     // read the full data aligned stripe
-    ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
+    if (decodeInputs == null) {
+      decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
+    }
+
     for (int i = 0; i < decodeInputs.length; i++) {
-      decodeInputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
+      decodeInputs[i] = bufferPool.getBuffer((int) alignedStripe.getSpanInBlock());
     }
 
     for (int i = 0; i < dataBlkNum; i++) {
@@ -292,7 +298,9 @@ public class StripedBlockUtil {
       final StripingChunk chunk = alignedStripe.chunks[i];
       if (chunk != null && chunk.state == StripingChunk.FETCHED) {
         if (chunk.useChunkBuffer()) {
+          long start = System.currentTimeMillis();
           chunk.getChunkBuffer().copyTo(decodeInputs[i]);
+          StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
         }
       } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
         //ZERO it?
@@ -321,7 +329,7 @@ public class StripedBlockUtil {
 
     ByteBuffer[] decodeOutputs = new ByteBuffer[decodeIndices.length];
     for (int i = 0; i < decodeOutputs.length; i++) {
-      decodeOutputs[i] = ByteBuffer.allocate((int) alignedStripe.getSpanInBlock());
+      decodeOutputs[i] = bufferPool.getBuffer((int) alignedStripe.getSpanInBlock());
     }
 
     // Step 2: decode into prepared output buffers
@@ -332,7 +340,21 @@ public class StripedBlockUtil {
       int missingBlkIdx = decodeIndices[i];
       StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
       if (chunk.state == StripingChunk.MISSING && chunk.useChunkBuffer()) {
+        long start = System.currentTimeMillis();
         chunk.getChunkBuffer().copyFrom(decodeOutputs[i]);
+        StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
+      }
+    }
+
+    for (ByteBuffer buffer : decodeInputs) {
+      if (buffer != null) {
+        bufferPool.returnBuffer(buffer);
+      }
+    }
+
+    for (ByteBuffer buffer : decodeOutputs) {
+      if (buffer != null) {
+        bufferPool.returnBuffer(buffer);
       }
     }
   }

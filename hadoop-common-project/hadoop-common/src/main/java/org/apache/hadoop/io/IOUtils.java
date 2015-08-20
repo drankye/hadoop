@@ -19,6 +19,8 @@
 package org.apache.hadoop.io;
 
 import java.io.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -38,6 +40,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.util.ChunkedArrayList;
 
 /**
@@ -101,24 +104,60 @@ public class IOUtils {
     }
   }
 
-  public static void copyAndDiscard(InputStream in, Configuration conf)
-      throws IOException {
+  public static void copyAndDiscard(InputStream in, Configuration conf) throws Exception {
+    boolean positionalRead = conf.getBoolean("ec.perf.test.read.positional", true);
+
+    FSDataInputStream fis = (FSDataInputStream) in;
+    InputStream wrappedStream = fis.getWrappedStream();
+
+    java.lang.reflect.Method preadMethod = null;
+    if (positionalRead) {
+      try {
+        preadMethod = wrappedStream.getClass().getMethod("read",
+            long.class, byte[].class, int.class, int.class);
+      } catch (SecurityException e) {
+        // ...
+      }
+    }
 
     long times = 96;
     int buffSize = 128 * 1024 * 1024; // 128MB
     byte buf[] = new byte[buffSize];
     long read = 0;
-    try {
-      while(read < times * buffSize) {
-        read += in.read(buf);
+
+    if (!positionalRead || preadMethod == null) { // Stateful read
+      System.out.println("We're going to do stateful read:positionalRead=" +
+          positionalRead + " preadMethod=" + preadMethod);
+      try {
+        while (read < times * buffSize) {
+          read += in.read(buf);
+        }
+      } finally {
+        closeStream(in);
       }
-    } finally {
-      closeStream(in);
+    } else { // Positional read
+      System.out.println("We're going to do positional read");
+      try {
+        while (read < times * buffSize) {
+          read += (int) preadMethod.invoke(wrappedStream, read, buf, 0, buf.length);
+        }
+      } finally {
+        closeStream(in);
+      }
+    }
+
+    long dataCopyTime = 0;
+    try {
+      Class cls = Class.forName("org.apache.hadoop.hdfs.util.StripedBlockUtil");
+      Field fld = cls.getField("dataCopyTime");
+      dataCopyTime = fld.getLong(null);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
 
     System.out.println("Using " + conf.get(CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY));
     if (read == times * buffSize) {
-      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk)");
+      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk), dataCopyTime = " + dataCopyTime);
     } else {
       System.out.println("Failed reading from HDFS and throwing away 12GB data (no local disk)");
     }
