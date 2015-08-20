@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MMAX 30
-#define KMAX 20
+#define MMAX 14
+#define KMAX 10
 
 typedef struct _CoderState {
   int verbose;

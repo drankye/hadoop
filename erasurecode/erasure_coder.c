@@ -70,6 +70,11 @@ int encode(EncoderState* pCoderState, unsigned char** dataUnits,
     unsigned char** parityUnits, int chunkSize) {
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
   int numParityUnits = ((CoderState*)pCoderState)->numParityUnits;
+  int i;
+
+  for (i = 0; i < numParityUnits; i++) {
+    memset(parityUnits[i], 0, chunkSize);
+  }
 
   h_ec_encode_data(chunkSize, numDataUnits, numParityUnits,
                          pCoderState->gftbls, dataUnits, parityUnits);
@@ -153,8 +158,13 @@ int decode(DecoderState* pCoderState, unsigned char** inputs,
                   int* erasedIndexes, int numErased,
                    unsigned char** outputs, int chunkSize) {
   int numDataUnits = ((CoderState*)pCoderState)->numDataUnits;
+  int i;
 
   processErasures(pCoderState, inputs, erasedIndexes, numErased);
+
+  for (i = 0; i < numErased; i++) {
+    memset(outputs[i], 0, chunkSize);
+  }
 
   h_ec_encode_data(chunkSize, numDataUnits, pCoderState->numErased,
       pCoderState->gftbls, pCoderState->realInputs, outputs);
