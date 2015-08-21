@@ -32,7 +32,7 @@
 #include <string.h>
 
 static void usage(char* errorMsg) {
-  fprintf(stderr, "usage: sample <numDataUnits> <numParityUnits>\n");
+  fprintf(stderr, "usage: sample [numDataUnits] [numParityUnits]\n");
   fprintf(stderr, "A Reed-Solomon coding sample.\n");
   if (errorMsg != NULL) fprintf(stderr, "\n%s\n\n", errorMsg);
   exit(1);
@@ -64,14 +64,14 @@ int main(int argc, char *argv[]) {
       "Will run this sample using %s\n", get_library_name());  
   }
 
-  if (argc != 3) usage(NULL);
-  if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
-    usage("Invalid numDataUnits");
+  if (argc == 3) {
+    if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
+      usage("Invalid numDataUnits");
+    }
+    if (sscanf(argv[2], "%d", &numParityUnits) == 0 || numParityUnits <= 0) {
+      usage("Invalid numParityUnits");
+    }
   }
-  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || numParityUnits <= 0) {
-    usage("Invalid numParityUnits");
-  }
-
   dataUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numDataUnits);
   parityUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
   backupUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
