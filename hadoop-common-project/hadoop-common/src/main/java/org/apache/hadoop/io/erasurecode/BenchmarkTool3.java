@@ -18,12 +18,7 @@
 
 package org.apache.hadoop.io.erasurecode;
 
-import org.apache.hadoop.io.erasurecode.rawcoder.NativeRSRawErasureCoderFactory;
-import org.apache.hadoop.io.erasurecode.rawcoder.RSRawErasureCoderFactory;
-import org.apache.hadoop.io.erasurecode.rawcoder.RSRawErasureCoderFactory2;
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureCoderFactory;
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
-import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureEncoder;
+import org.apache.hadoop.io.erasurecode.rawcoder.*;
 
 import java.nio.ByteBuffer;
 import java.text.DecimalFormat;
@@ -116,14 +111,35 @@ public class BenchmarkTool3 {
     performBench(type, coderIndex, numClients, dataSize, chunkSize);
   }
 
-  public static void performBench(String type, int coderIndex, int numClients, int dataSize, int chunkSize) {
+  public static void performBench(String type, int coderIndex, int numClients,
+                                  int dataSize, int chunkSize) {
     BenchData.configure(dataSize, chunkSize);
     ByteBuffer testData = genTestData(coderIndex);
 
+    RawErasureCoder coder;
+    boolean isEncode = type.equalsIgnoreCase("encode");
+    if (isEncode) {
+      RawErasureEncoder encoder = coderMakers[coderIndex].createEncoder(
+          BenchData.numDataUnits, BenchData.numParityUnits);
+      encoder.encode(new byte[BenchData.numDataUnits][1],
+          new byte[BenchData.numParityUnits][1]);
+      coder = encoder;
+
+    } else {
+      RawErasureDecoder decoder = coderMakers[coderIndex].createDecoder(
+          BenchData.numDataUnits, BenchData.numParityUnits);
+      byte[][] inputs = new byte[BenchData.numDataUnits + BenchData.numParityUnits][1];
+      inputs[6] = inputs[7] = inputs[8] = null;
+      int[] erasedIndexes = new int[] {6, 7, 8};
+      decoder.decode(inputs, erasedIndexes, new byte[3][1]);
+      coder = decoder;
+    }
+
     List<CoderBenchCallable> callables = new ArrayList<>(numClients);
     for (int i = 0; i < numClients; i++) {
-      callables.add(new CoderBenchCallable(type, coderIndex, testData.duplicate()));
+      callables.add(new CoderBenchCallable(coder, testData.duplicate()));
     }
+
     ExecutorService executor = Executors.newFixedThreadPool(numClients);
     List<Future<Long>> futures = new ArrayList<>(numClients);
     long start = System.currentTimeMillis();
@@ -142,6 +158,7 @@ public class BenchmarkTool3 {
       System.out.println("Total throughput: " + df.format(totalDataSize * 1.0 / duration * 1000.0) + " MB/s");
     } catch (Exception e) {
       System.out.println("Error waiting for client to finish." + e.getMessage());
+      e.printStackTrace();
     } finally {
       executor.shutdown();
     }
@@ -156,7 +173,8 @@ public class BenchmarkTool3 {
     int bufferSize = DATA_BUFFER_SIZE * 1024 * 1024;
     byte tmp[] = new byte[bufferSize];
     random.nextBytes(tmp);
-    ByteBuffer data = needDirectBuffer(coderIndex) ? ByteBuffer.allocateDirect(bufferSize) : ByteBuffer.allocate(bufferSize);
+    ByteBuffer data = needDirectBuffer(coderIndex) ? ByteBuffer.allocateDirect(bufferSize) :
+        ByteBuffer.allocate(bufferSize);
     data.put(tmp);
     data.flip();
     return data;
@@ -184,7 +202,8 @@ public class BenchmarkTool3 {
 
     BenchData(boolean useDirectBuffer) {
       for (int i = 0; i < outputs.length; i++) {
-        outputs[i] = useDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
+        outputs[i] = useDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) :
+            ByteBuffer.allocate(chunkSize);
       }
     }
 
@@ -208,14 +227,15 @@ public class BenchmarkTool3 {
     private final BenchData benchData;
     private final ByteBuffer testData;
 
-    public CoderBenchCallable(String opType, int coderIndex, ByteBuffer testData) {
-      this.isEncode = opType.equalsIgnoreCase("encode");
+    public CoderBenchCallable(RawErasureCoder coder, ByteBuffer testData) {
+      this.isEncode = (coder instanceof RawErasureEncoder);
       if (isEncode) {
-        encoder = coderMakers[coderIndex].createEncoder(BenchData.numDataUnits, BenchData.numParityUnits);
+        encoder = (RawErasureEncoder) coder;
       } else {
-        decoder = coderMakers[coderIndex].createDecoder(BenchData.numDataUnits, BenchData.numParityUnits);
+        decoder = (RawErasureDecoder) coder;
       }
-      benchData = new BenchData(needDirectBuffer(coderIndex));
+      boolean needDirectBuffer = (boolean) coder.getCoderOption(CoderOption.PREFER_DIRECT_BUFFER);
+      benchData = new BenchData(needDirectBuffer);
       this.testData = testData;
     }
 
@@ -242,10 +262,15 @@ public class BenchmarkTool3 {
             benchData.prepareDecInput();
           }
 
-          if (isEncode) {
-            benchData.encode(encoder);
-          } else {
-            benchData.decode(decoder);
+          try {
+            if (isEncode) {
+              benchData.encode(encoder);
+            } else {
+              benchData.decode(decoder);
+            }
+          } catch (Exception e) {
+            //e.printStackTrace();
+            throw e;
           }
         }
         testData.clear();

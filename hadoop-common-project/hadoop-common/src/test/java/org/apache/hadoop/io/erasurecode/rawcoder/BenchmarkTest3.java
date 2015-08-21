@@ -25,11 +25,11 @@ public class BenchmarkTest3 {
 
   @Test
   public void benchmarkTest() throws Exception {
-    BenchmarkTool3.performBench("encode", 0, 2, 1024, 1024);
+    //BenchmarkTool3.performBench("encode", 0, 2, 1024, 1024);
     BenchmarkTool3.performBench("encode", 1, 2, 1024, 1024);
-    BenchmarkTool3.performBench("encode", 2, 2, 1024, 1024);
-    BenchmarkTool3.performBench("decode", 0, 2, 1024, 1024);
+    BenchmarkTool3.performBench("encode", 2, 20, 1024, 1024);
+    //BenchmarkTool3.performBench("decode", 0, 2, 1024, 1024);
     BenchmarkTool3.performBench("decode", 1, 2, 1024, 1024);
-    BenchmarkTool3.performBench("decode", 2, 2, 1024, 1024);
+    BenchmarkTool3.performBench("decode", 2, 20, 1024, 1024);
   }
 }
