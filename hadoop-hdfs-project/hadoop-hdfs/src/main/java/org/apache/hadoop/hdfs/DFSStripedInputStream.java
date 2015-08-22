@@ -393,44 +393,46 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
     Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
         new ConcurrentHashMap<>();
-    if (pos < getFileLength()) {
-      try {
-        if (pos > blockEnd) {
-          blockSeekTo(pos);
-        }
-        int realLen = (int) Math.min(strategy.getTargetLength(),
-            (blockEnd - pos + 1L));
-        synchronized (infoLock) {
-          if (locatedBlocks.isLastBlockComplete()) {
-            realLen = (int) Math.min(realLen,
-                locatedBlocks.getFileLength() - pos);
-          }
-        }
 
-        /** Number of bytes already read into buffer */
-        int result = 0;
-        while (result < realLen) {
-          if (!curStripeRange.include(getOffsetInBlockGroup())) {
-            readOneStripe(corruptedBlockMap);
-          }
-          long start = System.currentTimeMillis();
-          int ret = copyToTargetBuf(strategy, realLen - result);
-          StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
-          result += ret;
-          pos += ret;
-        }
-        if (dfsClient.stats != null) {
-          dfsClient.stats.incrementBytesRead(result);
-        }
-        return result;
-      } finally {
-        // Check if need to report block replicas corruption either read
-        // was successful or ChecksumException occured.
-        reportCheckSumFailure(corruptedBlockMap,
-            currentLocatedBlock.getLocations().length);
-      }
+    if (pos < getFileLength()) {
+      return -1;
     }
-    return -1;
+
+    try {
+      if (pos > blockEnd) {
+        blockSeekTo(pos);
+      }
+      int realLen = (int) Math.min(strategy.getTargetLength(),
+          (blockEnd - pos + 1L));
+      synchronized (infoLock) {
+        if (locatedBlocks.isLastBlockComplete()) {
+          realLen = (int) Math.min(realLen,
+              locatedBlocks.getFileLength() - pos);
+        }
+      }
+
+      /** Number of bytes already read into buffer */
+      int result = 0;
+      while (result < realLen) {
+        if (!curStripeRange.include(getOffsetInBlockGroup())) {
+          readOneStripe(corruptedBlockMap);
+        }
+        long start = System.currentTimeMillis();
+        int ret = copyToTargetBuf(strategy, realLen - result);
+        StripedBlockUtil.dataCopyTime += System.currentTimeMillis() - start;
+        result += ret;
+        pos += ret;
+      }
+      if (dfsClient.stats != null) {
+        dfsClient.stats.incrementBytesRead(result);
+      }
+      return result;
+    } finally {
+      // Check if need to report block replicas corruption either read
+      // was successful or ChecksumException occured.
+      reportCheckSumFailure(corruptedBlockMap,
+          currentLocatedBlock.getLocations().length);
+    }
   }
 
   /**
