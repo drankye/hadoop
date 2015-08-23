@@ -394,7 +394,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
         new ConcurrentHashMap<>();
 
-    if (pos < getFileLength()) {
+    if (pos >= getFileLength()) {
       return -1;
     }
 
