@@ -146,18 +146,9 @@ public class IOUtils {
       }
     }
 
-    long dataCopyTime = 0;
-    try {
-      Class cls = Class.forName("org.apache.hadoop.hdfs.util.StripedBlockUtil");
-      Field fld = cls.getField("dataCopyTime");
-      dataCopyTime = fld.getLong(null);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
     System.out.println("Using " + conf.get(CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY));
     if (read == times * buffSize) {
-      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk), dataCopyTime = " + dataCopyTime);
+      System.out.println("Reading from HDFS and throwing away 12GB data (no local disk)");
     } else {
       System.out.println("Failed reading from HDFS and throwing away 12GB data (no local disk)");
     }
