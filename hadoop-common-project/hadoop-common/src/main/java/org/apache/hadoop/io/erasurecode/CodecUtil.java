@@ -41,7 +41,7 @@ public final class CodecUtil {
         CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY,
         true, numDataUnits, numParityUnits);
     if (rawCoder == null) {
-      rawCoder = new NativeRSRawEncoder(numDataUnits, numParityUnits);
+      rawCoder = new RSRawEncoder2(numDataUnits, numParityUnits);
     }
 
     return (RawErasureEncoder) rawCoder;
@@ -60,7 +60,7 @@ public final class CodecUtil {
         CommonConfigurationKeys.IO_ERASURECODE_CODEC_RS_RAWCODER_KEY,
         false, numDataUnits, numParityUnits);
     if (rawCoder == null) {
-      rawCoder = new NativeRSRawDecoder(numDataUnits, numParityUnits);
+      rawCoder = new RSRawDecoder2(numDataUnits, numParityUnits);
     }
 
     return (RawErasureDecoder) rawCoder;
@@ -140,5 +140,9 @@ public final class CodecUtil {
 
     return isEncoder ? fact.createEncoder(numDataUnits, numParityUnits) :
             fact.createDecoder(numDataUnits, numParityUnits);
+  }
+
+  public static boolean preferDirectBuffer(RawErasureCoder coder) {
+    return (boolean) coder.getCoderOption(CoderOption.PREFER_DIRECT_BUFFER);
   }
 }
