@@ -724,11 +724,12 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
    * strategy-agnostic.
    */
   interface ReaderStrategy {
-    public int read(BlockReader blockReader) throws IOException;
-    public int read(BlockReader blockReader, int length) throws IOException;
-    public int read(ByteBuffer src);
-    public int read(ByteBuffer src, int length);
-    public int getTargetLength();
+    int read(BlockReader blockReader) throws IOException;
+    int read(BlockReader blockReader, int length) throws IOException;
+    int read(ByteBuffer src);
+    int read(ByteBuffer src, int length);
+    ByteBuffer getReadBuffer();
+    int getTargetLength();
   }
 
   protected void updateReadStatistics(ReadStatistics readStatistics,
@@ -757,6 +758,11 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.buf = buf;
       this.offset = offset;
       this.targetLength = targetLength;
+    }
+
+    @Override
+    public ByteBuffer getReadBuffer() {
+      return ByteBuffer.wrap(buf, offset, targetLength);
     }
 
     @Override
@@ -807,6 +813,7 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
       this.targetLength = readBuffer.remaining();
     }
 
+    @Override
     public ByteBuffer getReadBuffer() {
       return readBuffer;
     }

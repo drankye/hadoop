@@ -249,8 +249,8 @@ public class DFSStripedInputStream extends DFSInputStream {
    * Read a new stripe covering the current position, and store the data in the
    * {@link #curStripeBuf}.
    */
-  private void readOneStripe(
-      Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
+  private void readStripesOld(ByteBuffer buffer,
+                           Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
       throws IOException {
     resetCurStripeBuffer();
 
@@ -280,6 +280,20 @@ public class DFSStripedInputStream extends DFSInputStream {
     curStripeBuf.position(stripeBufOffset);
     curStripeBuf.limit(stripeLimit);
     curStripeRange = stripeRange;
+  }
+
+  /**
+   * Read a new stripe covering the current position, and store the data in the
+   * {@link #curStripeBuf}.
+   */
+  private void readStripes(ByteBuffer buffer,
+                   Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
+                                                          throws IOException {
+    // compute stripe range based on pos
+    final long targetStart = getOffsetInBlockGroup();
+    final long bytesToRead = buffer.remaining();
+    fetchBlockByteRange(currentLocatedBlock, targetStart,
+        targetStart + bytesToRead - 1, buffer, corruptedBlockMap);
   }
 
   private Callable<Void> readCells(final BlockReader reader,
@@ -391,12 +405,13 @@ public class DFSStripedInputStream extends DFSInputStream {
     if (closed.get()) {
       throw new IOException("Stream closed");
     }
-    Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
-        new ConcurrentHashMap<>();
 
     if (pos >= getFileLength()) {
       return -1;
     }
+
+    Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
+        new ConcurrentHashMap<>();
 
     try {
       if (pos > blockEnd) {
@@ -413,15 +428,14 @@ public class DFSStripedInputStream extends DFSInputStream {
 
       /** Number of bytes already read into buffer */
       int result = 0;
-      while (result < realLen) {
-        if (!curStripeRange.include(getOffsetInBlockGroup())) {
-          readOneStripe(corruptedBlockMap);
-        }
+      ByteBuffer targetBuffer = strategy.getReadBuffer();
+      ByteBuffer tmpBuffer = targetBuffer.duplicate();
+      tmpBuffer.limit(tmpBuffer.position() + realLen);
+      readStripes(tmpBuffer.slice(), corruptedBlockMap);
+      result = realLen;
+      targetBuffer.position(targetBuffer.position() + realLen);
+      pos += realLen;
 
-        int ret = copyToTargetBuf(strategy, realLen - result);
-        result += ret;
-        pos += ret;
-      }
       if (dfsClient.stats != null) {
         dfsClient.stats.incrementBytesRead(result);
       }
