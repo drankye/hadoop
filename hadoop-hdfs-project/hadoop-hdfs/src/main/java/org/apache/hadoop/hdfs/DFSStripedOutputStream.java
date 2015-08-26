@@ -36,6 +36,8 @@ import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.io.ByteBufferPool;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
@@ -57,7 +59,7 @@ import com.google.common.base.Preconditions;
 @InterfaceAudience.Private
 public class DFSStripedOutputStream extends DFSOutputStream {
 
-  private static final DirectBufferPool bufferPool = new DirectBufferPool();
+  private static final ByteBufferPool bufferPool = new ElasticByteBufferPool();
 
   static class MultipleBlockingQueue<T> {
     private final List<BlockingQueue<T>> queues;
@@ -212,7 +214,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
       buffers = new ByteBuffer[numAllBlocks];
       for (int i = 0; i < buffers.length; i++) {
-        buffers[i] = bufferPool.getBuffer(cellSize);
+        buffers[i] = bufferPool.getBuffer(useDirectBuffer(), cellSize);
       }
     }
 
@@ -240,7 +242,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
     private void release() {
       for (int i = 0; i < numAllBlocks; i++) {
-        bufferPool.returnBuffer(buffers[i]);
+        bufferPool.putBuffer(buffers[i]);
       }
     }
 
@@ -265,6 +267,10 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   @Override
   ExtendedBlock getBlock() {
     return coordinator.getBlockGroup();
+  }
+
+  private boolean useDirectBuffer() {
+    return CodecUtil.preferDirectBuffer(encoder);
   }
 
   /** Construct a new output stream for creating a file. */
@@ -554,10 +560,11 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     if (!current.isFailed()) {
       try {
         DataChecksum sum = getDataChecksum();
-        ByteBuffer newChecksumBuf = bufferPool.getBuffer(checksumBuf.length);
+        ByteBuffer newChecksumBuf = bufferPool.getBuffer(useDirectBuffer(),
+            checksumBuf.length);
         sum.calculateChunkedSums(buffer, newChecksumBuf);
         newChecksumBuf.get(checksumBuf);
-        bufferPool.returnBuffer(newChecksumBuf);
+        bufferPool.putBuffer(newChecksumBuf);
         for (int i = 0; i < len; i += sum.getBytesPerChecksum()) {
           int chunkLen = Math.min(sum.getBytesPerChecksum(), len - i);
           int ckOffset = i / sum.getBytesPerChecksum() * getChecksumSize();

@@ -102,8 +102,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
   }
 
-  private static final ByteBufferPool bufferPool =
-      new ElasticByteBufferPool();
+  private static final ByteBufferPool bufferPool = new ElasticByteBufferPool();
 
   private final BlockReaderInfo[] blockReaders;
   private final int cellSize;
