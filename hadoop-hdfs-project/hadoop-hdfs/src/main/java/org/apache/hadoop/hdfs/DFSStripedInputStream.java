@@ -660,7 +660,6 @@ public class DFSStripedInputStream extends DFSInputStream {
 
     void prepareDecodeInputs() {
       if (codingBuffer == null) {
-        codingBuffer = ByteBuffer.allocate(100);
         initDecodeInputs(alignedStripe);
       }
     }
@@ -706,13 +705,19 @@ public class DFSStripedInputStream extends DFSInputStream {
      * destination.
      */
     void initDecodeInputs(AlignedStripe alignedStripe) {
-      // read the full data aligned stripe
       int bufLen = (int) alignedStripe.getSpanInBlock();
+      int bufCount = decodeInputs.length + decodeOutputs.length;
+      codingBuffer = bufferPool.getBuffer(useDirectBuffer(), bufLen * bufCount);
+
       ByteBuffer buffer;
-      for (int i = 0; i < decodeInputs.length; i++) {
-        buffer = bufferPool.getBuffer(useDirectBuffer(), bufLen);
-        buffer.clear();
-        decodeInputs[i] = new ECChunk(buffer, 0, bufLen);
+      int idx = 0;
+      for (int i = 0; i < decodeInputs.length; i++, idx++) {
+        buffer = codingBuffer.duplicate();
+        decodeInputs[i] = new ECChunk(buffer, idx * bufLen, bufLen);
+      }
+      for (int i = 0; i < decodeOutputs.length; i++, idx++) {
+        buffer = codingBuffer.duplicate();
+        decodeOutputs[i] = new ECChunk(buffer, idx * bufLen, bufLen);
       }
 
       for (int i = 0; i < dataBlkNum; i++) {
@@ -731,17 +736,12 @@ public class DFSStripedInputStream extends DFSInputStream {
       int pos = 0;
       for (int i = 0; i < dataBlkNum; i++) {
         if (alignedStripe.chunks[i] != null &&
-            alignedStripe.chunks[i].state == StripingChunk.MISSING){
+            alignedStripe.chunks[i].state == StripingChunk.MISSING) {
           decodeIndices[pos++] = i;
         }
       }
-      int[] erasedIndexes = Arrays.copyOf(decodeIndices, pos);
 
-      int bufLen = (int) alignedStripe.getSpanInBlock();
-      for (int i = 0; i < erasedIndexes.length; i++) {
-        ByteBuffer buffer = bufferPool.getBuffer(useDirectBuffer(), bufLen);
-        decodeOutputs[i] = new ECChunk(buffer, 0, bufLen);
-      }
+      int[] erasedIndexes = Arrays.copyOf(decodeIndices, pos);
       ECChunk[] outputs = Arrays.copyOf(decodeOutputs, pos);
 
       // Step 2: decode into prepared output buffers
@@ -766,12 +766,13 @@ public class DFSStripedInputStream extends DFSInputStream {
         decodeOutputs[i] = null;
       }
 
-      codingBuffer = null;
+      if (codingBuffer != null) {
+        bufferPool.putBuffer(codingBuffer);
+        codingBuffer = null;
+      }
     }
 
     void release() {
-      reset();
-
       for (BlockReaderInfo preaderInfo : readerInfos) {
         closeReader(preaderInfo);
       }
