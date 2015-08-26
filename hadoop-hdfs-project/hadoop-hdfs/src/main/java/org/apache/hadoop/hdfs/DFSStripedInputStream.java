@@ -65,24 +65,6 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
   }
 
-  /** Used to indicate the buffered data's range in the block group */
-  private static class StripeRange {
-    /** start offset in the block group (inclusive) */
-    final long offsetInBlock;
-    /** length of the stripe range */
-    final long length;
-
-    StripeRange(long offsetInBlock, long length) {
-      Preconditions.checkArgument(offsetInBlock >= 0 && length >= 0);
-      this.offsetInBlock = offsetInBlock;
-      this.length = length;
-    }
-
-    boolean include(long pos) {
-      return pos >= offsetInBlock && pos < offsetInBlock + length;
-    }
-  }
-
   private static class BlockReaderInfo {
     final BlockReader reader;
     final DatanodeInfo datanode;
@@ -445,7 +427,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     final LocatedBlock[] targetBlocks;
     final Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap;
     final BlockReaderInfo[] readerInfos;
-    final ByteBuffer[] decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
+    private ByteBuffer[] decodeInputs;
 
     StripeReader(CompletionService<Void> service, AlignedStripe alignedStripe,
         LocatedBlock[] targetBlocks, BlockReaderInfo[] readerInfos,
@@ -668,7 +650,9 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
 
     void prepareDecodeInputs() {
-      initDecodeInputs(alignedStripe);
+      if (decodeInputs == null) {
+        initDecodeInputs(alignedStripe);
+      }
     }
 
     boolean prepareParityChunk(int index) {
@@ -715,6 +699,7 @@ public class DFSStripedInputStream extends DFSInputStream {
      * destination.
      */
     private void initDecodeInputs(AlignedStripe alignedStripe) {
+      decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
       // read the full data aligned stripe
       int bufLen = (int) alignedStripe.getSpanInBlock();
       ByteBuffer buffer;

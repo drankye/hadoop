@@ -79,9 +79,9 @@ public class StripedFileTestUtil {
   static void verifyPread(FileSystem fs, Path srcPath,  int fileLength,
       byte[] expected, byte[] buf) throws IOException {
     try (FSDataInputStream in = fs.open(srcPath)) {
-      int[] startOffsets = {0};//, 1, cellSize - 102, cellSize, cellSize + 102,
-          //cellSize * (dataBlocks - 1), cellSize * (dataBlocks - 1) + 102,
-          //cellSize * dataBlocks, fileLength - 102, fileLength - 1};
+      int[] startOffsets = {0, 1, cellSize - 102, cellSize, cellSize + 102,
+          cellSize * (dataBlocks - 1), cellSize * (dataBlocks - 1) + 102,
+          cellSize * dataBlocks, fileLength - 102, fileLength - 1};
       for (int startOffset : startOffsets) {
         startOffset = Math.max(0, Math.min(startOffset, fileLength - 1));
         int remaining = fileLength - startOffset;
