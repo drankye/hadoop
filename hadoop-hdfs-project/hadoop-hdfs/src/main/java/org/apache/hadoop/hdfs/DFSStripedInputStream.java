@@ -28,6 +28,7 @@ import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 
 import java.io.EOFException;
@@ -427,7 +428,9 @@ public class DFSStripedInputStream extends DFSInputStream {
     final LocatedBlock[] targetBlocks;
     final Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap;
     final BlockReaderInfo[] readerInfos;
-    private ByteBuffer[] decodeInputs;
+    //private ByteBuffer codingBuffer;
+    private ECChunk[] decodeInputs;
+    private ECChunk[] decodeOutputs;
 
     StripeReader(CompletionService<Void> service, AlignedStripe alignedStripe,
         LocatedBlock[] targetBlocks, BlockReaderInfo[] readerInfos,
@@ -658,12 +661,12 @@ public class DFSStripedInputStream extends DFSInputStream {
     boolean prepareParityChunk(int index) {
       Preconditions.checkState(index >= dataBlkNum &&
           alignedStripe.chunks[index] == null);
-      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[index]);
+      alignedStripe.chunks[index] = new StripingChunk(decodeInputs[index].getBuffer());
       return true;
     }
 
     void decode() {
-      finalizeDecodeInputs(decodeInputs, alignedStripe);
+      finalizeDecodeInputs(alignedStripe);
       decodeAndFillBuffer(alignedStripe);
     }
 
@@ -674,18 +677,15 @@ public class DFSStripedInputStream extends DFSInputStream {
      * When all pending requests have returned, this method should be called to
      * finalize decode input buffers.
      */
-    void finalizeDecodeInputs(final ByteBuffer[] decodeInputs,
-                                            AlignedStripe alignedStripe) {
+    void finalizeDecodeInputs(AlignedStripe alignedStripe) {
       for (int i = 0; i < alignedStripe.chunks.length; i++) {
         final StripingChunk chunk = alignedStripe.chunks[i];
         if (chunk != null && chunk.state == StripingChunk.FETCHED) {
           if (chunk.useChunkBuffer()) {
-            chunk.getChunkBuffer().copyTo(decodeInputs[i]);
+            chunk.getChunkBuffer().copyTo(decodeInputs[i].getBuffer());
           }
         } else if (chunk != null && chunk.state == StripingChunk.ALLZERO) {
-          for (int k = 0; k < decodeInputs[i].remaining(); k++) {
-            decodeInputs[i].put(k, (byte) 0);
-          }
+            decodeInputs[i].setAllZero(true);
         } else {
           decodeInputs[i] = null;
         }
@@ -699,20 +699,20 @@ public class DFSStripedInputStream extends DFSInputStream {
      * destination.
      */
     private void initDecodeInputs(AlignedStripe alignedStripe) {
-      decodeInputs = new ByteBuffer[dataBlkNum + parityBlkNum];
+      decodeInputs = new ECChunk[dataBlkNum + parityBlkNum];
       // read the full data aligned stripe
       int bufLen = (int) alignedStripe.getSpanInBlock();
       ByteBuffer buffer;
       for (int i = 0; i < decodeInputs.length; i++) {
         buffer = bufferPool.getBuffer(useDirectBuffer(), bufLen);
         buffer.clear();
-        buffer.limit(bufLen);
-        decodeInputs[i] = buffer;
+        decodeInputs[i] = new ECChunk(buffer, 0, bufLen);
       }
 
       for (int i = 0; i < dataBlkNum; i++) {
         if (alignedStripe.chunks[i] == null) {
-          alignedStripe.chunks[i] = new StripingChunk(decodeInputs[i]);
+          alignedStripe.chunks[i] =
+              new StripingChunk(decodeInputs[i].getBuffer());
         }
       }
     }
@@ -732,10 +732,11 @@ public class DFSStripedInputStream extends DFSInputStream {
       }
       decodeIndices = Arrays.copyOf(decodeIndices, pos);
 
-      ByteBuffer[] decodeOutputs = new ByteBuffer[decodeIndices.length];
+      ECChunk[] decodeOutputs = new ECChunk[decodeIndices.length];
+      int bufLen = (int) alignedStripe.getSpanInBlock();
       for (int i = 0; i < decodeOutputs.length; i++) {
-        decodeOutputs[i] = bufferPool.getBuffer(useDirectBuffer(),
-            (int) alignedStripe.getSpanInBlock());
+        ByteBuffer buffer = bufferPool.getBuffer(useDirectBuffer(), bufLen);
+        decodeOutputs[i] = new ECChunk(buffer, 0, bufLen);
       }
 
       // Step 2: decode into prepared output buffers
@@ -746,7 +747,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         int missingBlkIdx = decodeIndices[i];
         StripingChunk chunk = alignedStripe.chunks[missingBlkIdx];
         if (chunk.state == StripingChunk.MISSING && chunk.useChunkBuffer()) {
-          chunk.getChunkBuffer().copyFrom(decodeOutputs[i]);
+          chunk.getChunkBuffer().copyFrom(decodeOutputs[i].getBuffer());
         }
       }
 
@@ -757,7 +758,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         }
       }
 
-      for (ByteBuffer buffer : decodeOutputs) {
+      for (ECChunk buffer : decodeOutputs) {
         if (buffer != null) {
           //bufferPool.putBuffer(buffer);
         }
