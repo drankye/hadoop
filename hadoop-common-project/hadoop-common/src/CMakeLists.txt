@@ -169,6 +169,7 @@ include_directories(
     ${ZLIB_INCLUDE_DIRS}
     ${BZIP2_INCLUDE_DIR}
     ${SNAPPY_INCLUDE_DIR}
+    ${D}/io/erasurecode/include
     ${OPENSSL_INCLUDE_DIR}
     ${SRC}/util
 )
