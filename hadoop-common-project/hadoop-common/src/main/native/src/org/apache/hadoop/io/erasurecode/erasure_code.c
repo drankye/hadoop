@@ -198,6 +198,14 @@ void load_erasurecode_lib(char* err, size_t err_len) {
   }
 }
 
+int build_support_erasurecode() {
+#ifdef HADOOP_ISAL_LIBRARY
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 const char* get_library_name() {
 #ifdef UNIX
   Dl_info dl_info;

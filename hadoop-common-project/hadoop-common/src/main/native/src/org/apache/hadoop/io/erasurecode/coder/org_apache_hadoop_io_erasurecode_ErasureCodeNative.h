@@ -23,14 +23,6 @@ JNIEXPORT void JNICALL Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_l
 JNIEXPORT jstring JNICALL Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_getLibraryName
   (JNIEnv *, jclass);
 
-/*
- * Class:     org_apache_hadoop_io_erasurecode_ErasureCodeNative
- * Method:    verifyTest
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_verifyTest
-  (JNIEnv *, jclass);
-
 #ifdef __cplusplus
 }
 #endif

@@ -38,6 +38,11 @@
  */
 
 /**
+ * Return 0 if not support, 1 otherwise.
+ */
+int build_support_erasurecode();
+
+/**
  * Get the library name possibly of full path.
  */
 const char* get_library_name();
