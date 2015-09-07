@@ -21,11 +21,13 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
- * A raw erasure decoder in RS code scheme in pure Java in case native one
+ * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This one originated from HDFS-RAID in its core algorithm. Note
+ * it's not compatible with the native/ISA-L coder.
  *
  * Currently this implementation will compute and decode not to read units
  * unnecessarily due to the underlying implementation limit in GF. This will be
@@ -35,28 +37,6 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
   // To describe and calculate the needed Vandermonde matrix
   private int[] errSignature;
   private int[] primitivePower;
-
-  /**
-   * We need a set of reusable buffers either for the bytes array
-   * decoding version or direct buffer decoding version. Normally not both.
-   *
-   * For output, in addition to the valid buffers from the caller
-   * passed from above, we need to provide extra buffers for the internal
-   * decoding implementation. For output, the caller should provide no more
-   * than numParityUnits but at least one buffers. And the left buffers will be
-   * borrowed from either bytesArrayBuffers, for the bytes array version.
-   *
-   */
-  // Reused buffers for decoding with bytes arrays
-  private byte[][] bytesArrayBuffers = new byte[getNumParityUnits()][];
-  private byte[][] adjustedByteArrayOutputsParameter =
-      new byte[getNumParityUnits()][];
-  private int[] adjustedOutputOffsets = new int[getNumParityUnits()];
-
-  // Reused buffers for decoding with direct ByteBuffers
-  private ByteBuffer[] directBuffers = new ByteBuffer[getNumParityUnits()];
-  private ByteBuffer[] adjustedDirectBufferOutputsParameter =
-      new ByteBuffer[getNumParityUnits()];
 
   public RSRawDecoder(int numDataUnits, int numParityUnits) {
     super(numDataUnits, numParityUnits);
@@ -68,6 +48,35 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     this.errSignature = new int[numParityUnits];
     this.primitivePower = RSUtil.getPrimitivePower(numDataUnits,
         numParityUnits);
+  }
+
+  @Override
+  public void decode(ByteBuffer[] inputs, int[] erasedIndexes,
+                     ByteBuffer[] outputs) {
+    // Make copies avoiding affecting original ones;
+    ByteBuffer[] newInputs = new ByteBuffer[inputs.length];
+    int[] newErasedIndexes = new int[erasedIndexes.length];
+    ByteBuffer[] newOutputs = new ByteBuffer[outputs.length];
+
+    // Adjust the order to match with underlying requirements.
+    adjustOrder(inputs, newInputs,
+        erasedIndexes, newErasedIndexes, outputs, newOutputs);
+
+    super.decode(newInputs, newErasedIndexes, newOutputs);
+  }
+
+  @Override
+  public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs) {
+    // Make copies avoiding affecting original ones;
+    byte[][] newInputs = new byte[inputs.length][];
+    int[] newErasedIndexes = new int[erasedIndexes.length];
+    byte[][] newOutputs = new byte[outputs.length][];
+
+    // Adjust the order to match with underlying requirements.
+    adjustOrder(inputs, newInputs,
+        erasedIndexes, newErasedIndexes, outputs, newOutputs);
+
+    super.decode(newInputs, newErasedIndexes, newOutputs);
   }
 
   private void doDecodeImpl(ByteBuffer[] inputs, int[] erasedIndexes,
@@ -105,6 +114,11 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
      * implementations, so we have to adjust them before calling doDecodeImpl.
      */
 
+    byte[][] bytesArrayBuffers = new byte[getNumParityUnits()][];
+    byte[][] adjustedByteArrayOutputsParameter =
+        new byte[getNumParityUnits()][];
+    int[] adjustedOutputOffsets = new int[getNumParityUnits()];
+
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
 
     // Prepare for adjustedOutputsParameter
@@ -137,7 +151,8 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
       if (adjustedByteArrayOutputsParameter[i] == null) {
         adjustedByteArrayOutputsParameter[i] = resetBuffer(
-            checkGetBytesArrayBuffer(bufferIdx, dataLen), 0, dataLen);
+            checkGetBytesArrayBuffer(bytesArrayBuffers,
+                bufferIdx, dataLen), 0, dataLen);
         adjustedOutputOffsets[i] = 0; // Always 0 for such temp output
         bufferIdx++;
       }
@@ -158,6 +173,10 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
      * implementations, so we have to adjust them before calling doDecodeImpl.
      */
 
+    ByteBuffer[] directBuffers = new ByteBuffer[getNumParityUnits()];
+    ByteBuffer[] adjustedDirectBufferOutputsParameter =
+        new ByteBuffer[getNumParityUnits()];
+
     int[] erasedOrNotToReadIndexes = getErasedOrNotToReadIndexes(inputs);
 
     // Prepare for adjustedDirectBufferOutputsParameter
@@ -175,7 +194,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
         if (erasedIndexes[i] == erasedOrNotToReadIndexes[j]) {
           found = true;
           adjustedDirectBufferOutputsParameter[j] =
-              resetBuffer(outputs[outputIdx++]);
+              resetBuffer(outputs[outputIdx++], dataLen);
         }
       }
       if (!found) {
@@ -186,10 +205,10 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     // Use shared buffers for other positions (not set yet)
     for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
       if (adjustedDirectBufferOutputsParameter[i] == null) {
-        ByteBuffer buffer = checkGetDirectBuffer(bufferIdx, dataLen);
+        ByteBuffer buffer = checkGetDirectBuffer(directBuffers, bufferIdx, dataLen);
         buffer.position(0);
         buffer.limit(dataLen);
-        adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer);
+        adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer, dataLen);
         bufferIdx++;
       }
     }
@@ -198,7 +217,42 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
         adjustedDirectBufferOutputsParameter);
   }
 
-  private byte[] checkGetBytesArrayBuffer(int idx, int bufferLen) {
+  /*
+   * Convert data units first order to parity units first order.
+   */
+  private <T> void adjustOrder(T[] inputs, T[] inputs2,
+                               int[] erasedIndexes, int[] erasedIndexes2,
+                               T[] outputs, T[] outputs2) {
+    // Example:
+    // d0 d1 d2 d3 d4 d5 : p0 p1 p2 => p0 p1 p2 : d0 d1 d2 d3 d4 d5
+    System.arraycopy(inputs, numDataUnits, inputs2, 0, numParityUnits);
+    System.arraycopy(inputs, 0, inputs2, numParityUnits, numDataUnits);
+
+    int numErasedDataUnits = 0, numErasedParityUnits = 0;
+    int idx = 0;
+    for (int i = 0; i < erasedIndexes.length; i++) {
+      if (erasedIndexes[i] >= numDataUnits) {
+        erasedIndexes2[idx++] = erasedIndexes[i] - numDataUnits;
+        numErasedParityUnits++;
+      }
+    }
+    for (int i = 0; i < erasedIndexes.length; i++) {
+      if (erasedIndexes[i] < numDataUnits) {
+        erasedIndexes2[idx++] = erasedIndexes[i] + numParityUnits;
+        numErasedDataUnits++;
+      }
+    }
+
+    // Copy for data units
+    System.arraycopy(outputs, numErasedDataUnits, outputs2,
+        0, numErasedParityUnits);
+    // Copy for parity units
+    System.arraycopy(outputs, 0, outputs2,
+        numErasedParityUnits, numErasedDataUnits);
+  }
+
+  private byte[] checkGetBytesArrayBuffer(byte[][] bytesArrayBuffers,
+                                          int idx, int bufferLen) {
     if (bytesArrayBuffers[idx] == null ||
             bytesArrayBuffers[idx].length < bufferLen) {
       bytesArrayBuffers[idx] = new byte[bufferLen];
@@ -206,7 +260,8 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     return bytesArrayBuffers[idx];
   }
 
-  private ByteBuffer checkGetDirectBuffer(int idx, int bufferLen) {
+  private ByteBuffer checkGetDirectBuffer(ByteBuffer[] directBuffers,
+                                          int idx, int bufferLen) {
     if (directBuffers[idx] == null ||
         directBuffers[idx].capacity() < bufferLen) {
       directBuffers[idx] = ByteBuffer.allocateDirect(bufferLen);

@@ -43,8 +43,8 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
     if (dataLen == 0) {
       return;
     }
-    ensureLengthAndType(inputs, false, dataLen, usingDirectBuffer);
-    ensureLengthAndType(outputs, false, dataLen, usingDirectBuffer);
+    checkParameterBuffers(inputs, false, dataLen, usingDirectBuffer, false);
+    checkParameterBuffers(outputs, false, dataLen, usingDirectBuffer, true);
 
     if (usingDirectBuffer) {
       doEncode(inputs, outputs);
@@ -91,8 +91,8 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
     if (dataLen == 0) {
       return;
     }
-    ensureLength(inputs, false, dataLen);
-    ensureLength(outputs, false, dataLen);
+    checkParameterBuffers(inputs, false, dataLen, false);
+    checkParameterBuffers(outputs, false, dataLen, true);
 
     int[] inputOffsets = new int[inputs.length]; // ALL ZERO
     int[] outputOffsets = new int[outputs.length]; // ALL ZERO
@@ -118,6 +118,34 @@ public abstract class AbstractRawErasureEncoder extends AbstractRawErasureCoder
     ByteBuffer[] newInputs = ECChunk.toBuffers(inputs);
     ByteBuffer[] newOutputs = ECChunk.toBuffers(outputs);
     encode(newInputs, newOutputs);
+  }
+
+  /**
+   * Perform the encoding work using bytes array, via converting to ByteBuffers.
+   * Please note this may be not efficient and serves as fall-back. We should
+   * avoid calling into this.
+   * @param inputs
+   * @param outputs
+   */
+  protected void doEncodeByConvertingToDirectBuffers(byte[][] inputs, int[] inputOffsets,
+                                                     int dataLen, byte[][] outputs,
+                                                     int[] outputOffsets) {
+    ByteBuffer[] inputBuffers = new ByteBuffer[inputs.length];
+    ByteBuffer[] outputBuffers = new ByteBuffer[outputs.length];
+
+    for (int i = 0; i < inputs.length; ++i) {
+      inputBuffers[i] = convertInputBuffer(inputs[i], inputOffsets[i], dataLen);
+    }
+
+    for (int i = 0; i < outputs.length; ++i) {
+      outputBuffers[i] = convertOutputBuffer(outputs[i], dataLen);
+    }
+
+    doEncode(inputBuffers, outputBuffers);
+
+    for (int i = 0; i < outputs.length; i++) {
+      outputBuffers[i].get(outputs[i], outputOffsets[i], dataLen);
+    }
   }
 
   /**

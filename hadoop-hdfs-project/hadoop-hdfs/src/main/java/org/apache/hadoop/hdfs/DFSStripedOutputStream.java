@@ -36,6 +36,8 @@ import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.io.ByteBufferPool;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
@@ -55,6 +57,9 @@ import com.google.common.base.Preconditions;
  */
 @InterfaceAudience.Private
 public class DFSStripedOutputStream extends DFSOutputStream {
+
+  private static final ByteBufferPool bufferPool = new ElasticByteBufferPool();
+
   static class MultipleBlockingQueue<T> {
     private final List<BlockingQueue<T>> queues;
 
@@ -211,7 +216,7 @@ public class DFSStripedOutputStream extends DFSOutputStream {
 
       buffers = new ByteBuffer[numAllBlocks];
       for (int i = 0; i < buffers.length; i++) {
-        buffers[i] = ByteBuffer.wrap(byteArrayManager.newByteArray(cellSize));
+        buffers[i] = bufferPool.getBuffer(useDirectBuffer(), cellSize);
       }
     }
 
@@ -234,15 +239,12 @@ public class DFSStripedOutputStream extends DFSOutputStream {
     private void clear() {
       for (int i = 0; i< numAllBlocks; i++) {
         buffers[i].clear();
-        if (i >= numDataBlocks) {
-          Arrays.fill(buffers[i].array(), (byte) 0);
-        }
       }
     }
 
     private void release() {
       for (int i = 0; i < numAllBlocks; i++) {
-        byteArrayManager.release(buffers[i].array());
+        bufferPool.putBuffer(buffers[i]);
       }
     }
 
@@ -267,6 +269,10 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   @Override
   ExtendedBlock getBlock() {
     return coordinator.getBlockGroup();
+  }
+
+  private boolean useDirectBuffer() {
+    return CodecUtil.preferDirectBuffer(encoder);
   }
 
   /** Construct a new output stream for creating a file. */
@@ -553,18 +559,25 @@ public class DFSStripedOutputStream extends DFSOutputStream {
   void writeParity(int index, ByteBuffer buffer, byte[] checksumBuf
       ) throws IOException {
     final StripedDataStreamer current = setCurrentStreamer(index);
-    final int len = buffer.limit();
+    final int len = buffer.remaining();
 
     final long oldBytes = current.getBytesCurBlock();
     if (!current.isFailed()) {
       try {
         DataChecksum sum = getDataChecksum();
-        sum.calculateChunkedSums(buffer.array(), 0, len, checksumBuf, 0);
+        ByteBuffer newChecksumBuf = bufferPool.getBuffer(useDirectBuffer(),
+            checksumBuf.length);
+        sum.calculateChunkedSums(buffer, newChecksumBuf);
+        newChecksumBuf.get(checksumBuf);
+        bufferPool.putBuffer(newChecksumBuf);
         for (int i = 0; i < len; i += sum.getBytesPerChecksum()) {
           int chunkLen = Math.min(sum.getBytesPerChecksum(), len - i);
           int ckOffset = i / sum.getBytesPerChecksum() * getChecksumSize();
-          super.writeChunk(buffer.array(), i, chunkLen, checksumBuf, ckOffset,
-              getChecksumSize());
+          ByteBuffer tmp = buffer.duplicate();
+          tmp.position(i);
+          tmp.limit(i + chunkLen);
+          super.writeChunk(tmp, checksumBuf, ckOffset, getChecksumSize());
+          buffer.position(i + chunkLen);
         }
       } catch(Exception e) {
         handleStreamerFailure("oldBytes=" + oldBytes + ", len=" + len, e);
