@@ -88,7 +88,8 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       System.out.println(msg);
     }
     System.out.println("ErasureCodeBenchmarkThroughput <read|write|gen|clean> "
-        + "<size in MB> <ec|rep> [num clients] [stf|pos]");
+        + "<size in MB> <ec|rep> [num clients] [stf|pos]\n" +
+        "Stateful and positional option is only available for read.");
     System.exit(1);
   }
 
