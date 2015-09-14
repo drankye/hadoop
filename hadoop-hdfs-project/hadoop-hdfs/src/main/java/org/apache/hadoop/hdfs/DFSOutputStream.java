@@ -20,6 +20,7 @@ package org.apache.hadoop.hdfs;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicReference;
@@ -425,6 +426,49 @@ public class DFSOutputStream extends FSOutputSummer
     // If packet is full, enqueue it for transmission
     if (currentPacket.getNumChunks() == currentPacket.getMaxChunks() ||
         getStreamer().getBytesCurBlock() == blockSize) {
+      enqueueCurrentPacketFull();
+    }
+  }
+
+  // @see FSOutputSummer#writeChunk()
+  protected synchronized void writeChunk(ByteBuffer buffer, byte[] checksum,
+                                     int ckoff, int cklen) throws IOException {
+    dfsClient.checkOpen();
+    checkClosed();
+
+    int len = buffer.remaining();
+
+    if (len > bytesPerChecksum) {
+      throw new IOException("writeChunk() buffer size is " + len +
+          " is larger than supported  bytesPerChecksum " +
+          bytesPerChecksum);
+    }
+    if (cklen != 0 && cklen != getChecksumSize()) {
+      throw new IOException("writeChunk() checksum size is supposed to be " +
+          getChecksumSize() + " but found to be " + cklen);
+    }
+
+    if (currentPacket == null) {
+      currentPacket = createPacket(packetSize, chunksPerPacket,
+          streamer.getBytesCurBlock(), streamer.getAndIncCurrentSeqno(), false);
+      if (DFSClient.LOG.isDebugEnabled()) {
+        DFSClient.LOG.debug("DFSClient writeChunk allocating new packet seqno=" +
+            currentPacket.getSeqno() +
+            ", src=" + src +
+            ", packetSize=" + packetSize +
+            ", chunksPerPacket=" + chunksPerPacket +
+            ", bytesCurBlock=" + streamer.getBytesCurBlock());
+      }
+    }
+
+    currentPacket.writeChecksum(checksum, ckoff, cklen);
+    currentPacket.writeData(buffer, len);
+    currentPacket.incNumChunks();
+    streamer.incBytesCurBlock(len);
+
+    // If packet is full, enqueue it for transmission
+    if (currentPacket.getNumChunks() == currentPacket.getMaxChunks() ||
+        streamer.getBytesCurBlock() == blockSize) {
       enqueueCurrentPacketFull();
     }
   }
