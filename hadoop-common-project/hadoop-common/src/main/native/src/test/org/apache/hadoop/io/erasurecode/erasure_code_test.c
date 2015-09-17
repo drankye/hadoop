@@ -188,7 +188,7 @@ static int gf_gen_decode_matrix(unsigned char *encode_matrix,
 int main(int argc, char *argv[])
 {
   char err[256];
-  size_t err_len = 0;
+  size_t err_len = sizeof(err);
   int re, i, j, p, m, k;
   int nerrs, nsrcerrs;
   unsigned int decode_index[MMAX];
