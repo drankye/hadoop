@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -72,6 +73,13 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   private static final String REP_FILE_BASE = "rep-file-";
   private static final String EC_FILE_BASE = "ec-file-";
   private static final String TMP_FILE_SUFFIX = ".tmp";
+
+  private final FileSystem fs;
+
+  public ErasureCodeBenchmarkThroughput(FileSystem fs) {
+    Preconditions.checkArgument(fs instanceof DistributedFileSystem);
+    this.fs = fs;
+  }
 
   enum OpType {
     READ, WRITE, GEN, CLEAN;
@@ -152,8 +160,6 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   private void setUpDir() throws IOException {
-    FileSystem fs = FileSystem.get(getConf());
-    Preconditions.checkArgument(fs instanceof DistributedFileSystem);
     DistributedFileSystem dfs = (DistributedFileSystem) fs;
     dfs.mkdirs(new Path(DFS_TMP_DIR));
     Path repPath = new Path(REP_DIR);
@@ -237,7 +243,6 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   private void cleanUp(int dataSizeMB, boolean isEc) throws IOException {
-    FileSystem fs = FileSystem.get(getConf());
     final String fileName = getFilePath(dataSizeMB, isEc);
     Path path = isEc ? new Path(EC_DIR) : new Path(REP_DIR);
     FileStatus fileStatuses[] = fs.listStatus(path, new PathFilter() {
@@ -258,14 +263,12 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
     protected final int dataSizeMB;
     protected final boolean isEc;
     protected final int id;
-    protected final FileSystem fs;
 
     public CallableBase(int dataSizeMB, boolean isEc, int id)
         throws IOException {
       this.dataSizeMB = dataSizeMB;
       this.isEc = isEc;
       this.id = id;
-      this.fs = FileSystem.get(getConf());
     }
 
     protected String getFilePathForThread() {
@@ -405,8 +408,10 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   public static void main(String[] args) throws Exception {
-    int res = ToolRunner.run(new HdfsConfiguration(),
-        new ErasureCodeBenchmarkThroughput(), args);
+    Configuration conf = new HdfsConfiguration();
+    FileSystem fs = FileSystem.get(conf);
+    int res = ToolRunner.run(conf,
+        new ErasureCodeBenchmarkThroughput(fs), args);
     System.exit(res);
   }
 }
