@@ -291,9 +291,7 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       long dataSize = dataSizeMB * 1024 * 1024L;
       long remaining = dataSize;
       Random random = new Random();
-      FSDataOutputStream outputStream = null;
-      try {
-        outputStream = fs.create(path);
+      try (FSDataOutputStream outputStream = fs.create(path)) {
         if (!isGen) {
           fs.deleteOnExit(path);
         }
@@ -310,10 +308,6 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
             getDecimalFormat().format(
                 (System.currentTimeMillis() - start) / 1000.0) + " s.");
         return dataSize;
-      } finally {
-        if (outputStream != null) {
-          outputStream.close();
-        }
       }
     }
 
