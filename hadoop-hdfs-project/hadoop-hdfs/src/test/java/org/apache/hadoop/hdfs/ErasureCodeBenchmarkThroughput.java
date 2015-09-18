@@ -116,6 +116,10 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
         numThread);
   }
 
+  private DecimalFormat getDecimalFormat() {
+    return new DecimalFormat("#.##");
+  }
+
   private void benchmark(OpType type, int dataSizeMB,
       int numClients, boolean isEc, boolean statefulRead) throws Exception {
     List<Long> sizes = null;
@@ -141,7 +145,7 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       }
     }
     double throughput = totalDataSizeMB / duration;
-    DecimalFormat df = new DecimalFormat("#.##");
+    DecimalFormat df = getDecimalFormat();
     System.out.println(type + " " + df.format(totalDataSizeMB) +
         " MB data takes: " + df.format(duration) + " s.\nTotal throughput: " +
         df.format(throughput) + " MB/s.");
@@ -279,6 +283,8 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
     }
 
     private long writeFile(Path path) throws IOException {
+      long start = System.currentTimeMillis();
+      System.out.println("Writing " + path);
       long dataSize = dataSizeMB * 1024 * 1024L;
       long remaining = dataSize;
       Random random = new Random();
@@ -297,6 +303,9 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
           outputStream.write(buf, 0, toWrite);
           remaining -= toWrite;
         }
+        System.out.println("Finished writing " + path + "\nTime taken: " +
+            getDecimalFormat().format(
+                (System.currentTimeMillis() - start) / 1000.0) + " s.");
         return dataSize;
       } finally {
         if (outputStream != null) {
@@ -363,10 +372,19 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       return count;
     }
 
-    private long read(Path path) throws IOException {
+    private long readFile(Path path) throws IOException {
       try (FSDataInputStream inputStream = fs.open(path)) {
-        return statefulRead ? doStateful(inputStream) :
+        long start = System.currentTimeMillis();
+        System.out.println((statefulRead ? "Stateful reading " :
+            "Positional reading ") + path);
+        long totalRead = statefulRead ? doStateful(inputStream) :
             doPositional(inputStream);
+        System.out.println(
+            (statefulRead ? "Finished stateful read " :
+                "Finished positional read ") + path + "\nTime taken: " +
+                getDecimalFormat().format(
+                    (System.currentTimeMillis() - start) / 1000.0) + " s.");
+        return totalRead;
       }
     }
 
@@ -378,7 +396,7 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
             ". Call gen first?");
         return 0L;
       }
-      long bytesRead = read(path);
+      long bytesRead = readFile(path);
       long dataSize = dataSizeMB * 1024 * 1024L;
       Preconditions.checkArgument(bytesRead == dataSize,
           "Specified data size: " + dataSize + ", actually read " + bytesRead);
