@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -73,6 +74,13 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   private static final String EC_FILE_BASE = "ec-file-";
   private static final String TMP_FILE_SUFFIX = ".tmp";
 
+  private final FileSystem fs;
+
+  public ErasureCodeBenchmarkThroughput(FileSystem fs) {
+    Preconditions.checkArgument(fs instanceof DistributedFileSystem);
+    this.fs = fs;
+  }
+
   enum OpType {
     READ, WRITE, GEN, CLEAN;
   }
@@ -116,6 +124,10 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
         numThread);
   }
 
+  private DecimalFormat getDecimalFormat() {
+    return new DecimalFormat("#.##");
+  }
+
   private void benchmark(OpType type, int dataSizeMB,
       int numClients, boolean isEc, boolean statefulRead) throws Exception {
     List<Long> sizes = null;
@@ -141,15 +153,13 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       }
     }
     double throughput = totalDataSizeMB / duration;
-    DecimalFormat df = new DecimalFormat("#.##");
+    DecimalFormat df = getDecimalFormat();
     System.out.println(type + " " + df.format(totalDataSizeMB) +
         " MB data takes: " + df.format(duration) + " s.\nTotal throughput: " +
         df.format(throughput) + " MB/s.");
   }
 
   private void setUpDir() throws IOException {
-    FileSystem fs = FileSystem.get(getConf());
-    Preconditions.checkArgument(fs instanceof DistributedFileSystem);
     DistributedFileSystem dfs = (DistributedFileSystem) fs;
     dfs.mkdirs(new Path(DFS_TMP_DIR));
     Path repPath = new Path(REP_DIR);
@@ -233,7 +243,6 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   private void cleanUp(int dataSizeMB, boolean isEc) throws IOException {
-    FileSystem fs = FileSystem.get(getConf());
     final String fileName = getFilePath(dataSizeMB, isEc);
     Path path = isEc ? new Path(EC_DIR) : new Path(REP_DIR);
     FileStatus fileStatuses[] = fs.listStatus(path, new PathFilter() {
@@ -254,14 +263,12 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
     protected final int dataSizeMB;
     protected final boolean isEc;
     protected final int id;
-    protected final FileSystem fs;
 
     public CallableBase(int dataSizeMB, boolean isEc, int id)
         throws IOException {
       this.dataSizeMB = dataSizeMB;
       this.isEc = isEc;
       this.id = id;
-      this.fs = FileSystem.get(getConf());
     }
 
     protected String getFilePathForThread() {
@@ -279,12 +286,12 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
     }
 
     private long writeFile(Path path) throws IOException {
+      long start = System.currentTimeMillis();
+      System.out.println("Writing " + path);
       long dataSize = dataSizeMB * 1024 * 1024L;
       long remaining = dataSize;
       Random random = new Random();
-      FSDataOutputStream outputStream = null;
-      try {
-        outputStream = fs.create(path);
+      try (FSDataOutputStream outputStream = fs.create(path)) {
         if (!isGen) {
           fs.deleteOnExit(path);
         }
@@ -297,11 +304,10 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
           outputStream.write(buf, 0, toWrite);
           remaining -= toWrite;
         }
+        System.out.println("Finished writing " + path + "\nTime taken: " +
+            getDecimalFormat().format(
+                (System.currentTimeMillis() - start) / 1000.0) + " s.");
         return dataSize;
-      } finally {
-        if (outputStream != null) {
-          outputStream.close();
-        }
       }
     }
 
@@ -363,10 +369,19 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
       return count;
     }
 
-    private long read(Path path) throws IOException {
+    private long readFile(Path path) throws IOException {
       try (FSDataInputStream inputStream = fs.open(path)) {
-        return statefulRead ? doStateful(inputStream) :
+        long start = System.currentTimeMillis();
+        System.out.println((statefulRead ? "Stateful reading " :
+            "Positional reading ") + path);
+        long totalRead = statefulRead ? doStateful(inputStream) :
             doPositional(inputStream);
+        System.out.println(
+            (statefulRead ? "Finished stateful read " :
+                "Finished positional read ") + path + "\nTime taken: " +
+                getDecimalFormat().format(
+                    (System.currentTimeMillis() - start) / 1000.0) + " s.");
+        return totalRead;
       }
     }
 
@@ -378,7 +393,7 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
             ". Call gen first?");
         return 0L;
       }
-      long bytesRead = read(path);
+      long bytesRead = readFile(path);
       long dataSize = dataSizeMB * 1024 * 1024L;
       Preconditions.checkArgument(bytesRead == dataSize,
           "Specified data size: " + dataSize + ", actually read " + bytesRead);
@@ -387,8 +402,10 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   public static void main(String[] args) throws Exception {
-    int res = ToolRunner.run(new HdfsConfiguration(),
-        new ErasureCodeBenchmarkThroughput(), args);
+    Configuration conf = new HdfsConfiguration();
+    FileSystem fs = FileSystem.get(conf);
+    int res = ToolRunner.run(conf,
+        new ErasureCodeBenchmarkThroughput(fs), args);
     System.exit(res);
   }
 }
