@@ -431,7 +431,7 @@ public class TestDFSIO implements Tool {
 
   private void writeTest(FileSystem fs) throws IOException {
     Path writeDir = getWriteDir(config);
-    fs.delete(getDataDir(config), true);
+    //fs.delete(getDataDir(config), true);
     fs.delete(writeDir, true);
     
     runIOTest(WriteMapper.class, writeDir);
