@@ -45,6 +45,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.StripedFileTestUtil;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
@@ -330,7 +331,8 @@ public class TestFSEditLogLoader {
     } finally {
       rwf.close();
     }
-    EditLogValidation validation = EditLogFileInputStream.validateEditLog(logFile);
+    EditLogValidation validation =
+        EditLogFileInputStream.scanEditLog(logFile, Long.MAX_VALUE, true);
     assertTrue(validation.hasCorruptHeader());
   }
 
@@ -345,7 +347,7 @@ public class TestFSEditLogLoader {
     File logFileBak = new File(testDir, logFile.getName() + ".bak");
     Files.copy(logFile, logFileBak);
     EditLogValidation validation =
-        EditLogFileInputStream.validateEditLog(logFile);
+        EditLogFileInputStream.scanEditLog(logFile, Long.MAX_VALUE, true);
     assertTrue(!validation.hasCorruptHeader());
     // We expect that there will be an OP_START_LOG_SEGMENT, followed by
     // NUM_TXNS opcodes, followed by an OP_END_LOG_SEGMENT.
@@ -358,7 +360,8 @@ public class TestFSEditLogLoader {
       // Restore backup, corrupt the txn opcode
       Files.copy(logFileBak, logFile);
       corruptByteInFile(logFile, txOffset);
-      validation = EditLogFileInputStream.validateEditLog(logFile);
+      validation = EditLogFileInputStream.scanEditLog(logFile,
+          Long.MAX_VALUE, true);
       long expectedEndTxId = (txId == (NUM_TXNS + 1)) ?
           NUM_TXNS : (NUM_TXNS + 1);
       assertEquals("Failed when corrupting txn opcode at " + txOffset,
@@ -375,7 +378,8 @@ public class TestFSEditLogLoader {
       // Restore backup, corrupt the txn opcode
       Files.copy(logFileBak, logFile);
       truncateFile(logFile, txOffset);
-      validation = EditLogFileInputStream.validateEditLog(logFile);
+      validation = EditLogFileInputStream.scanEditLog(logFile,
+          Long.MAX_VALUE, true);
       long expectedEndTxId = (txId == 0) ?
           HdfsServerConstants.INVALID_TXID : (txId - 1);
       assertEquals("Failed when corrupting txid " + txId + " txn opcode " +
@@ -393,7 +397,7 @@ public class TestFSEditLogLoader {
     // layout flags section.
     truncateFile(logFile, 8);
     EditLogValidation validation =
-        EditLogFileInputStream.validateEditLog(logFile);
+        EditLogFileInputStream.scanEditLog(logFile, Long.MAX_VALUE, true);
     assertTrue(!validation.hasCorruptHeader());
     assertEquals(HdfsServerConstants.INVALID_TXID, validation.getEndTxId());
   }
@@ -447,8 +451,8 @@ public class TestFSEditLogLoader {
       long blkId = 1;
       long blkNumBytes = 1024;
       long timestamp = 1426222918;
-      short blockNum = HdfsConstants.NUM_DATA_BLOCKS;
-      short parityNum = HdfsConstants.NUM_PARITY_BLOCKS;
+      short blockNum = StripedFileTestUtil.NUM_DATA_BLOCKS;
+      short parityNum = StripedFileTestUtil.NUM_PARITY_BLOCKS;
 
       //set the storage policy of the directory
       fs.mkdir(new Path(testDir), new FsPermission("755"));
@@ -519,8 +523,8 @@ public class TestFSEditLogLoader {
       long blkId = 1;
       long blkNumBytes = 1024;
       long timestamp = 1426222918;
-      short blockNum = HdfsConstants.NUM_DATA_BLOCKS;
-      short parityNum = HdfsConstants.NUM_PARITY_BLOCKS;
+      short blockNum = StripedFileTestUtil.NUM_DATA_BLOCKS;
+      short parityNum = StripedFileTestUtil.NUM_PARITY_BLOCKS;
 
       //set the storage policy of the directory
       fs.mkdir(new Path(testDir), new FsPermission("755"));

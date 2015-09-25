@@ -51,6 +51,7 @@ import org.apache.hadoop.hdfs.BlockReader;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSPacket;
 import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.RemoteBlockReader2;
 import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.net.TcpPeerServer;
@@ -93,16 +94,16 @@ public final class ErasureCodingWorker {
 
   private ThreadPoolExecutor STRIPED_BLK_RECOVERY_THREAD_POOL;
   private ThreadPoolExecutor STRIPED_READ_THREAD_POOL;
-  private final int STRIPED_READ_THRESHOLD_MILLIS;
+  private final int STRIPED_READ_TIMEOUT_MILLIS;
   private final int STRIPED_READ_BUFFER_SIZE;
 
   public ErasureCodingWorker(Configuration conf, DataNode datanode) {
     this.datanode = datanode;
     this.conf = conf;
 
-    STRIPED_READ_THRESHOLD_MILLIS = conf.getInt(
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THRESHOLD_MILLIS_KEY,
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THRESHOLD_MILLIS_DEFAULT);
+    STRIPED_READ_TIMEOUT_MILLIS = conf.getInt(
+        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_TIMEOUT_MILLIS_KEY,
+        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_TIMEOUT_MILLIS_DEFAULT);
     initializeStripedReadThreadPool(conf.getInt(
         DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THREADS_KEY, 
         DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THREADS_DEFAULT));
@@ -173,8 +174,13 @@ public final class ErasureCodingWorker {
    */
   public void processErasureCodingTasks(Collection<BlockECRecoveryInfo> ecTasks) {
     for (BlockECRecoveryInfo recoveryInfo : ecTasks) {
-      STRIPED_BLK_RECOVERY_THREAD_POOL.submit(new ReconstructAndTransferBlock(
-          recoveryInfo));
+      try {
+        STRIPED_BLK_RECOVERY_THREAD_POOL
+            .submit(new ReconstructAndTransferBlock(recoveryInfo));
+      } catch (Throwable e) {
+        LOG.warn("Failed to recover striped block "
+            + recoveryInfo.getExtendedBlock().getLocalBlock(), e);
+      }
     }
   }
 
@@ -554,7 +560,7 @@ public final class ErasureCodingWorker {
         try {
           StripingChunkReadResult result =
               StripedBlockUtil.getNextCompletedStripedRead(
-                  readService, futures, STRIPED_READ_THRESHOLD_MILLIS);
+                  readService, futures, STRIPED_READ_TIMEOUT_MILLIS);
           int resultIndex = -1;
           if (result.state == StripingChunkReadResult.SUCCESSFUL) {
             resultIndex = result.index;
@@ -821,7 +827,7 @@ public final class ErasureCodingWorker {
       try {
         sock = NetUtils.getDefaultSocketFactory(conf).createSocket();
         NetUtils.connect(sock, addr, socketTimeout);
-        peer = TcpPeerServer.peerFromSocketAndKey(datanode.getSaslClient(), 
+        peer = DFSUtilClient.peerFromSocketAndKey(datanode.getSaslClient(),
             sock, datanode.getDataEncryptionKeyFactoryForBlock(b),
             blockToken, datanodeId);
         peer.setReadTimeout(socketTimeout);

@@ -98,6 +98,7 @@ message DatanodeInfoProto {
   optional uint64 cacheCapacity = 11 [default = 0];
   optional uint64 cacheUsed = 12 [default = 0];
   optional uint64 lastUpdateMonotonic = 13 [default = 0];
+  optional string upgradeDomain = 14;
 }
 
 /**
@@ -535,6 +536,7 @@ message BlockWithLocationsProto {
 
   optional bytes indices = 5;
   optional uint32 dataBlockNum = 6;
+  optional uint32 cellSize = 7;
 }
 
 /**

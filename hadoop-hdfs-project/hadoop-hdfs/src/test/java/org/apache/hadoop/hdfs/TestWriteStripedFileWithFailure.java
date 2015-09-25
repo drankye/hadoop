@@ -24,15 +24,14 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.StripedFileTestUtil.blockSize;
-import static org.apache.hadoop.hdfs.StripedFileTestUtil.dataBlocks;
 import static org.apache.hadoop.hdfs.StripedFileTestUtil.numDNs;
-import static org.apache.hadoop.hdfs.StripedFileTestUtil.parityBlocks;
 
 public class TestWriteStripedFileWithFailure {
   public static final Log LOG = LogFactory
@@ -40,6 +39,8 @@ public class TestWriteStripedFileWithFailure {
   private static MiniDFSCluster cluster;
   private static FileSystem fs;
   private static Configuration conf = new HdfsConfiguration();
+  private final short dataBlocks = StripedFileTestUtil.NUM_DATA_BLOCKS;
+  private final short parityBlocks = StripedFileTestUtil.NUM_PARITY_BLOCKS;
   private final int smallFileLength = blockSize * dataBlocks - 123;
   private final int largeFileLength = blockSize * dataBlocks + 123;
   private final int[] fileLengths = {smallFileLength, largeFileLength};
@@ -58,6 +59,8 @@ public class TestWriteStripedFileWithFailure {
   }
 
   // Test writing file with some Datanodes failure
+  // TODO: enable this test after HDFS-8704 and HDFS-9040
+  @Ignore
   @Test(timeout = 300000)
   public void testWriteStripedFileWithDNFailure() throws IOException {
     for (int fileLength : fileLengths) {

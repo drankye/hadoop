@@ -63,6 +63,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.client.HdfsAdmin;
+import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
 import org.apache.hadoop.hdfs.client.impl.CorruptFileBlockIterator;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
@@ -84,7 +85,6 @@ import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.net.NetUtils;
@@ -1498,7 +1498,7 @@ public class DistributedFileSystem extends FileSystem {
 
   @Override
   protected int getDefaultPort() {
-    return NameNode.DEFAULT_PORT;
+    return HdfsClientConfigKeys.DFS_NAMENODE_RPC_PORT_DEFAULT;
   }
 
   @Override
@@ -2323,5 +2323,16 @@ public class DistributedFileSystem extends FileSystem {
                 + "non-DistributedFileSystem: " + path + " -> " + p);
       }
     }.resolve(this, absF);
+  }
+
+  /**
+   * Retrieve all the erasure coding policies supported by this file system.
+   *
+   * @return all erasure coding policies supported by this file system.
+   * @throws IOException
+   */
+  public Collection<ErasureCodingPolicy> getAllErasureCodingPolicies()
+      throws IOException {
+    return Arrays.asList(dfs.getErasureCodingPolicies());
   }
 }
