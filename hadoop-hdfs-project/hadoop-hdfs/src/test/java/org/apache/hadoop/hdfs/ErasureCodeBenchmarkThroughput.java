@@ -27,7 +27,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
+import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
+import org.apache.hadoop.hdfs.server.namenode.ErasureCodingPolicyManager;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -119,7 +121,8 @@ public class ErasureCodeBenchmarkThroughput extends Configured implements Tool {
   }
 
   private void setReadThreadPoolSize(int numClients) {
-    int numThread = numClients * HdfsConstants.NUM_DATA_BLOCKS;
+    ErasureCodingPolicy ecPolicy = ErasureCodingPolicyManager.getSystemDefaultPolicy();
+    int numThread = numClients * ecPolicy.getNumDataUnits();
     getConf().setInt(HdfsClientConfigKeys.StripedRead.THREADPOOL_SIZE_KEY,
         numThread);
   }
