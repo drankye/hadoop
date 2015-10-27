@@ -4090,7 +4090,7 @@ public class BlockManager implements BlockStatsMXBean {
     final int nodesToProcess = (int) Math.ceil(numlive
         * this.blocksInvalidateWorkPct);
 
-    int workFound = this.computeBlockRecoveryWork(blocksToProcess);
+    int workFound = 0;this.computeBlockRecoveryWork(blocksToProcess);
 
     // Update counters
     namesystem.writeLock();
