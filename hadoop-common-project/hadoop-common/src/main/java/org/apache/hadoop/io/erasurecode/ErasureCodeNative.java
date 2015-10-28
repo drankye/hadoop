@@ -71,7 +71,7 @@ public final class ErasureCodeNative {
   }
 
   /**
-   * Load native library available or supported
+   * Load native library available or supported.
    */
   public static native void loadLibrary();
 
