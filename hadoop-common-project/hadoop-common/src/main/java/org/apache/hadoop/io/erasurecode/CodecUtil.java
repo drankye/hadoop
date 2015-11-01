@@ -143,4 +143,8 @@ public final class CodecUtil {
     return isEncoder ? fact.createEncoder(numDataUnits, numParityUnits) :
             fact.createDecoder(numDataUnits, numParityUnits);
   }
+
+  public static boolean preferDirectBuffer(RawErasureCoder coder) {
+    return (boolean) coder.getCoderOption(CoderOption.PREFER_DIRECT_BUFFER);
+  }
 }
