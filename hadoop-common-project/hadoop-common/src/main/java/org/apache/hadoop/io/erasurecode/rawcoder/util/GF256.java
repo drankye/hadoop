@@ -17,14 +17,18 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
+import org.apache.hadoop.classification.InterfaceAudience;
+
 /**
- * A GaloisField util class only caring of 256.
+ * A GaloisField utility class only caring of 256 fields for efficiency. Some
+ * of the codes are borrowed from ISA-L implementation (C or ASM codes).
  */
+@InterfaceAudience.Private
 public final class GF256 {
 
   private GF256() { }
 
-  public static final byte[] gfBase = new byte[] {
+  public static final byte[] GF_BASE = new byte[] {
       (byte) 0x01, (byte) 0x02, (byte) 0x04, (byte) 0x08, (byte) 0x10,
       (byte) 0x20, (byte) 0x40, (byte) 0x80, (byte) 0x1d, (byte) 0x3a,
       (byte) 0x74, (byte) 0xe8, (byte) 0xcd, (byte) 0x87, (byte) 0x13,
@@ -79,7 +83,7 @@ public final class GF256 {
       (byte) 0x01
   };
 
-  public static final byte[] gfLogBase = new byte[] {
+  public static final byte[] GF_LOG_BASE = new byte[] {
       (byte) 0x00, (byte) 0xff, (byte) 0x01, (byte) 0x19, (byte) 0x02,
       (byte) 0x32, (byte) 0x1a, (byte) 0xc6, (byte) 0x03, (byte) 0xdf,
       (byte) 0x33, (byte) 0xee, (byte) 0x1b, (byte) 0x68, (byte) 0xc7,
@@ -134,21 +138,22 @@ public final class GF256 {
       (byte) 0xaf
   };
 
-  public static byte[][] gfMulTab;
-  private static final Boolean inited = false;
+  public static byte[][] GF_MUL_TAB;
+  private static Boolean INITED = false;
 
-  public synchronized static void init() {
-    if (inited) {
+  public static void init() {
+    if (INITED) {
       return;
     }
 
-    synchronized (inited) {
-      gfMulTab = new byte[256][256];
+    synchronized (GF256.class) {
+      GF_MUL_TAB = new byte[256][256];
       for (int i = 0; i < 256; i++) {
         for (int j = 0; j < 256; j++) {
-          gfMulTab[i][j] = gfMul((byte) i, (byte) j);
+          GF_MUL_TAB[i][j] = gfMul((byte) i, (byte) j);
         }
       }
+      INITED = true;
     }
   }
 
@@ -157,12 +162,13 @@ public final class GF256 {
       return 0;
     }
 
-    int tmp = (gfLogBase[a & 0xff] & 0xff) + (gfLogBase[b & 0xff] & 0xff);
+    int tmp = (GF_LOG_BASE[a & 0xff] & 0xff) +
+        (GF_LOG_BASE[b & 0xff] & 0xff);
     if (tmp > 254) {
       tmp -= 255;
     }
 
-    return gfBase[tmp];
+    return GF_BASE[tmp];
   }
 
   public static byte gfInv(byte a) {
@@ -170,10 +176,11 @@ public final class GF256 {
       return 0;
     }
 
-    return gfBase[255 - gfLogBase[a & 0xff] & 0xff];
+    return GF_BASE[255 - GF_LOG_BASE[a & 0xff] & 0xff];
   }
 
-  public static void gfInvertMatrix(byte[] inMatrix, byte[] outMatrix, int n) {
+  public static void gfInvertMatrix(byte[] inMatrix,
+                                    byte[] outMatrix, int n) {
     byte temp;
 
     // Set outMatrix[] to the identity matrix
@@ -181,6 +188,7 @@ public final class GF256 {
       // memset(outMatrix, 0, n*n)
       outMatrix[i] = 0;
     }
+
     for (int i = 0; i < n; i++) {
       outMatrix[i * n + i] = 1;
     }
@@ -236,15 +244,16 @@ public final class GF256 {
   /**
    * Calculates const table gftbl in GF(2^8) from single input A
    * gftbl(A) = {A{00}, A{01}, A{02}, ... , A{0f} }, {A{00}, A{10}, A{20},
-   * ... , A{f0} }
+   * ... , A{f0} } -- from ISA-L implementation
    */
   public static void gfVectMulInit(byte c, byte[] tbl, int offset) {
-    byte c2 = (byte) ((c << 1) ^ ((c & 0x80) != 0 ? 0x1d : 0)); //Mult by GF{2}
-    byte c4 = (byte) ((c2 << 1) ^ ((c2 & 0x80) != 0 ? 0x1d : 0)); //Mult by GF{2}
-    byte c8 = (byte) ((c4 << 1) ^ ((c4 & 0x80) != 0 ? 0x1d : 0)); //Mult by GF{2}
+    byte c2 = (byte) ((c << 1) ^ ((c & 0x80) != 0 ? 0x1d : 0));
+    byte c4 = (byte) ((c2 << 1) ^ ((c2 & 0x80) != 0 ? 0x1d : 0));
+    byte c8 = (byte) ((c4 << 1) ^ ((c4 & 0x80) != 0 ? 0x1d : 0));
 
     byte c3, c5, c6, c7, c9, c10, c11, c12, c13, c14, c15;
-    byte c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31;
+    byte c17, c18, c19, c20, c21, c22, c23, c24, c25, c26,
+        c27, c28, c29, c30, c31;
 
     c3 = (byte) (c2 ^ c);
     c5 = (byte) (c4 ^ c);
@@ -276,14 +285,14 @@ public final class GF256 {
     tbl[offset + 14] = c14;
     tbl[offset + 15] = c15;
 
-    c17 = (byte) ((c8 << 1) ^ ((c8 & 0x80) != 0 ? 0x1d : 0));	//Mult by GF{2}
-    c18 = (byte) ((c17 << 1) ^ ((c17 & 0x80) != 0 ? 0x1d : 0));	//Mult by GF{2}
+    c17 = (byte) ((c8 << 1) ^ ((c8 & 0x80) != 0 ? 0x1d : 0));
+    c18 = (byte) ((c17 << 1) ^ ((c17 & 0x80) != 0 ? 0x1d : 0));
     c19 = (byte) (c18 ^ c17);
-    c20 = (byte) ((c18 << 1) ^ ((c18 & 0x80) != 0 ? 0x1d : 0));	//Mult by GF{2}
+    c20 = (byte) ((c18 << 1) ^ ((c18 & 0x80) != 0 ? 0x1d : 0));
     c21 = (byte) (c20 ^ c17);
     c22 = (byte) (c20 ^ c18);
     c23 = (byte) (c20 ^ c19);
-    c24 = (byte) ((c20 << 1) ^ ((c20 & 0x80) != 0 ? 0x1d : 0));	//Mult by GF{2}
+    c24 = (byte) ((c20 << 1) ^ ((c20 & 0x80) != 0 ? 0x1d : 0));
     c25 = (byte) (c24 ^ c17);
     c26 = (byte) (c24 ^ c18);
     c27 = (byte) (c24 ^ c19);

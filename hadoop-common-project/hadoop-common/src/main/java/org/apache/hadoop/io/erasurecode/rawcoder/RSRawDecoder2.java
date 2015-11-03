@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil2;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
@@ -32,14 +33,14 @@ import java.util.Arrays;
  * when possible. This new Java coder is about 5X faster than the one originated
  * from HDFS-RAID, and also compatible with the native/ISA-L coder.
  */
+@InterfaceAudience.Private
 public class RSRawDecoder2 extends AbstractRawErasureDecoder {
   private byte[] encodeMatrix;
 
   private byte[] decodeMatrix;
   private byte[] invertMatrix;
-  private byte[] tmpMatrix;
   private byte[] gftbls;
-  private int[] erasedIndexes;
+  private int[] cachedErasedIndexes;
   private int[] validIndexes;
   private int numErasedDataUnits;
   private boolean[] erasureFlags;
@@ -48,15 +49,17 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
     super(numDataUnits, numParityUnits);
     if (numDataUnits + numParityUnits >= RSUtil.GF.getFieldSize()) {
       throw new HadoopIllegalArgumentException(
-              "Invalid numDataUnits and numParityUnits");
+              "Invalid getNumDataUnits() and numParityUnits");
     }
 
     GF256.init();
 
-    int numAllUnits = numDataUnits + numParityUnits;
-    encodeMatrix = new byte[numAllUnits * numDataUnits];
-    RSUtil2.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
-    //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
+    int numAllUnits = getNumDataUnits() + numParityUnits;
+    encodeMatrix = new byte[numAllUnits * getNumDataUnits()];
+    RSUtil2.genCauchyMatrix(encodeMatrix, numAllUnits, getNumDataUnits());
+    if (isAllowingVerboseDump()) {
+      DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
+    }
   }
 
   @Override
@@ -64,8 +67,8 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
                           ByteBuffer[] outputs) {
     prepareDecoding(inputs, erasedIndexes);
 
-    ByteBuffer[] realInputs = new ByteBuffer[numDataUnits];
-    for (int i = 0; i < numDataUnits; i++) {
+    ByteBuffer[] realInputs = new ByteBuffer[getNumDataUnits()];
+    for (int i = 0; i < getNumDataUnits(); i++) {
       realInputs[i] = inputs[validIndexes[i]];
     }
     RSUtil2.encodeData(gftbls, realInputs, outputs);
@@ -77,85 +80,89 @@ public class RSRawDecoder2 extends AbstractRawErasureDecoder {
                           byte[][] outputs, int[] outputOffsets) {
     prepareDecoding(inputs, erasedIndexes);
 
-    byte[][] realInputs = new byte[numDataUnits][];
-    int[] realInputOffsets = new int[numDataUnits];
-    for (int i = 0; i < numDataUnits; i++) {
+    byte[][] realInputs = new byte[getNumDataUnits()][];
+    int[] realInputOffsets = new int[getNumDataUnits()];
+    for (int i = 0; i < getNumDataUnits(); i++) {
       realInputs[i] = inputs[validIndexes[i]];
       realInputOffsets[i] = inputOffsets[validIndexes[i]];
     }
     RSUtil2.encodeData(gftbls, dataLen, realInputs, realInputOffsets,
-        outputs, outputOffsets);
+            outputs, outputOffsets);
   }
 
   private <T> void prepareDecoding(T[] inputs, int[] erasedIndexes) {
-    int[] tmpValidIndexes = new int[numDataUnits];
+    int[] tmpValidIndexes = new int[getNumDataUnits()];
     makeValidIndexes(inputs, tmpValidIndexes);
-    if (Arrays.equals(this.erasedIndexes, erasedIndexes) &&
+    if (Arrays.equals(this.cachedErasedIndexes, erasedIndexes) &&
         Arrays.equals(this.validIndexes, tmpValidIndexes)) {
       return; // Optimization. Nothing to do
     }
-    this.erasedIndexes = Arrays.copyOf(erasedIndexes, erasedIndexes.length);
-    this.validIndexes = Arrays.copyOf(tmpValidIndexes, tmpValidIndexes.length);
+    this.cachedErasedIndexes =
+            Arrays.copyOf(erasedIndexes, erasedIndexes.length);
+    this.validIndexes =
+            Arrays.copyOf(tmpValidIndexes, tmpValidIndexes.length);
 
     processErasures(erasedIndexes);
   }
 
   private void processErasures(int[] erasedIndexes) {
-    this.decodeMatrix = new byte[numAllUnits * numDataUnits];
-    this.tmpMatrix = new byte[numAllUnits * numDataUnits];
-    this.invertMatrix = new byte[numAllUnits * numDataUnits];
-    this.gftbls = new byte[numAllUnits * getNumDataUnits() * 32];
+    this.decodeMatrix = new byte[getNumAllUnits() * getNumDataUnits()];
+    this.invertMatrix = new byte[getNumAllUnits() * getNumDataUnits()];
+    this.gftbls = new byte[getNumAllUnits() * getNumDataUnits() * 32];
 
-    this.erasureFlags = new boolean[numAllUnits];
+    this.erasureFlags = new boolean[getNumAllUnits()];
     this.numErasedDataUnits = 0;
 
     for (int i = 0; i < erasedIndexes.length; i++) {
       int index = erasedIndexes[i];
       erasureFlags[index] = true;
-      if (index < numDataUnits) {
+      if (index < getNumDataUnits()) {
         numErasedDataUnits++;
       }
     }
 
     generateDecodeMatrix(erasedIndexes);
 
-    RSUtil2.initTables(numDataUnits, erasedIndexes.length, decodeMatrix, 0,
-        gftbls);
-    //System.out.println(DumpUtil.bytesToHex(gftbls, 9999999));
+    RSUtil2.initTables(getNumDataUnits(), erasedIndexes.length,
+        decodeMatrix, 0, gftbls);
+    if (isAllowingVerboseDump()) {
+      System.out.println(DumpUtil.bytesToHex(gftbls, -1));
+    }
   }
 
   // Generate decode matrix from encode matrix
   private void generateDecodeMatrix(int[] erasedIndexes) {
     int i, j, r, p;
     byte s;
+    byte[] tmpMatrix = new byte[getNumAllUnits() * getNumDataUnits()];
 
     // Construct matrix tmpMatrix by removing error rows
-    for (i = 0; i < numDataUnits; i++) {
+    for (i = 0; i < getNumDataUnits(); i++) {
       r = validIndexes[i];
-      for (j = 0; j < numDataUnits; j++) {
-        tmpMatrix[numDataUnits * i + j] = encodeMatrix[numDataUnits * r + j];
+      for (j = 0; j < getNumDataUnits(); j++) {
+        tmpMatrix[getNumDataUnits() * i + j] =
+                encodeMatrix[getNumDataUnits() * r + j];
       }
     }
 
-    GF256.gfInvertMatrix(tmpMatrix, invertMatrix, numDataUnits);
+    GF256.gfInvertMatrix(tmpMatrix, invertMatrix, getNumDataUnits());
 
     for (i = 0; i < numErasedDataUnits; i++) {
-      for (j = 0; j < numDataUnits; j++) {
-          decodeMatrix[numDataUnits * i + j] =
-              invertMatrix[numDataUnits * erasedIndexes[i] + j];
+      for (j = 0; j < getNumDataUnits(); j++) {
+        decodeMatrix[getNumDataUnits() * i + j] =
+                invertMatrix[getNumDataUnits() * erasedIndexes[i] + j];
       }
     }
 
     for (p = numErasedDataUnits; p < erasedIndexes.length; p++) {
-      for (i = 0; i < numDataUnits; i++) {
+      for (i = 0; i < getNumDataUnits(); i++) {
         s = 0;
-        for (j = 0; j < numDataUnits; j++) {
-          s ^= GF256.gfMul(invertMatrix[j * numDataUnits + i],
-              encodeMatrix[numDataUnits * erasedIndexes[p] + j]);
+        for (j = 0; j < getNumDataUnits(); j++) {
+          s ^= GF256.gfMul(invertMatrix[j * getNumDataUnits() + i],
+                  encodeMatrix[getNumDataUnits() * erasedIndexes[p] + j]);
         }
-        decodeMatrix[numDataUnits * p + i] = s;
+        decodeMatrix[getNumDataUnits() * p + i] = s;
       }
     }
   }
-
 }

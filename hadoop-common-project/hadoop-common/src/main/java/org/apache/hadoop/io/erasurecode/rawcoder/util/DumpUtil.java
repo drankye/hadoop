@@ -17,12 +17,14 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder.util;
 
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 /**
  * A dump utility class for debugging data erasure coding/decoding issues.
  * Don't suggest they are used in runtime production codes.
  */
+@InterfaceAudience.Private
 public final class DumpUtil {
   private static final String HEX_CHARS_STR = "0123456789ABCDEF";
   private static final char[] HEX_CHARS = HEX_CHARS_STR.toCharArray();
@@ -33,9 +35,10 @@ public final class DumpUtil {
 
   /**
    * Convert bytes into format like 0x02 02 00 80.
+   * If limit is negative or too large, then all bytes will be converted.
    */
   public static String bytesToHex(byte[] bytes, int limit) {
-    if (limit > bytes.length) {
+    if (limit <= 0 || limit > bytes.length) {
       limit = bytes.length;
     }
     int len = limit * 2;

@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
@@ -33,6 +34,7 @@ import java.util.Arrays;
  * unnecessarily due to the underlying implementation limit in GF. This will be
  * addressed in HADOOP-11871.
  */
+@InterfaceAudience.Private
 public class RSRawDecoder extends AbstractRawErasureDecoder {
   // To describe and calculate the needed Vandermonde matrix
   private int[] errSignature;
@@ -102,7 +104,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     RSUtil.GF.solveVandermondeSystem(errSignature, outputs, outputOffsets,
-            erasedIndexes.length, dataLen);
+        erasedIndexes.length, dataLen);
   }
 
   @Override
@@ -159,7 +161,7 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
     }
 
     doDecodeImpl(inputs, inputOffsets, dataLen, erasedOrNotToReadIndexes,
-            adjustedByteArrayOutputsParameter, adjustedOutputOffsets);
+        adjustedByteArrayOutputsParameter, adjustedOutputOffsets);
   }
 
   @Override
@@ -225,20 +227,22 @@ public class RSRawDecoder extends AbstractRawErasureDecoder {
                                T[] outputs, T[] outputs2) {
     // Example:
     // d0 d1 d2 d3 d4 d5 : p0 p1 p2 => p0 p1 p2 : d0 d1 d2 d3 d4 d5
-    System.arraycopy(inputs, numDataUnits, inputs2, 0, numParityUnits);
-    System.arraycopy(inputs, 0, inputs2, numParityUnits, numDataUnits);
+    System.arraycopy(inputs, getNumDataUnits(), inputs2,
+        0, getNumParityUnits());
+    System.arraycopy(inputs, 0, inputs2,
+        getNumParityUnits(), getNumDataUnits());
 
     int numErasedDataUnits = 0, numErasedParityUnits = 0;
     int idx = 0;
     for (int i = 0; i < erasedIndexes.length; i++) {
-      if (erasedIndexes[i] >= numDataUnits) {
-        erasedIndexes2[idx++] = erasedIndexes[i] - numDataUnits;
+      if (erasedIndexes[i] >= getNumDataUnits()) {
+        erasedIndexes2[idx++] = erasedIndexes[i] - getNumDataUnits();
         numErasedParityUnits++;
       }
     }
     for (int i = 0; i < erasedIndexes.length; i++) {
-      if (erasedIndexes[i] < numDataUnits) {
-        erasedIndexes2[idx++] = erasedIndexes[i] + numParityUnits;
+      if (erasedIndexes[i] < getNumDataUnits()) {
+        erasedIndexes2[idx++] = erasedIndexes[i] + getNumParityUnits();
         numErasedDataUnits++;
       }
     }

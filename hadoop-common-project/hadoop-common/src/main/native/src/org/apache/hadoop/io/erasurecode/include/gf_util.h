@@ -98,7 +98,7 @@ int h_gf_invert_matrix(unsigned char *in, unsigned char *out, const int n);
  *
  * This function determines what instruction sets are enabled
  * and selects the appropriate version at runtime.
- * 
+ *
  * @param len   Length of vector in bytes. Must be aligned to 32B.
  * @param gftbl Pointer to 32-byte array of pre-calculated constants based on C.
  * @param src   Pointer to src data array. Must be aligned to 32B.

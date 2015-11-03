@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
@@ -28,6 +29,7 @@ import java.util.Arrays;
  * when possible. This one originated from HDFS-RAID in its core algorithm. Note
  * it's not compatible with the native/ISA-L coder.
  */
+@InterfaceAudience.Private
 public class RSRawEncoder extends AbstractRawErasureEncoder {
   private int[] generatingPolynomial;
 
@@ -55,17 +57,21 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     // parity units + data units
     ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
 
-    if (allowChangeInputs()) {
+    if (isAllowingChangeInputs()) {
       System.arraycopy(outputs, 0, all, 0, outputs.length);
       System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
     } else {
       System.arraycopy(outputs, 0, all, 0, outputs.length);
+
+      /**
+       * Note when this coder would be really (rarely) used in a production
+       * system, this can  be optimized to cache and reuse the new allocated
+       * buffers avoiding reallocating.
+       */
       ByteBuffer tmp;
       for (int i = 0; i < inputs.length; i++) {
-        inputs[i].mark();
         tmp = ByteBuffer.allocate(inputs[i].remaining());
         tmp.put(inputs[i]);
-        inputs[i].reset();
         tmp.flip();
         all[outputs.length + i] = tmp;
       }
@@ -83,7 +89,7 @@ public class RSRawEncoder extends AbstractRawErasureEncoder {
     byte[][] all = new byte[outputs.length + inputs.length][];
     int[] allOffsets = new int[outputOffsets.length + inputOffsets.length];
 
-    if (allowChangeInputs()) {
+    if (isAllowingChangeInputs()) {
       System.arraycopy(outputs, 0, all, 0, outputs.length);
       System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
 

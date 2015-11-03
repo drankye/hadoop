@@ -23,10 +23,13 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 public enum CoderOption {
   /* If direct buffer is preferred, for perf consideration */
   PREFER_DIRECT_BUFFER(true),    // READ-ONLY
-  /* Allow changing input buffer content. Maybe better perf if allowed */
+  /**
+   * Allow changing input buffer content (not positions).
+   * Maybe better perf if allowed
+   */
   ALLOW_CHANGE_INPUTS(false),    // READ-WRITE
   /* Allow dump verbose debug info or not */
-  ALLOW_DUMP(false);             // READ-WRITE
+  ALLOW_VERBOSE_DUMP(false);     // READ-WRITE
 
   private boolean isReadOnly = false;
 

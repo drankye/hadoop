@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
@@ -28,6 +29,7 @@ import java.nio.ByteBuffer;
  *
  * It extends the {@link RawErasureCoder} interface.
  */
+@InterfaceAudience.Private
 public interface RawErasureDecoder extends RawErasureCoder {
 
   /**
@@ -54,7 +56,7 @@ public interface RawErasureDecoder extends RawErasureCoder {
    *
    * If the coder option ALLOW_CHANGE_INPUTS is set true (false by default), the
    * content of input buffers may change after the call, subject to concrete
-   * implementation.
+   * implementation. Anyway the positions of input buffers will move forward.
    *
    * @param inputs input buffers to read data from
    * @param erasedIndexes indexes of erased units in the inputs array

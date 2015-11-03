@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
@@ -30,26 +31,25 @@ import java.util.Map;
  *
  * It implements the {@link RawErasureCoder} interface.
  */
+@InterfaceAudience.Private
 public abstract class AbstractRawErasureCoder
     extends Configured implements RawErasureCoder {
 
   private static byte[] emptyChunk = new byte[4096];
-
-  protected final int numDataUnits;
-  protected final int numParityUnits;
-  protected final int numAllUnits;
-
+  private final int numDataUnits;
+  private final int numParityUnits;
+  private final int numAllUnits;
   private final Map<CoderOption, Object> coderOptions;
 
   public AbstractRawErasureCoder(int numDataUnits, int numParityUnits) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
     this.numAllUnits = numDataUnits + numParityUnits;
-
     this.coderOptions = new HashMap<>(3);
+
     coderOptions.put(CoderOption.PREFER_DIRECT_BUFFER, preferDirectBuffer());
     coderOptions.put(CoderOption.ALLOW_CHANGE_INPUTS, false);
-    coderOptions.put(CoderOption.ALLOW_DUMP, false);
+    coderOptions.put(CoderOption.ALLOW_VERBOSE_DUMP, false);
   }
 
   @Override
@@ -63,12 +63,14 @@ public abstract class AbstractRawErasureCoder
   @Override
   public void setCoderOption(CoderOption option, Object value) {
     if (option == null || value == null) {
-      throw new HadoopIllegalArgumentException("Invalid option or option value");
+      throw new HadoopIllegalArgumentException(
+          "Invalid option or option value");
     }
     if (option.isReadOnly()) {
-      throw new HadoopIllegalArgumentException("The option is read-only: " +
-          option.name());
+      throw new HadoopIllegalArgumentException(
+          "The option is read-only: " + option.name());
     }
+
     coderOptions.put(option, value);
   }
 
@@ -99,6 +101,10 @@ public abstract class AbstractRawErasureCoder
     return numParityUnits;
   }
 
+  protected int getNumAllUnits() {
+    return numAllUnits;
+  }
+
   @Override
   public void release() {
     // Nothing to do by default
@@ -115,7 +121,7 @@ public abstract class AbstractRawErasureCoder
     return false;
   }
 
-  protected boolean allowChangeInputs() {
+  protected boolean isAllowingChangeInputs() {
     Object value = getCoderOption(CoderOption.ALLOW_CHANGE_INPUTS);
     if (value != null && value instanceof Boolean) {
       return (boolean) value;
@@ -123,8 +129,8 @@ public abstract class AbstractRawErasureCoder
     return false;
   }
 
-  protected boolean allowDump() {
-    Object value = getCoderOption(CoderOption.ALLOW_DUMP);
+  protected boolean isAllowingVerboseDump() {
+    Object value = getCoderOption(CoderOption.ALLOW_VERBOSE_DUMP);
     if (value != null && value instanceof Boolean) {
       return (boolean) value;
     }
@@ -165,9 +171,8 @@ public abstract class AbstractRawErasureCoder
    *         are not changed after the call
    */
   protected ByteBuffer resetBuffer(ByteBuffer buffer, int len) {
-    ByteBuffer empty = ByteBuffer.wrap(getEmptyChunk(len), 0, len);
     int pos = buffer.position();
-    buffer.put(empty);
+    buffer.put(getEmptyChunk(len), 0, len);
     buffer.position(pos);
 
     return buffer;

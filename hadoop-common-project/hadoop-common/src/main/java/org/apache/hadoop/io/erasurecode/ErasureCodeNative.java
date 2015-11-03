@@ -25,7 +25,7 @@ import org.apache.hadoop.util.NativeCodeLoader;
 /**
  * Erasure code native libraries (for now, Intel ISA-L) related utilities.
  */
-public class ErasureCodeNative {
+public final class ErasureCodeNative {
 
   private static final Log LOG =
       LogFactory.getLog(ErasureCodeNative.class.getName());
@@ -33,13 +33,13 @@ public class ErasureCodeNative {
   /**
    * The reason why ISA-L library is not available, or null if it is available.
    */
-  private final static String loadingFailureReason;
+  private static final String LOADING_FAILURE_REASON;
 
   static {
     if (!NativeCodeLoader.isNativeCodeLoaded()) {
-      loadingFailureReason = "hadoop native library cannot be loaded.";
+      LOADING_FAILURE_REASON = "hadoop native library cannot be loaded.";
     } else if (!NativeCodeLoader.buildSupportsIsal()) {
-      loadingFailureReason = "libhadoop was built without ISA-L support";
+      LOADING_FAILURE_REASON = "libhadoop was built without ISA-L support";
     } else {
       String problem = null;
       try {
@@ -48,28 +48,30 @@ public class ErasureCodeNative {
         problem = "Loading ISA-L failed: " + t.getMessage();
         LOG.error("Loading ISA-L failed", t);
       }
-      loadingFailureReason = problem;
+      LOADING_FAILURE_REASON = problem;
     }
   }
+
+  private ErasureCodeNative() {}
 
   /**
    * Are native libraries loaded?
    */
   public static boolean isNativeCodeLoaded() {
-    return loadingFailureReason == null;
+    return LOADING_FAILURE_REASON == null;
   }
 
   /**
    * Is the native ISA-L library loaded and initialized? Throw exception if not.
    */
   public static void checkNativeCodeLoaded() {
-    if (loadingFailureReason != null) {
-      throw new RuntimeException(loadingFailureReason);
+    if (LOADING_FAILURE_REASON != null) {
+      throw new RuntimeException(LOADING_FAILURE_REASON);
     }
   }
 
   /**
-   * Load native library available or supported
+   * Load native library available or supported.
    */
   public static native void loadLibrary();
 
@@ -79,6 +81,6 @@ public class ErasureCodeNative {
   public static native String getLibraryName();
 
   public static String getLoadingFailureReason() {
-    return loadingFailureReason;
+    return LOADING_FAILURE_REASON;
   }
 }

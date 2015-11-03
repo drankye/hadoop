@@ -18,6 +18,8 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil2;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
@@ -30,6 +32,7 @@ import java.nio.ByteBuffer;
  * when possible. This new Java coder is about 5X faster than the one originated
  * from HDFS-RAID, and also compatible with the native/ISA-L coder.
  */
+@InterfaceAudience.Private
 public class RSRawEncoder2 extends AbstractRawErasureEncoder {
   private byte[] encodeMatrix;
   private byte[] gftbls;
@@ -37,20 +40,24 @@ public class RSRawEncoder2 extends AbstractRawErasureEncoder {
   public RSRawEncoder2(int numDataUnits, int numParityUnits) {
     super(numDataUnits, numParityUnits);
 
-    if (getNumDataUnits() + getNumParityUnits() >= RSUtil.GF.getFieldSize()) {
+    if (numDataUnits + numParityUnits >= RSUtil.GF.getFieldSize()) {
       throw new HadoopIllegalArgumentException(
           "Invalid numDataUnits and numParityUnits");
     }
 
     GF256.init();
 
-    encodeMatrix = new byte[numAllUnits * numDataUnits];
-    RSUtil2.genCauchyMatrix(encodeMatrix, numAllUnits, numDataUnits);
-    //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
-    gftbls = new byte[numAllUnits * numDataUnits * 32];
+    encodeMatrix = new byte[getNumAllUnits() * numDataUnits];
+    RSUtil2.genCauchyMatrix(encodeMatrix, getNumAllUnits(), numDataUnits);
+    if (isAllowingVerboseDump()) {
+      DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, getNumAllUnits());
+    }
+    gftbls = new byte[getNumAllUnits() * numDataUnits * 32];
     RSUtil2.initTables(numDataUnits, numParityUnits, encodeMatrix,
         numDataUnits * numDataUnits, gftbls);
-    //System.out.println(DumpUtil.bytesToHex(gftbls, 9999999));
+    if (isAllowingVerboseDump()) {
+      System.out.println(DumpUtil.bytesToHex(gftbls, -1));
+    }
   }
 
   @Override

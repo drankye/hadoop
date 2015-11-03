@@ -484,7 +484,7 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Dump all the settings used in the test case if allowDump is enabled.
+   * Dump all the settings used in the test case if isAllowingVerboseDump is enabled.
    */
   protected void dumpSetting() {
     if (allowDump) {
@@ -498,7 +498,7 @@ public abstract class TestCoderBase {
       sb.append(" erasedParityIndexes=").
               append(Arrays.toString(erasedParityIndexes));
       sb.append(" usingDirectBuffer=").append(usingDirectBuffer);
-      sb.append(" allowChangeInputs=").append(allowChangeInputs);
+      sb.append(" isAllowingChangeInputs=").append(allowChangeInputs);
       sb.append("\n");
 
       System.out.println(sb.toString());
@@ -506,7 +506,7 @@ public abstract class TestCoderBase {
   }
 
   /**
-   * Dump chunks prefixed with a header if allowDump is enabled.
+   * Dump chunks prefixed with a header if isAllowingVerboseDump is enabled.
    * @param header
    * @param chunks
    */

@@ -32,8 +32,7 @@
 #include <string.h>
 
 static void usage(char* errorMsg) {
-  fprintf(stderr, "usage: sample <numDataUnits> <numParityUnits>\n");
-  fprintf(stderr, "A Reed-Solomon coding sample.\n");
+  fprintf(stderr, "A Reed-Solomon coding sample using 6+3 schema.\n");
   if (errorMsg != NULL) fprintf(stderr, "\n%s\n\n", errorMsg);
   exit(1);
 }
@@ -41,8 +40,8 @@ static void usage(char* errorMsg) {
 int main(int argc, char *argv[]) {
   int i, j;
   int chunkSize = 1024;
-  int numDataUnits;
-  int numParityUnits;
+  int numDataUnits = 6;
+  int numParityUnits = 3;
   char errMsg[256];
   unsigned char** dataUnits;
   unsigned char** parityUnits;
@@ -61,15 +60,7 @@ int main(int argc, char *argv[]) {
     return 0;
   } else {
     fprintf(stdout,
-      "Will run this sample using %s\n", get_library_name());  
-  }
-
-  if (argc != 3) usage(NULL);
-  if (sscanf(argv[1], "%d", &numDataUnits) == 0 || numDataUnits <= 0) {
-    usage("Invalid numDataUnits");
-  }
-  if (sscanf(argv[2], "%d", &numParityUnits) == 0 || numParityUnits <= 0) {
-    usage("Invalid numParityUnits");
+      "Will run this sample using %s\n", get_library_name());
   }
 
   dataUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numDataUnits);
@@ -109,9 +100,8 @@ int main(int argc, char *argv[]) {
   erasedIndexes[0] = 1;
   erasedIndexes[1] = 7;
 
-  backupUnits[0] = allUnits[0];
-  backupUnits[1] = allUnits[1];
-  backupUnits[2] = allUnits[7];
+  backupUnits[0] = allUnits[1];
+  backupUnits[1] = allUnits[7];
 
   allUnits[0] = NULL; // Not to read
   allUnits[1] = NULL;
@@ -120,19 +110,18 @@ int main(int argc, char *argv[]) {
   decodingOutput[0] = malloc(chunkSize);
   decodingOutput[1] = malloc(chunkSize);
 
-  for (i = 0; i < 100; i++) {
-    decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
-  }
+  decode(pDecoder, allUnits, erasedIndexes, 2, decodingOutput, chunkSize);
 
   for (i = 0; i < pDecoder->numErased; i++) {
     if (0 != memcmp(decodingOutput[i], backupUnits[i], chunkSize)) {
+      fprintf(stderr, "Decoding failed\n\n");
       dumpDecoder(pDecoder);
       return -1;
     }
   }
 
   dumpDecoder(pDecoder);
-  printf("done EC tests: Pass\n");
+  fprintf(stdout, "Successfully done!\n\n");
 
   return 0;
 }
