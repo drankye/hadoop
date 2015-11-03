@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -216,5 +217,30 @@ public abstract class AbstractRawErasureCoder
         resetBuffer(buffer, 0, dataLen);
       }
     }
+  }
+
+  /**
+   * Convert an array of this chunks to an array of ByteBuffers
+   * @param chunks chunks to convert into buffers
+   * @return an array of ByteBuffers
+   */
+  protected ByteBuffer[] toBuffers(ECChunk[] chunks) {
+    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
+
+    ECChunk chunk;
+    ByteBuffer buffer;
+    for (int i = 0; i < chunks.length; i++) {
+      chunk = chunks[i];
+      if (chunk == null) {
+        buffers[i] = null;
+      } else {
+        buffer = buffers[i] = chunk.getBuffer();
+        if (chunk.isAllZero()) {
+          resetBuffer(buffer, buffer.remaining());
+        }
+      }
+    }
+
+    return buffers;
   }
 }

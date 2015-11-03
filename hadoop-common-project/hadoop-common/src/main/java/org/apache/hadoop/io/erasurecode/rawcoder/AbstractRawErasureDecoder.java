@@ -133,8 +133,8 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   @Override
   public void decode(ECChunk[] inputs, int[] erasedIndexes,
                      ECChunk[] outputs) {
-    ByteBuffer[] newInputs = ECChunk.toBuffers(inputs);
-    ByteBuffer[] newOutputs = ECChunk.toBuffers(outputs);
+    ByteBuffer[] newInputs = toBuffers(inputs);
+    ByteBuffer[] newOutputs = toBuffers(outputs);
     decode(newInputs, erasedIndexes, newOutputs);
   }
 
