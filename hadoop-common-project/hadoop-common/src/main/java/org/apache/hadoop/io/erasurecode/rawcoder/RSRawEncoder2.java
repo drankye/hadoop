@@ -18,6 +18,7 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil2;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.GF256;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
@@ -46,11 +47,15 @@ public class RSRawEncoder2 extends AbstractRawErasureEncoder {
 
     encodeMatrix = new byte[getNumAllUnits() * numDataUnits];
     RSUtil2.genCauchyMatrix(encodeMatrix, getNumAllUnits(), numDataUnits);
-    //DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, numAllUnits);
+    if (isAllowingVerboseDump()) {
+      DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, getNumAllUnits());
+    }
     gftbls = new byte[getNumAllUnits() * numDataUnits * 32];
     RSUtil2.initTables(numDataUnits, numParityUnits, encodeMatrix,
         numDataUnits * numDataUnits, gftbls);
-    //System.out.println(DumpUtil.bytesToHex(gftbls, 9999999));
+    if (isAllowingVerboseDump()) {
+      System.out.println(DumpUtil.bytesToHex(gftbls, -1));
+    }
   }
 
   @Override

@@ -20,7 +20,8 @@ package org.apache.hadoop.io.erasurecode.rawcoder.util;
 import java.nio.ByteBuffer;
 
 /**
- * Utilities for implementing Reed-Solomon code, used by RS2 coder.
+ * Utilities for implementing Reed-Solomon code, used by RS2 coder. Some of the
+ * codes are borrowed from ISA-L implementation (C or ASM codes).
  */
 public final class RSUtil2 {
 
@@ -93,7 +94,7 @@ public final class RSUtil2 {
         oPos = outputOffsets[l];
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
-        tableLine = GF256.gfMulTab[s & 0xff];
+        tableLine = GF256.GF_MUL_TAB[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
           output[oPos + 0] ^= tableLine[0xff & input[iPos + 0]];
@@ -134,7 +135,7 @@ public final class RSUtil2 {
         oPos = output.position();
 
         s = gftbls[j * 32 + l * numInputs * 32 + 1];
-        tableLine = GF256.gfMulTab[s & 0xff];
+        tableLine = GF256.GF_MUL_TAB[s & 0xff];
 
         for (i = 0; i < times; i++, iPos += 8, oPos += 8) {
           output.put(oPos + 0, (byte) (output.get(oPos + 0) ^

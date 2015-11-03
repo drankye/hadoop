@@ -35,9 +35,10 @@ public final class DumpUtil {
 
   /**
    * Convert bytes into format like 0x02 02 00 80.
+   * If limit is negative or too large, then all bytes will be converted.
    */
   public static String bytesToHex(byte[] bytes, int limit) {
-    if (limit > bytes.length) {
+    if (limit <= 0 || limit > bytes.length) {
       limit = bytes.length;
     }
     int len = limit * 2;
