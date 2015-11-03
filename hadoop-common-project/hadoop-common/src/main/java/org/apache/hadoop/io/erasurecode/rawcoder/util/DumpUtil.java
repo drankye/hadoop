@@ -21,8 +21,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.erasurecode.ECChunk;
 
 /**
- * A dump utility class for debugging data erasure coding/decoding issues. Don't
- * suggest they are used in runtime production codes.
+ * A dump utility class for debugging data erasure coding/decoding issues.
+ * Don't suggest they are used in runtime production codes.
  */
 @InterfaceAudience.Private
 public final class DumpUtil {
@@ -54,6 +54,17 @@ public final class DumpUtil {
     }
 
     return new String(hexChars);
+  }
+
+  public static void dumpMatrix(byte[] matrix,
+                                int numDataUnits, int numAllUnits) {
+    for (int i = 0; i < numDataUnits; i++) {
+      for (int j = 0; j < numAllUnits; j++) {
+        System.out.print(" ");
+        System.out.print(0xff & matrix[i * numAllUnits + j]);
+      }
+      System.out.println();
+    }
   }
 
   /**
