@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,21 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.io.erasurecode.rawcoder;
-
-import org.junit.Before;
-import org.junit.Test;
 
 /**
- * Test raw Reed-solomon coder implemented in Java.
+ * Erasure codec and coder framework for erasure coding. It's used by HDFS but
+ * not coupled with HDFS, and potentially can be used in other file systems.
  */
-public class TestRSRawCoder extends TestRSRawCoderBase {
-
-  @Before
-  public void setup() {
-    this.encoderClass = RSRawEncoder.class;
-    this.decoderClass = RSRawDecoder.class;
-    setAllowDump(false); // Change to true to allow verbose dump for debugging
-  }
-
-}
+@InterfaceAudience.Private
+@InterfaceStability.Unstable
+package org.apache.hadoop.io.erasurecode;
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
