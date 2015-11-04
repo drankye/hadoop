@@ -105,7 +105,16 @@ if (ISAL_LIBRARY)
     GET_FILENAME_COMPONENT(HADOOP_ISAL_LIBRARY ${ISAL_LIBRARY} NAME)
     set(ISAL_INCLUDE_DIR ${SRC}/io/erasurecode/include)
     set(ISAL_SOURCE_FILES
-        ${SRC}/io/erasurecode/erasure_code.c)
+        ${SRC}/io/erasurecode/erasure_code.c
+        ${SRC}/io/erasurecode/erasure_coder.c)
+
+        add_executable(erasure_coder_sample
+            ${SRC}/io/erasurecode/erasure_code.c
+            ${SRC}/io/erasurecode/erasure_coder.c
+            ${SRC}/io/erasurecode/erasure_coder_sample.c
+        )
+        target_link_libraries(erasure_coder_sample ${CMAKE_DL_LIBS})
+
         add_executable(erasure_code_test
              ${SRC}/io/erasurecode/erasure_code.c
              ${TST}/io/erasurecode/erasure_code_test.c
