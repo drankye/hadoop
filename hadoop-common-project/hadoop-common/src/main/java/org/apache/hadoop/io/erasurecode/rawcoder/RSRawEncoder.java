@@ -26,7 +26,8 @@ import java.util.Arrays;
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This one originated from HDFS-RAID in its core algorithm. Note
+ * it's not compatible with the native/ISA-L coder.
  */
 @InterfaceAudience.Private
 public class RSRawEncoder extends AbstractRawErasureEncoder {

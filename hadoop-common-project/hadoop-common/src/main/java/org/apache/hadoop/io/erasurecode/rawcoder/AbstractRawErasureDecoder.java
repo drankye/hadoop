@@ -133,9 +133,37 @@ public abstract class AbstractRawErasureDecoder extends AbstractRawErasureCoder
   @Override
   public void decode(ECChunk[] inputs, int[] erasedIndexes,
                      ECChunk[] outputs) {
-    ByteBuffer[] newInputs = ECChunk.toBuffers(inputs);
-    ByteBuffer[] newOutputs = ECChunk.toBuffers(outputs);
+    ByteBuffer[] newInputs = toBuffers(inputs);
+    ByteBuffer[] newOutputs = toBuffers(outputs);
     decode(newInputs, erasedIndexes, newOutputs);
+  }
+
+  /**
+   * Perform the encoding work using bytes array, via converting to direct buffers.
+   * Please note this may be not efficient and serves as fall-back. We should
+   * avoid calling into this.
+   * @param inputs
+   * @param outputs
+   */
+  protected void doDecodeByConvertingToDirectBuffers(byte[][] inputs, int[] inputOffsets,
+                                                     int dataLen, int[] erasedIndexes,
+                                                     byte[][] outputs, int[] outputOffsets) {
+    ByteBuffer[] inputBuffers = new ByteBuffer[inputs.length];
+    ByteBuffer[] outputBuffers = new ByteBuffer[outputs.length];
+
+    for (int i = 0; i < inputs.length; i++) {
+      inputBuffers[i] = convertInputBuffer(inputs[i], inputOffsets[i], dataLen);
+    }
+
+    for (int i = 0; i < outputs.length; i++) {
+      outputBuffers[i] = convertOutputBuffer(outputs[i], dataLen);
+    }
+
+    doDecode(inputBuffers, erasedIndexes, outputBuffers);
+
+    for (int i = 0; i < outputs.length; i++) {
+      outputBuffers[i].get(outputs[i], outputOffsets[i], dataLen);
+    }
   }
 
   /**

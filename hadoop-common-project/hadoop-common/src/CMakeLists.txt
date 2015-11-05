@@ -106,7 +106,11 @@ if (ISAL_LIBRARY)
     set(ISAL_INCLUDE_DIR ${SRC}/io/erasurecode/include)
     set(ISAL_SOURCE_FILES
         ${SRC}/io/erasurecode/erasure_code.c
-        ${SRC}/io/erasurecode/erasure_coder.c)
+        ${SRC}/io/erasurecode/erasure_coder.c
+        ${SRC}/io/erasurecode/coder/coder_util.c
+        ${SRC}/io/erasurecode/coder/erasure_code_native.c
+        ${SRC}/io/erasurecode/coder/rs_encoder.c
+        ${SRC}/io/erasurecode/coder/rs_decoder.c)
 
         add_executable(erasure_coder_sample
             ${SRC}/io/erasurecode/erasure_code.c
