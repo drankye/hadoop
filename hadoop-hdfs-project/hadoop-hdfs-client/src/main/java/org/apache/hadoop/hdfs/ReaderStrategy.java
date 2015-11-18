@@ -38,35 +38,56 @@ interface ReaderStrategy {
   /**
    * Read from a block using the blockReader.
    * @param blockReader
-   * @param length number of bytes desired to read
+   * @param length number of bytes desired to read, not ensured
    * @return number of bytes read
    * @throws IOException
    */
   int readBlock(BlockReader blockReader, int length) throws IOException;
 
   /**
-   * 
+   * Read or copy from a src buffer.
    * @param src
-   * @return
+   * @return number of bytes copied
    */
   int readBuffer(ByteBuffer src);
+
+  /**
+   * Read or copy length of data bytes from a src buffer.
+   * @param src
+   * @return number of bytes copied
+   */
   int readBuffer(ByteBuffer src, int length);
+
+  /**
+   * @return the target read buffer.
+   */
   ByteBuffer getReadBuffer();
+
+  /**
+   * @return the target length to read.
+   */
   int getTargetLength();
 }
 
 /**
- * Used to read bytes into a byte[]
+ * Used to read bytes into a byte array buffer.
  */
 class ByteArrayStrategy implements ReaderStrategy {
   private final ReadStatistics readStatistics;
-  private final byte[] buf;
+  private final byte[] readBuf;
   private int offset;
   private final int targetLength;
 
-  public ByteArrayStrategy(byte[] buf, int offset, int targetLength,
+  /**
+   * The constructor.
+   * @param readBuf target buffer to read into
+   * @param offset offset into the buffer
+   * @param targetLength target length of data
+   * @param readStatistics statistics counter
+   */
+  public ByteArrayStrategy(byte[] readBuf, int offset, int targetLength,
                            ReadStatistics readStatistics) {
-    this.buf = buf;
+    this.readBuf = readBuf;
     this.offset = offset;
     this.targetLength = targetLength;
     this.readStatistics = readStatistics;
@@ -74,7 +95,7 @@ class ByteArrayStrategy implements ReaderStrategy {
 
   @Override
   public ByteBuffer getReadBuffer() {
-    return ByteBuffer.wrap(buf, offset, targetLength);
+    return ByteBuffer.wrap(readBuf, offset, targetLength);
   }
 
   @Override
@@ -88,8 +109,9 @@ class ByteArrayStrategy implements ReaderStrategy {
   }
 
   @Override
-  public int readBlock(BlockReader blockReader, int length) throws IOException {
-    int nRead = blockReader.read(buf, offset, length);
+  public int readBlock(BlockReader blockReader,
+                       int length) throws IOException {
+    int nRead = blockReader.read(readBuf, offset, length);
     if (nRead > 0) {
       updateReadStatistics(readStatistics, nRead, blockReader);
       offset += nRead;
@@ -105,7 +127,7 @@ class ByteArrayStrategy implements ReaderStrategy {
   @Override
   public int readBuffer(ByteBuffer src, int length) {
     ByteBuffer dup = src.duplicate();
-    dup.get(buf, offset, length);
+    dup.get(readBuf, offset, length);
     offset += length;
     return length;
   }
@@ -116,33 +138,40 @@ class ByteArrayStrategy implements ReaderStrategy {
  */
 class ByteBufferStrategy implements ReaderStrategy {
   private final ReadStatistics readStatistics;
-  private final ByteBuffer readBuffer;
+  private final ByteBuffer readBuf;
   private final int targetLength;
 
-  ByteBufferStrategy(ByteBuffer readBuffer,
+  /**
+   * The constructor.
+   * @param readBuf target buffer to read into
+   * @param readStatistics statistics counter
+   */
+  ByteBufferStrategy(ByteBuffer readBuf,
                      ReadStatistics readStatistics) {
-    this.readBuffer = readBuffer;
-    this.targetLength = readBuffer.remaining();
+    this.readBuf = readBuf;
+    this.targetLength = readBuf.remaining();
     this.readStatistics = readStatistics;
   }
 
   @Override
   public ByteBuffer getReadBuffer() {
-    return readBuffer;
+    return readBuf;
   }
 
   @Override
   public int readBlock(BlockReader blockReader) throws IOException {
-    return readBlock(blockReader, readBuffer.remaining());
+    return readBlock(blockReader, readBuf.remaining());
   }
 
   @Override
-  public int readBlock(BlockReader blockReader, int length) throws IOException {
-    ByteBuffer tmpBuf = readBuffer.duplicate();
+  public int readBlock(BlockReader blockReader,
+                       int length) throws IOException {
+    ByteBuffer tmpBuf = readBuf.duplicate();
     tmpBuf.limit(tmpBuf.position() + length);
-    int nRead = blockReader.read(readBuffer.slice());
+    int nRead = blockReader.read(readBuf.slice());
+    // Only when data are read, update the position
     if (nRead > 0) {
-      readBuffer.position(readBuffer.position() + nRead);
+      readBuf.position(readBuf.position() + nRead);
       updateReadStatistics(readStatistics, nRead, blockReader);
     }
 
@@ -162,10 +191,10 @@ class ByteBufferStrategy implements ReaderStrategy {
   @Override
   public int readBuffer(ByteBuffer src, int length) {
     ByteBuffer dup = src.duplicate();
-    int newLen = Math.min(readBuffer.remaining(), dup.remaining());
+    int newLen = Math.min(readBuf.remaining(), dup.remaining());
     newLen = Math.min(newLen, length);
     dup.limit(dup.position() + newLen);
-    readBuffer.put(dup);
+    readBuf.put(dup);
     return newLen;
   }
 }

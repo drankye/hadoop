@@ -46,6 +46,12 @@ public class IOUtilsClient {
     }
   }
 
+  /**
+   * Update read statistics with number of bytes read.
+   * @param readStatistics the read statistics counter
+   * @param nRead number of bytes read
+   * @param blockReader the block reader
+   */
   public static void updateReadStatistics(ReadStatistics readStatistics,
                                           int nRead, BlockReader blockReader) {
     if (nRead <= 0) return;
