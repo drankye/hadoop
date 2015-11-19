@@ -334,6 +334,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         for (ByteBufferStrategy strategy : strategies) {
           result += readToBuffer(reader, datanode, strategy, currentBlock,
               corruptedBlockMap);
+          strategy.getReadBuffer().flip();
         }
         return null;
       }
@@ -345,17 +346,17 @@ public class DFSStripedInputStream extends DFSInputStream {
       ExtendedBlock currentBlock,
       Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
       throws IOException {
-    final int targetLength = strategy.buf.remaining();
-    int length = 0;
+    final int targetLength = strategy.getTargetLength();
+    int gotLen = 0;
     try {
-      while (length < targetLength) {
-        int ret = strategy.doRead(blockReader, 0, 0);
+      while (gotLen < targetLength) {
+        int ret = strategy.readBlock(blockReader);
         if (ret < 0) {
           throw new IOException("Unexpected EOS from the reader");
         }
-        length += ret;
+        gotLen += ret;
       }
-      return length;
+      return gotLen;
     } catch (ChecksumException ce) {
       DFSClient.LOG.warn("Found Checksum error for "
           + currentBlock + " from " + currentNode
@@ -412,64 +413,65 @@ public class DFSStripedInputStream extends DFSInputStream {
   }
 
   @Override
-  protected synchronized int readWithStrategy(ReaderStrategy strategy,
-      int off, int len) throws IOException {
+  protected synchronized int readWithStrategy(
+      ReaderStrategy strategy) throws IOException {
     dfsClient.checkOpen();
     if (closed.get()) {
       throw new IOException("Stream closed");
     }
+
+    if (pos >= getFileLength()) {
+      return -1;
+    }
+
     Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
         new ConcurrentHashMap<>();
-    if (pos < getFileLength()) {
-      try {
-        if (pos > blockEnd) {
-          blockSeekTo(pos);
-        }
-        int realLen = (int) Math.min(len, (blockEnd - pos + 1L));
-        synchronized (infoLock) {
-          if (locatedBlocks.isLastBlockComplete()) {
-            realLen = (int) Math.min(realLen,
-                locatedBlocks.getFileLength() - pos);
-          }
-        }
-
-        /** Number of bytes already read into buffer */
-        int result = 0;
-        while (result < realLen) {
-          if (!curStripeRange.include(getOffsetInBlockGroup())) {
-            readOneStripe(corruptedBlockMap);
-          }
-          int ret = copyToTargetBuf(strategy, off + result, realLen - result);
-          result += ret;
-          pos += ret;
-        }
-        if (dfsClient.stats != null) {
-          dfsClient.stats.incrementBytesRead(result);
-        }
-        return result;
-      } finally {
-        // Check if need to report block replicas corruption either read
-        // was successful or ChecksumException occured.
-        reportCheckSumFailure(corruptedBlockMap,
-            currentLocatedBlock.getLocations().length);
+    try {
+      if (pos > blockEnd) {
+        blockSeekTo(pos);
       }
+      int realLen = (int) Math.min(strategy.getTargetLength(),
+          (blockEnd - pos + 1L));
+      synchronized (infoLock) {
+        if (locatedBlocks.isLastBlockComplete()) {
+          realLen = (int) Math.min(realLen,
+              locatedBlocks.getFileLength() - pos);
+        }
+      }
+
+      /** Number of bytes already read into buffer */
+      int result = 0;
+      while (result < realLen) {
+        if (!curStripeRange.include(getOffsetInBlockGroup())) {
+          readOneStripe(corruptedBlockMap);
+        }
+        int ret = copyToTargetBuf(strategy, realLen - result);
+        result += ret;
+        pos += ret;
+      }
+      if (dfsClient.stats != null) {
+        dfsClient.stats.incrementBytesRead(result);
+      }
+      return result;
+    } finally {
+      // Check if need to report block replicas corruption either read
+      // was successful or ChecksumException occured.
+      reportCheckSumFailure(corruptedBlockMap,
+          currentLocatedBlock.getLocations().length);
     }
-    return -1;
   }
 
   /**
    * Copy the data from {@link #curStripeBuf} into the given buffer
    * @param strategy the ReaderStrategy containing the given buffer
-   * @param offset the offset of the given buffer. Used only when strategy is
-   *               a ByteArrayStrategy
    * @param length target length
    * @return number of bytes copied
    */
-  private int copyToTargetBuf(ReaderStrategy strategy, int offset, int length) {
+  private int copyToTargetBuf(ReaderStrategy strategy, int length) {
     final long offsetInBlk = getOffsetInBlockGroup();
     int bufOffset = getStripedBufOffset(offsetInBlk);
     curStripeBuf.position(bufOffset);
-    return strategy.copyFrom(curStripeBuf, offset,
+    return strategy.readBuffer(curStripeBuf,
         Math.min(length, curStripeBuf.remaining()));
   }
 
@@ -690,7 +692,8 @@ public class DFSStripedInputStream extends DFSInputStream {
 
     private ByteBufferStrategy[] getReadStrategies(StripingChunk chunk) {
       if (chunk.byteBuffer != null) {
-        ByteBufferStrategy strategy = new ByteBufferStrategy(chunk.byteBuffer);
+        ByteBufferStrategy strategy = new ByteBufferStrategy(chunk
+            .byteBuffer, readStatistics);
         return new ByteBufferStrategy[]{strategy};
       } else {
         ByteBufferStrategy[] strategies =
@@ -698,7 +701,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         for (int i = 0; i < strategies.length; i++) {
           ByteBuffer buffer = ByteBuffer.wrap(chunk.byteArray.buf(),
               chunk.byteArray.getOffsets()[i], chunk.byteArray.getLengths()[i]);
-          strategies[i] = new ByteBufferStrategy(buffer);
+          strategies[i] = new ByteBufferStrategy(buffer, readStatistics);
         }
         return strategies;
       }
