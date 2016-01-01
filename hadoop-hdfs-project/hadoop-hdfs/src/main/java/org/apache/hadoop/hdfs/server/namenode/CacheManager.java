@@ -180,14 +180,14 @@ public final class CacheManager {
 
   public static final class PersistState {
     public final CacheManagerSection section;
-    public final FbCacheManagerSection intelSection;
+    public final FbCacheManagerSection fbSection;
     public final List<CachePoolInfoProto> pools;
     public final List<CacheDirectiveInfoProto> directives;
 
-    public PersistState(CacheManagerSection section, FbCacheManagerSection intelSection,
+    public PersistState(CacheManagerSection section, FbCacheManagerSection fbSection,
         List<CachePoolInfoProto> pools, List<CacheDirectiveInfoProto> directives) {
       this.section = section;
-      this.intelSection = intelSection;
+      this.fbSection = fbSection;
       this.pools = pools;
       this.directives = directives;
     }
@@ -1063,15 +1063,15 @@ public final class CacheManager {
         .setNumDirectives(directives.size()).build();
 
     /**
-     * Get IntelCacheManagerSection
+     * Get FbCacheManagerSection
      */
     FlatBufferBuilder fbb = new FlatBufferBuilder();
-    int offset = FbCacheManagerSection.createIntelCacheManagerSection(fbb,
+    int offset = FbCacheManagerSection.createFbCacheManagerSection(fbb,
         nextDirectiveId, pools.size(), directives.size());
-    FbCacheManagerSection.finishIntelCacheManagerSectionBuffer(fbb, offset);
+    FbCacheManagerSection.finishFbCacheManagerSectionBuffer(fbb, offset);
     ByteBuffer byteBuffer = fbb.dataBuffer();
     FbCacheManagerSection is =
-        FbCacheManagerSection.getRootAsIntelCacheManagerSection(byteBuffer);
+        FbCacheManagerSection.getRootAsFbCacheManagerSection(byteBuffer);
 
     return new PersistState(s, is, pools, directives);
   }
@@ -1087,7 +1087,7 @@ public final class CacheManager {
   }
 
   public void loadState(PersistState s) throws IOException {
-    nextDirectiveId = s.intelSection.nextDirectiveId();
+    nextDirectiveId = s.fbSection.nextDirectiveId();
     for (CachePoolInfoProto p : s.pools) {
       CachePoolInfo info = new CachePoolInfo(p.getPoolName());
       if (p.hasOwnerName())

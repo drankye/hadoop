@@ -7,8 +7,8 @@ import com.google.flatbuffers.*;
 
 @SuppressWarnings("unused")
 public final class FbINode extends Table {
-  public static FbINode getRootAsIntelINode(ByteBuffer _bb) { return getRootAsIntelINode(_bb, new FbINode()); }
-  public static FbINode getRootAsIntelINode(ByteBuffer _bb, FbINode obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
+  public static FbINode getRootAsFbINode(ByteBuffer _bb) { return getRootAsFbINode(_bb, new FbINode()); }
+  public static FbINode getRootAsFbINode(ByteBuffer _bb, FbINode obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public FbINode __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public int type() { int o = __offset(4); return o != 0 ? bb.getInt(o + bb_pos) : 0; }
@@ -22,7 +22,7 @@ public final class FbINode extends Table {
   public FbINodeSymlink symlink() { return symlink(new FbINodeSymlink()); }
   public FbINodeSymlink symlink(FbINodeSymlink obj) { int o = __offset(14); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
-  public static int createIntelINode(FlatBufferBuilder builder,
+  public static int createFbINode(FlatBufferBuilder builder,
       int type,
       long id,
       int name,
@@ -36,20 +36,20 @@ public final class FbINode extends Table {
     FbINode.addFile(builder, file);
     FbINode.addName(builder, name);
     FbINode.addType(builder, type);
-    return FbINode.endIntelINode(builder);
+    return FbINode.endFbINode(builder);
   }
 
-  public static void startIntelINode(FlatBufferBuilder builder) { builder.startObject(6); }
+  public static void startFbINode(FlatBufferBuilder builder) { builder.startObject(6); }
   public static void addType(FlatBufferBuilder builder, int type) { builder.addInt(0, type, 0); }
   public static void addId(FlatBufferBuilder builder, long id) { builder.addLong(1, id, 0); }
   public static void addName(FlatBufferBuilder builder, int nameOffset) { builder.addOffset(2, nameOffset, 0); }
   public static void addFile(FlatBufferBuilder builder, int fileOffset) { builder.addOffset(3, fileOffset, 0); }
   public static void addDirectory(FlatBufferBuilder builder, int directoryOffset) { builder.addOffset(4, directoryOffset, 0); }
   public static void addSymlink(FlatBufferBuilder builder, int symlinkOffset) { builder.addOffset(5, symlinkOffset, 0); }
-  public static int endIntelINode(FlatBufferBuilder builder) {
+  public static int endFbINode(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;
   }
-  public static void finishIntelINodeBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
+  public static void finishFbINodeBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 };
 

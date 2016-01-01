@@ -7,8 +7,8 @@ import com.google.flatbuffers.*;
 
 @SuppressWarnings("unused")
 public final class FbINodeFile extends Table {
-  public static FbINodeFile getRootAsIntelINodeFile(ByteBuffer _bb) { return getRootAsIntelINodeFile(_bb, new FbINodeFile()); }
-  public static FbINodeFile getRootAsIntelINodeFile(ByteBuffer _bb, FbINodeFile obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
+  public static FbINodeFile getRootAsFbINodeFile(ByteBuffer _bb) { return getRootAsFbINodeFile(_bb, new FbINodeFile()); }
+  public static FbINodeFile getRootAsFbINodeFile(ByteBuffer _bb, FbINodeFile obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public FbINodeFile __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public long replication() { int o = __offset(4); return o != 0 ? (long)bb.getInt(o + bb_pos) & 0xFFFFFFFFL : 0; }
@@ -27,7 +27,7 @@ public final class FbINodeFile extends Table {
   public FbXAttrFeatureProto xAttrs(FbXAttrFeatureProto obj) { int o = __offset(20); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
   public long storagePolicyID() { int o = __offset(22); return o != 0 ? (long)bb.getInt(o + bb_pos) & 0xFFFFFFFFL : 0; }
 
-  public static int createIntelINodeFile(FlatBufferBuilder builder,
+  public static int createFbINodeFile(FlatBufferBuilder builder,
       long replication,
       long modificationTime,
       long accessTime,
@@ -49,10 +49,10 @@ public final class FbINodeFile extends Table {
     FbINodeFile.addFileUC(builder, fileUC);
     FbINodeFile.addBlocks(builder, blocks);
     FbINodeFile.addReplication(builder, replication);
-    return FbINodeFile.endIntelINodeFile(builder);
+    return FbINodeFile.endFbINodeFile(builder);
   }
 
-  public static void startIntelINodeFile(FlatBufferBuilder builder) { builder.startObject(10); }
+  public static void startFbINodeFile(FlatBufferBuilder builder) { builder.startObject(10); }
   public static void addReplication(FlatBufferBuilder builder, long replication) { builder.addInt(0, (int)(replication & 0xFFFFFFFFL), 0); }
   public static void addModificationTime(FlatBufferBuilder builder, long modificationTime) { builder.addLong(1, modificationTime, 0); }
   public static void addAccessTime(FlatBufferBuilder builder, long accessTime) { builder.addLong(2, accessTime, 0); }
@@ -65,11 +65,11 @@ public final class FbINodeFile extends Table {
   public static void addAcl(FlatBufferBuilder builder, int aclOffset) { builder.addOffset(7, aclOffset, 0); }
   public static void addXAttrs(FlatBufferBuilder builder, int xAttrsOffset) { builder.addOffset(8, xAttrsOffset, 0); }
   public static void addStoragePolicyID(FlatBufferBuilder builder, long storagePolicyID) { builder.addInt(9, (int)(storagePolicyID & 0xFFFFFFFFL), 0); }
-  public static int endIntelINodeFile(FlatBufferBuilder builder) {
+  public static int endFbINodeFile(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;
   }
-  public static void finishIntelINodeFileBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
+  public static void finishFbINodeFileBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 
 };
 

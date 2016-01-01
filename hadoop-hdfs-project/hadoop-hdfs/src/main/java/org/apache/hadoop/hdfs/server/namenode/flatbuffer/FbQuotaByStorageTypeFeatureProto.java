@@ -7,30 +7,30 @@ import com.google.flatbuffers.*;
 
 @SuppressWarnings("unused")
 public final class FbQuotaByStorageTypeFeatureProto extends Table {
-  public static FbQuotaByStorageTypeFeatureProto getRootAsIntelQuotaByStorageTypeFeatureProto(ByteBuffer _bb) { return getRootAsIntelQuotaByStorageTypeFeatureProto(_bb, new FbQuotaByStorageTypeFeatureProto()); }
-  public static FbQuotaByStorageTypeFeatureProto getRootAsIntelQuotaByStorageTypeFeatureProto(ByteBuffer _bb, FbQuotaByStorageTypeFeatureProto obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
+  public static FbQuotaByStorageTypeFeatureProto getRootAsFbQuotaByStorageTypeFeatureProto(ByteBuffer _bb) { return getRootAsFbQuotaByStorageTypeFeatureProto(_bb, new FbQuotaByStorageTypeFeatureProto()); }
+  public static FbQuotaByStorageTypeFeatureProto getRootAsFbQuotaByStorageTypeFeatureProto(ByteBuffer _bb, FbQuotaByStorageTypeFeatureProto obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public FbQuotaByStorageTypeFeatureProto __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public FbQuotaByStorageTypeEntryProto quotas(int j) { return quotas(new FbQuotaByStorageTypeEntryProto(), j); }
   public FbQuotaByStorageTypeEntryProto quotas(FbQuotaByStorageTypeEntryProto obj, int j) { int o = __offset(4); return o != 0 ? obj.__init(__indirect(__vector(o) + j * 4), bb) : null; }
   public int quotasLength() { int o = __offset(4); return o != 0 ? __vector_len(o) : 0; }
 
-  public static int createIntelQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder,
+  public static int createFbQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder,
       int quotas) {
     builder.startObject(1);
     FbQuotaByStorageTypeFeatureProto.addQuotas(builder, quotas);
-    return FbQuotaByStorageTypeFeatureProto.endIntelQuotaByStorageTypeFeatureProto(builder);
+    return FbQuotaByStorageTypeFeatureProto.endFbQuotaByStorageTypeFeatureProto(builder);
   }
 
-  public static void startIntelQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder) { builder.startObject(1); }
+  public static void startFbQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder) { builder.startObject(1); }
   public static void addQuotas(FlatBufferBuilder builder, int quotasOffset) { builder.addOffset(0, quotasOffset, 0); }
   public static int createQuotasVector(FlatBufferBuilder builder, int[] data) { builder.startVector(4, data.length, 4); for (int i = data.length - 1; i >= 0; i--) builder.addOffset(data[i]); return builder.endVector(); }
   public static void startQuotasVector(FlatBufferBuilder builder, int numElems) { builder.startVector(4, numElems, 4); }
-  public static int endIntelQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder) {
+  public static int endFbQuotaByStorageTypeFeatureProto(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;
   }
-  public static void finishIntelQuotaByStorageTypeFeatureProtoBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
+  public static void finishFbQuotaByStorageTypeFeatureProtoBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 
 };
 

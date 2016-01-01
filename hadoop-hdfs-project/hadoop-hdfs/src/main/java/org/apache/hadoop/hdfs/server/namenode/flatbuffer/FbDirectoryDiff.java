@@ -7,8 +7,8 @@ import com.google.flatbuffers.*;
 
 @SuppressWarnings("unused")
 public final class FbDirectoryDiff extends Table {
-  public static FbDirectoryDiff getRootAsIntelDirectoryDiff(ByteBuffer _bb) { return getRootAsIntelDirectoryDiff(_bb, new FbDirectoryDiff()); }
-  public static FbDirectoryDiff getRootAsIntelDirectoryDiff(ByteBuffer _bb, FbDirectoryDiff obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
+  public static FbDirectoryDiff getRootAsFbDirectoryDiff(ByteBuffer _bb) { return getRootAsFbDirectoryDiff(_bb, new FbDirectoryDiff()); }
+  public static FbDirectoryDiff getRootAsFbDirectoryDiff(ByteBuffer _bb, FbDirectoryDiff obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public FbDirectoryDiff __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public long snapshotId() { int o = __offset(4); return o != 0 ? (long)bb.getInt(o + bb_pos) & 0xFFFFFFFFL : 0; }
@@ -26,7 +26,7 @@ public final class FbDirectoryDiff extends Table {
   public int deletedINodeRefLength() { int o = __offset(18); return o != 0 ? __vector_len(o) : 0; }
   public ByteBuffer deletedINodeRefAsByteBuffer() { return __vector_as_bytebuffer(18, 4); }
 
-  public static int createIntelDirectoryDiff(FlatBufferBuilder builder,
+  public static int createFbDirectoryDiff(FlatBufferBuilder builder,
       long snapshotId,
       long childrenSize,
       boolean isSnapshotRoot,
@@ -44,10 +44,10 @@ public final class FbDirectoryDiff extends Table {
     FbDirectoryDiff.addChildrenSize(builder, childrenSize);
     FbDirectoryDiff.addSnapshotId(builder, snapshotId);
     FbDirectoryDiff.addIsSnapshotRoot(builder, isSnapshotRoot);
-    return FbDirectoryDiff.endIntelDirectoryDiff(builder);
+    return FbDirectoryDiff.endFbDirectoryDiff(builder);
   }
 
-  public static void startIntelDirectoryDiff(FlatBufferBuilder builder) { builder.startObject(8); }
+  public static void startFbDirectoryDiff(FlatBufferBuilder builder) { builder.startObject(8); }
   public static void addSnapshotId(FlatBufferBuilder builder, long snapshotId) { builder.addInt(0, (int)(snapshotId & 0xFFFFFFFFL), 0); }
   public static void addChildrenSize(FlatBufferBuilder builder, long childrenSize) { builder.addInt(1, (int)(childrenSize & 0xFFFFFFFFL), 0); }
   public static void addIsSnapshotRoot(FlatBufferBuilder builder, boolean isSnapshotRoot) { builder.addBoolean(2, isSnapshotRoot, false); }
@@ -60,11 +60,11 @@ public final class FbDirectoryDiff extends Table {
   public static void addDeletedINodeRef(FlatBufferBuilder builder, int deletedINodeRefOffset) { builder.addOffset(7, deletedINodeRefOffset, 0); }
   public static int createDeletedINodeRefVector(FlatBufferBuilder builder, int[] data) { builder.startVector(4, data.length, 4); for (int i = data.length - 1; i >= 0; i--) builder.addInt(data[i]); return builder.endVector(); }
   public static void startDeletedINodeRefVector(FlatBufferBuilder builder, int numElems) { builder.startVector(4, numElems, 4); }
-  public static int endIntelDirectoryDiff(FlatBufferBuilder builder) {
+  public static int endFbDirectoryDiff(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;
   }
-  public static void finishIntelDirectoryDiffBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
+  public static void finishFbDirectoryDiffBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 
 };
 

@@ -7,8 +7,8 @@ import com.google.flatbuffers.*;
 
 @SuppressWarnings("unused")
 public final class FbINodeDirectory extends Table {
-  public static FbINodeDirectory getRootAsIntelINodeDirectory(ByteBuffer _bb) { return getRootAsIntelINodeDirectory(_bb, new FbINodeDirectory()); }
-  public static FbINodeDirectory getRootAsIntelINodeDirectory(ByteBuffer _bb, FbINodeDirectory obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
+  public static FbINodeDirectory getRootAsFbINodeDirectory(ByteBuffer _bb) { return getRootAsFbINodeDirectory(_bb, new FbINodeDirectory()); }
+  public static FbINodeDirectory getRootAsFbINodeDirectory(ByteBuffer _bb, FbINodeDirectory obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public FbINodeDirectory __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public long modificationTime() { int o = __offset(4); return o != 0 ? bb.getLong(o + bb_pos) : 0; }
@@ -22,7 +22,7 @@ public final class FbINodeDirectory extends Table {
   public FbQuotaByStorageTypeFeatureProto typeQuotas() { return typeQuotas(new FbQuotaByStorageTypeFeatureProto()); }
   public FbQuotaByStorageTypeFeatureProto typeQuotas(FbQuotaByStorageTypeFeatureProto obj) { int o = __offset(16); return o != 0 ? obj.__init(__indirect(o + bb_pos), bb) : null; }
 
-  public static int createIntelINodeDirectory(FlatBufferBuilder builder,
+  public static int createFbINodeDirectory(FlatBufferBuilder builder,
       long modificationTime,
       long nsQuota,
       long dsQuota,
@@ -38,10 +38,10 @@ public final class FbINodeDirectory extends Table {
     FbINodeDirectory.addTypeQuotas(builder, typeQuotas);
     FbINodeDirectory.addXAttrs(builder, xAttrs);
     FbINodeDirectory.addAcl(builder, acl);
-    return FbINodeDirectory.endIntelINodeDirectory(builder);
+    return FbINodeDirectory.endFbINodeDirectory(builder);
   }
 
-  public static void startIntelINodeDirectory(FlatBufferBuilder builder) { builder.startObject(7); }
+  public static void startFbINodeDirectory(FlatBufferBuilder builder) { builder.startObject(7); }
   public static void addModificationTime(FlatBufferBuilder builder, long modificationTime) { builder.addLong(0, modificationTime, 0); }
   public static void addNsQuota(FlatBufferBuilder builder, long nsQuota) { builder.addLong(1, nsQuota, 0); }
   public static void addDsQuota(FlatBufferBuilder builder, long dsQuota) { builder.addLong(2, dsQuota, 0); }
@@ -49,11 +49,11 @@ public final class FbINodeDirectory extends Table {
   public static void addAcl(FlatBufferBuilder builder, int aclOffset) { builder.addOffset(4, aclOffset, 0); }
   public static void addXAttrs(FlatBufferBuilder builder, int xAttrsOffset) { builder.addOffset(5, xAttrsOffset, 0); }
   public static void addTypeQuotas(FlatBufferBuilder builder, int typeQuotasOffset) { builder.addOffset(6, typeQuotasOffset, 0); }
-  public static int endIntelINodeDirectory(FlatBufferBuilder builder) {
+  public static int endFbINodeDirectory(FlatBufferBuilder builder) {
     int o = builder.endObject();
     return o;
   }
-  public static void finishIntelINodeDirectoryBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
+  public static void finishFbINodeDirectoryBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 
 };
 

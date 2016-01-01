@@ -5831,13 +5831,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   }
 
   void loadSecretManagerState(SecretManagerSection s,
-      FbSecretManagerSection intelS,
+      FbSecretManagerSection fbS,
       List<SecretManagerSection.DelegationKey> keys,
-                              List<FbDelegationKey> intelKeys,
-                              List<FbPersistToken> intelTokens,
+                              List<FbDelegationKey> fbKeys,
+                              List<FbPersistToken> fbTokens,
       List<SecretManagerSection.PersistToken> tokens) throws IOException {
     dtSecretManager.loadSecretManagerState(
-        new SecretManagerState(s, intelS, keys, intelKeys,intelTokens ,tokens));
+        new SecretManagerState(s, fbS, keys, fbKeys,fbTokens ,tokens));
   }
 
   /**

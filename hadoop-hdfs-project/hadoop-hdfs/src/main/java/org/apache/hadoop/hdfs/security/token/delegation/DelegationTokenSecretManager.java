@@ -183,25 +183,25 @@ public class DelegationTokenSecretManager
 
   public static class SecretManagerState {
     public final SecretManagerSection section;
-    public final FbSecretManagerSection intelSection;
+    public final FbSecretManagerSection fbSection;
     public final List<SecretManagerSection.DelegationKey> keys;
-    public final List<FbDelegationKey> intelKeys;
+    public final List<FbDelegationKey> fbKeys;
     public final List<SecretManagerSection.PersistToken> tokens;
-    public final List<FbPersistToken> intelTokens;
+    public final List<FbPersistToken> fbTokens;
 
     public SecretManagerState(
         SecretManagerSection s,
-        FbSecretManagerSection intelSection,
+        FbSecretManagerSection fbSection,
         List<SecretManagerSection.DelegationKey> keys,
-        List<FbDelegationKey> intelKeys,
-        List<FbPersistToken> intelTokens,
+        List<FbDelegationKey> fbKeys,
+        List<FbPersistToken> fbTokens,
         List<SecretManagerSection.PersistToken> tokens) {
       this.section = s;
-      this.intelSection = intelSection;
+      this.fbSection = fbSection;
       this.keys = keys;
-      this.intelKeys = intelKeys;
+      this.fbKeys = fbKeys;
       this.tokens = tokens;
-      this.intelTokens = intelTokens;
+      this.fbTokens = fbTokens;
     }
   }
 
@@ -209,14 +209,14 @@ public class DelegationTokenSecretManager
       throws IOException {
     Preconditions.checkState(!running,
         "Can't load state from image in a running SecretManager.");
-    currentId = (int)state.intelSection.currentId();
-    delegationTokenSequenceNumber = (int)state.intelSection.tokenSequenceNumber();
-    for (FbDelegationKey k : state.intelKeys) {
+    currentId = (int)state.fbSection.currentId();
+    delegationTokenSequenceNumber = (int)state.fbSection.tokenSequenceNumber();
+    for (FbDelegationKey k : state.fbKeys) {
       addKey(new DelegationKey((int)k.id(), k.expiryDate(), k.key() != null ? k
           .key().getBytes() : null));
     }
 
-    for (FbPersistToken t : state.intelTokens) {
+    for (FbPersistToken t : state.fbTokens) {
       DelegationTokenIdentifier id = new DelegationTokenIdentifier(new Text(
           t.owner()), new Text(t.renewer()), new Text(t.realUser()));
       id.setIssueDate(t.issueDate());
@@ -244,25 +244,25 @@ public class DelegationTokenSecretManager
     FlatBufferBuilder fbb = new FlatBufferBuilder();
     ByteBuffer byteBuffer = null;
 
-    int offset = FbSecretManagerSection.createIntelSecretManagerSection(fbb,
+    int offset = FbSecretManagerSection.createFbSecretManagerSection(fbb,
         currentId,
         delegationTokenSequenceNumber,
         allKeys.size(),
         currentTokens.size());
-    FbSecretManagerSection.finishIntelSecretManagerSectionBuffer(fbb, offset);
+    FbSecretManagerSection.finishFbSecretManagerSectionBuffer(fbb, offset);
     byteBuffer = fbb.dataBuffer();
     FbSecretManagerSection is = FbSecretManagerSection.
-        getRootAsIntelSecretManagerSection(byteBuffer);
+        getRootAsFbSecretManagerSection(byteBuffer);
 
-    ArrayList<FbDelegationKey> intelKeys = Lists
+    ArrayList<FbDelegationKey> fbKeys = Lists
         .newArrayListWithCapacity(allKeys.size());
-    ArrayList<FbPersistToken> intelTokens = Lists
+    ArrayList<FbPersistToken> fbTokens = Lists
         .newArrayListWithCapacity(currentTokens.size());
 
     for (DelegationKey v : allKeys.values()) {
       FlatBufferBuilder fbb1 = new FlatBufferBuilder();
       ByteBuffer byteBuffer1 = null;
-      FbDelegationKey.startIntelDelegationKey(fbb1);
+      FbDelegationKey.startFbDelegationKey(fbb1);
       FbDelegationKey.addId(fbb1, v.getKeyId());
       FbDelegationKey.addExpiryDate(fbb1, v.getExpiryDate());
 //      SecretManagerSection.DelegationKey.Builder b = SecretManagerSection.DelegationKey
@@ -274,12 +274,12 @@ public class DelegationTokenSecretManager
         keyOffset = fbb1.createString(ByteBuffer.wrap(bytes));
         FbDelegationKey.addKey(fbb1, keyOffset);
       }
-      int inv = FbDelegationKey.endIntelDelegationKey(fbb1);
-      FbDelegationKey.finishIntelDelegationKeyBuffer(fbb1, inv);
+      int inv = FbDelegationKey.endFbDelegationKey(fbb1);
+      FbDelegationKey.finishFbDelegationKeyBuffer(fbb1, inv);
       byteBuffer1 = fbb1.dataBuffer();
-      FbDelegationKey intelDelegationKey =
-          FbDelegationKey.getRootAsIntelDelegationKey(byteBuffer1);
-      intelKeys.add(intelDelegationKey);
+      FbDelegationKey fbDelegationKey =
+          FbDelegationKey.getRootAsFbDelegationKey(byteBuffer1);
+      fbKeys.add(fbDelegationKey);
     }
 
     for (Entry<DelegationTokenIdentifier, DelegationTokenInformation> e : currentTokens
@@ -290,7 +290,7 @@ public class DelegationTokenSecretManager
       FlatBufferBuilder fbb2 = new FlatBufferBuilder();
       ByteBuffer byteBuffer2 = null;
 
-      FbPersistToken.startIntelPersistToken(fbb2);
+      FbPersistToken.startFbPersistToken(fbb2);
       FbPersistToken.addOwner(fbb2, fbb2.createString(id.getOwner().toString()));
       FbPersistToken.addRenewer(fbb2, fbb2.createString(id.getRenewer().toString()));
       FbPersistToken.addRealUser(fbb2, fbb2.createString(id.getRealUser().toString()));
@@ -299,15 +299,15 @@ public class DelegationTokenSecretManager
       FbPersistToken.addSequenceNumber(fbb2, id.getSequenceNumber());
       FbPersistToken.addMasterKeyId(fbb2, id.getMasterKeyId());
       FbPersistToken.addExpiryDate(fbb2, e.getValue().getRenewDate());
-      int inv = FbPersistToken.endIntelPersistToken(fbb2);
-      FbPersistToken.finishIntelPersistTokenBuffer(fbb2, inv);
+      int inv = FbPersistToken.endFbPersistToken(fbb2);
+      FbPersistToken.finishFbPersistTokenBuffer(fbb2, inv);
       byteBuffer2 = fbb2.dataBuffer();
       FbPersistToken fbPersistToken =
-          FbPersistToken.getRootAsIntelPersistToken(byteBuffer2);
-      intelTokens.add(fbPersistToken);
+          FbPersistToken.getRootAsFbPersistToken(byteBuffer2);
+      fbTokens.add(fbPersistToken);
     }
 
-    return new SecretManagerState(null, is, null, intelKeys, intelTokens, null);
+    return new SecretManagerState(null, is, null, fbKeys, fbTokens, null);
   }
 
   /**

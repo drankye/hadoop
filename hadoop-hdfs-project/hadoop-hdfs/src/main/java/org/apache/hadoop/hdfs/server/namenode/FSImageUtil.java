@@ -53,12 +53,12 @@ public final class FSImageUtil {
     return true;
   }
 
-  public static FbFileSummary loadIntelSummary(RandomAccessFile file)
+  public static FbFileSummary loadFbSummary(RandomAccessFile file)
     throws IOException{
     final int FILE_LENGTH_FIELD_SIZE = 4;
     long fileLength = file.length(); // the file size, measured by bytes
     file.seek(fileLength - FILE_LENGTH_FIELD_SIZE);
-    int summaryLength = file.readInt(); // IntelFileSummary length is summaryLength
+    int summaryLength = file.readInt(); // FbFileSummary length is summaryLength
     if (summaryLength <=0) {
       throw new IOException("Negative length of the file");
     }
@@ -67,14 +67,14 @@ public final class FSImageUtil {
     byte[] bytes = new byte[file.readInt()];
     file.readFully(bytes);
     FbFileSummary fbFileSummary =
-        FbFileSummary.getRootAsIntelFileSummary(ByteBuffer.wrap(bytes));
-//    int temp = (int) intelFileSummary.layoutVersion();
+        FbFileSummary.getRootAsFbFileSummary(ByteBuffer.wrap(bytes));
+//    int temp = (int) fbFileSummary.layoutVersion();
     if (fbFileSummary.ondiskVersion() != FILE_VERSION) {
       throw new IOException("Unsopported file version " + fbFileSummary.ondiskVersion());
     }
-//    if (!NameNodeLayoutVersion.supports(Feature.PROTOBUF_FORMAT, (int)intelFileSummary.layoutVersion())) {
+//    if (!NameNodeLayoutVersion.supports(Feature.PROTOBUF_FORMAT, (int)fbFileSummary.layoutVersion())) {
 //      throw new IOException("Unsupported layout version "
-//          + intelFileSummary.layoutVersion());
+//          + fbFileSummary.layoutVersion());
 //    }
     return fbFileSummary;
   }

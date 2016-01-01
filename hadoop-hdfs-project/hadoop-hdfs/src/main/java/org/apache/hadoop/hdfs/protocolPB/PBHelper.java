@@ -420,8 +420,8 @@ public class PBHelper {
     return result;
   }
 
-  public static int convertIntel(Block b, FlatBufferBuilder fbb) {
-    return FbBlockProto.createIntelBlockProto(fbb,
+  public static int convertFb(Block b, FlatBufferBuilder fbb) {
+    return FbBlockProto.createFbBlockProto(fbb,
         b.getBlockId(), b.getGenerationStamp(), b.getNumBytes());
   }
 
@@ -1852,7 +1852,7 @@ public class PBHelper {
     return protos; 
   }
 
-  public static StorageType convertIntelStorageType(int type) {
+  public static StorageType convertFbStorageType(int type) {
     switch(type) {
       case FbStorageTypeProto.DISK:
         return StorageType.DISK;
@@ -1864,7 +1864,7 @@ public class PBHelper {
         return StorageType.RAM_DISK;
       default:
         throw new IllegalStateException(
-            "BUG: IntelStorageTypeProto not found, type=" + type);
+            "BUG: FbStorageTypeProto not found, type=" + type);
     }
   }
 
@@ -1884,7 +1884,7 @@ public class PBHelper {
     }
   }
 
-  public static int convertIntelStorageType(StorageType type) {
+  public static int convertFbStorageType(StorageType type) {
     switch (type) {
       case DISK:
         return FbStorageTypeProto.DISK;
