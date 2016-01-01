@@ -214,9 +214,9 @@ import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirType;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 import org.apache.hadoop.hdfs.server.common.Util;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelDelegationKey;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelPersistToken;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelSecretManagerSection;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbDelegationKey;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbPersistToken;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbSecretManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.SecretManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 import org.apache.hadoop.hdfs.server.namenode.JournalSet.JournalAndStream;
@@ -5831,10 +5831,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   }
 
   void loadSecretManagerState(SecretManagerSection s,
-      IntelSecretManagerSection intelS,
+      FbSecretManagerSection intelS,
       List<SecretManagerSection.DelegationKey> keys,
-                              List<IntelDelegationKey> intelKeys,
-                              List<IntelPersistToken> intelTokens,
+                              List<FbDelegationKey> intelKeys,
+                              List<FbPersistToken> intelTokens,
       List<SecretManagerSection.PersistToken> tokens) throws IOException {
     dtSecretManager.loadSecretManagerState(
         new SecretManagerState(s, intelS, keys, intelKeys,intelTokens ,tokens));

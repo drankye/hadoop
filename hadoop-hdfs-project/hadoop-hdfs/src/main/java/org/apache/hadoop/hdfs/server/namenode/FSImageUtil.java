@@ -28,7 +28,7 @@ import org.apache.commons.io.Charsets;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.Feature;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelFileSummary;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbFileSummary;
 import org.apache.hadoop.hdfs.server.namenode.FSImageFormatProtobuf.Loader;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.FileSummary;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -53,7 +53,7 @@ public final class FSImageUtil {
     return true;
   }
 
-  public static IntelFileSummary loadIntelSummary(RandomAccessFile file)
+  public static FbFileSummary loadIntelSummary(RandomAccessFile file)
     throws IOException{
     final int FILE_LENGTH_FIELD_SIZE = 4;
     long fileLength = file.length(); // the file size, measured by bytes
@@ -66,17 +66,17 @@ public final class FSImageUtil {
     byte[] summaryBytes = new byte[summaryLength];
     byte[] bytes = new byte[file.readInt()];
     file.readFully(bytes);
-    IntelFileSummary intelFileSummary =
-        IntelFileSummary.getRootAsIntelFileSummary(ByteBuffer.wrap(bytes));
+    FbFileSummary fbFileSummary =
+        FbFileSummary.getRootAsIntelFileSummary(ByteBuffer.wrap(bytes));
 //    int temp = (int) intelFileSummary.layoutVersion();
-    if (intelFileSummary.ondiskVersion() != FILE_VERSION) {
-      throw new IOException("Unsopported file version " + intelFileSummary.ondiskVersion());
+    if (fbFileSummary.ondiskVersion() != FILE_VERSION) {
+      throw new IOException("Unsopported file version " + fbFileSummary.ondiskVersion());
     }
 //    if (!NameNodeLayoutVersion.supports(Feature.PROTOBUF_FORMAT, (int)intelFileSummary.layoutVersion())) {
 //      throw new IOException("Unsupported layout version "
 //          + intelFileSummary.layoutVersion());
 //    }
-    return intelFileSummary;
+    return fbFileSummary;
   }
 
   public static FileSummary loadSummary(RandomAccessFile file)

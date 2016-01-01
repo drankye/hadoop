@@ -42,7 +42,7 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CacheP
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockIdManager;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.flatbuffer.*;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.*;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.CacheManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.FileSummary;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.NameSystemSection;
@@ -208,7 +208,7 @@ public final class FSImageFormatProtobuf {
       if (!FSImageUtil.checkFileFormat(raFile)) {
         throw new IOException("Unrecongnized file format");
       }
-      IntelFileSummary summary = FSImageUtil.loadIntelSummary(raFile);
+      FbFileSummary summary = FSImageUtil.loadIntelSummary(raFile);
       if (requireSameLayoutVersion &&
           summary.layoutVersion() != HdfsServerConstants.NAMENODE_LAYOUT_VERSION) {
         throw new IOException("Image version " + summary.layoutVersion() +
@@ -221,13 +221,13 @@ public final class FSImageFormatProtobuf {
       FSImageFormatPBSnapshot.Loader snapshotLoader = new FSImageFormatPBSnapshot.Loader(
           fsn, this);
 
-      ArrayList<IntelSection> sections = new ArrayList<IntelSection>();
+      ArrayList<FbSection> sections = new ArrayList<FbSection>();
       for (int i = 0; i < summary.sectionsLength();i++) {
         sections.add(summary.sections(i));
       }
-      Collections.sort(sections, new Comparator<IntelSection>() {
+      Collections.sort(sections, new Comparator<FbSection>() {
         @Override
-        public int compare(IntelSection s1, IntelSection s2) {
+        public int compare(FbSection s1, FbSection s2) {
           SectionName n1 = SectionName.fromString(s1.name());
           SectionName n2 = SectionName.fromString(s2.name());
           if (n1 == null) {
@@ -241,7 +241,7 @@ public final class FSImageFormatProtobuf {
       });
       StartupProgress prog = NameNode.getStartupProgress();
       Step currentStep = null;
-      for (IntelSection s:sections) {
+      for (FbSection s:sections) {
         channel.position(s.offset());
         InputStream in = new BufferedInputStream(new LimitInputStream(fin,
             s.length()));
@@ -310,21 +310,21 @@ public final class FSImageFormatProtobuf {
 
     private void loadIntelNameSystemSection(InputStream in) throws IOException {
       ByteBuffer byteBuffer = ByteBuffer.wrap(parseFrom(in));
-      IntelNameSystemSection intelNameSystemSection =
-          IntelNameSystemSection.getRootAsIntelNameSystemSection(byteBuffer);
+      FbNameSystemSection fbNameSystemSection =
+          FbNameSystemSection.getRootAsIntelNameSystemSection(byteBuffer);
       BlockIdManager blockIdManager = fsn.getBlockIdManager();
-      blockIdManager.setGenerationStampV1(intelNameSystemSection.genstampV1());
-      blockIdManager.setGenerationStampV2(intelNameSystemSection.genstampV2());
-      blockIdManager.setGenerationStampV1Limit(intelNameSystemSection.genstampV1Limit());
-      blockIdManager.setLastAllocatedBlockId(intelNameSystemSection.lastAllocatedBlockId());
-      imgTxId = intelNameSystemSection.transactionId();
+      blockIdManager.setGenerationStampV1(fbNameSystemSection.genstampV1());
+      blockIdManager.setGenerationStampV2(fbNameSystemSection.genstampV2());
+      blockIdManager.setGenerationStampV1Limit(fbNameSystemSection.genstampV1Limit());
+      blockIdManager.setLastAllocatedBlockId(fbNameSystemSection.lastAllocatedBlockId());
+      imgTxId = fbNameSystemSection.transactionId();
 //      long roll = intelNameSystemSection.rollingUpgradeStartTime();
 //      boolean hasRoll = roll != 0;
-      if (intelNameSystemSection.rollingUpgradeStartTime() != 0
+      if (fbNameSystemSection.rollingUpgradeStartTime() != 0
           && fsn.getFSImage().hasRollbackFSImage()) {
         // we set the rollingUpgradeInfo only when we make sure we have the
         // rollback image
-        fsn.setRollingUpgradeInfo(true, intelNameSystemSection.rollingUpgradeStartTime());
+        fsn.setRollingUpgradeInfo(true, fbNameSystemSection.rollingUpgradeStartTime());
       }
     }
 
@@ -346,14 +346,14 @@ public final class FSImageFormatProtobuf {
 
     private void loadIntelStringTableSection(InputStream in) throws IOException {
       ByteBuffer byteBuffer = ByteBuffer.wrap(parseFrom(in));
-      IntelStringTableSection intelSts =
-          IntelStringTableSection.getRootAsIntelStringTableSection(byteBuffer);
+      FbStringTableSection intelSts =
+          FbStringTableSection.getRootAsIntelStringTableSection(byteBuffer);
       ctx.stringTable = new String[(int)intelSts.numEntry() + 1];
       for (int i = 0; i < intelSts.numEntry(); ++i) {
         byte[] bytes1 = parseFrom(in);
         ByteBuffer byteBuffer1 = ByteBuffer.wrap(bytes1);
-        IntelEntry intelEntry = IntelEntry.getRootAsIntelEntry(byteBuffer1);
-        ctx.stringTable[(int)intelEntry.id()] = intelEntry.str();
+        FbEntry fbEntry = FbEntry.getRootAsIntelEntry(byteBuffer1);
+        ctx.stringTable[(int) fbEntry.id()] = fbEntry.str();
       }
     }
 
@@ -371,19 +371,19 @@ public final class FSImageFormatProtobuf {
                                           Step currentStep) throws IOException {
       byte[] bytes = parseFrom(in);
       ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-      IntelSecretManagerSection is = IntelSecretManagerSection.
+      FbSecretManagerSection is = FbSecretManagerSection.
           getRootAsIntelSecretManagerSection(byteBuffer);
 
       long numKeys = is.numKeys(), numTokens = is.numTokens();
-      ArrayList<IntelDelegationKey> intelkeys = Lists
+      ArrayList<FbDelegationKey> intelkeys = Lists
           .newArrayListWithCapacity((int)numKeys);
-      ArrayList<IntelPersistToken> inteltokens = Lists
+      ArrayList<FbPersistToken> inteltokens = Lists
           .newArrayListWithCapacity((int)numTokens);
 
       for (int i = 0; i < numKeys; ++i) {
         byte[] bytes1 = parseFrom(in);
         ByteBuffer byteBuffer1 = ByteBuffer.wrap(bytes1);
-        IntelDelegationKey intelDelegationKey = IntelDelegationKey.getRootAsIntelDelegationKey(byteBuffer1);
+        FbDelegationKey intelDelegationKey = FbDelegationKey.getRootAsIntelDelegationKey(byteBuffer1);
         intelkeys.add(intelDelegationKey);
       }
 
@@ -392,8 +392,8 @@ public final class FSImageFormatProtobuf {
       for (int i = 0; i < numTokens; ++i) {
         byte[] bytes2 = parseFrom(in);
         ByteBuffer byteBuffer2 = ByteBuffer.wrap(bytes2);
-        IntelPersistToken intelPersistToken = IntelPersistToken.getRootAsIntelPersistToken(byteBuffer2);
-        inteltokens.add(intelPersistToken);
+        FbPersistToken fbPersistToken = FbPersistToken.getRootAsIntelPersistToken(byteBuffer2);
+        inteltokens.add(fbPersistToken);
         counter.increment();
       }
 
@@ -427,8 +427,8 @@ public final class FSImageFormatProtobuf {
                                          Step currentStep) throws IOException {
       byte[] bytes = parseFrom(in);
       ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-      IntelCacheManagerSection cs =
-          IntelCacheManagerSection.getRootAsIntelCacheManagerSection(byteBuffer);
+      FbCacheManagerSection cs =
+          FbCacheManagerSection.getRootAsIntelCacheManagerSection(byteBuffer);
 
       long numPools = cs.numPools();
       ArrayList<CachePoolInfoProto> pools = Lists
@@ -513,7 +513,7 @@ public final class FSImageFormatProtobuf {
       int sectionName = fbb.createString(name.name);
       long sectionOffset = currentOffset;
       currentOffset += length;
-      return IntelSection.createIntelSection(fbb, sectionName, length, sectionOffset);
+      return FbSection.createIntelSection(fbb, sectionName, length, sectionOffset);
     }
 
     public void commitSection(FileSummary.Builder summary, SectionName name)
@@ -661,10 +661,10 @@ public final class FSImageFormatProtobuf {
        * }
        *
        */
-      int sections = IntelFileSummary.createSectionsVector(fbb, ArrayUtils.toPrimitive(data));
-      int end = IntelFileSummary.createIntelFileSummary
+      int sections = FbFileSummary.createSectionsVector(fbb, ArrayUtils.toPrimitive(data));
+      int end = FbFileSummary.createIntelFileSummary
                     (fbb, disk_version, layout_version, code, sections);
-      IntelFileSummary.finishIntelFileSummaryBuffer(fbb, end);
+      FbFileSummary.finishIntelFileSummaryBuffer(fbb, end);
       byte[] bytes = fbb.sizedByteArray();
       saveIntelFileSummary(underlyingOutputStream, bytes.length, bytes);
       underlyingOutputStream.close();
@@ -742,7 +742,7 @@ public final class FSImageFormatProtobuf {
       byteBuffer.get(bytes);
       writeTo(bytes, bytes.length, sectionOutputStream);
 
-      for(IntelDelegationKey intelK : state.intelKeys) {
+      for(FbDelegationKey intelK : state.intelKeys) {
         ByteBuffer byteBuffer1 = intelK.keyAsByteBuffer(); // confusing...
         int size1 = byteBuffer1.capacity() - byteBuffer1.position();
         byte[] bytes1 = new byte[size1];
@@ -750,7 +750,7 @@ public final class FSImageFormatProtobuf {
         writeTo(bytes1, bytes1.length, sectionOutputStream);
       }
 
-      for (IntelPersistToken intelT : state.intelTokens) {
+      for (FbPersistToken intelT : state.intelTokens) {
         ByteBuffer byteBuffer2 = intelT.realUserAsByteBuffer(); // confus...
         int size2 = byteBuffer2.capacity() - byteBuffer2.position();
         byte[] bytes2 = new byte[size2];
@@ -814,18 +814,18 @@ public final class FSImageFormatProtobuf {
       final FSNamesystem fsn = context.getSourceNamesystem();
       BlockIdManager blockIdManager = fsn.getBlockIdManager();
       FlatBufferBuilder nsFbb = new FlatBufferBuilder();
-      IntelNameSystemSection.startIntelNameSystemSection(nsFbb);
-      IntelNameSystemSection.addGenstampV1(nsFbb, blockIdManager.getGenerationStampV1());
-      IntelNameSystemSection.addGenstampV1Limit(nsFbb, blockIdManager.getGenerationStampV1Limit());
-      IntelNameSystemSection.addGenstampV2(nsFbb, blockIdManager.getGenerationStampV2());
-      IntelNameSystemSection.addLastAllocatedBlockId(nsFbb, blockIdManager.getLastAllocatedBlockId());
-      IntelNameSystemSection.addTransactionId(nsFbb, context.getTxId());
-      IntelNameSystemSection.addNamespaceId(nsFbb, fsn.unprotectedGetNamespaceInfo().getNamespaceID());
+      FbNameSystemSection.startIntelNameSystemSection(nsFbb);
+      FbNameSystemSection.addGenstampV1(nsFbb, blockIdManager.getGenerationStampV1());
+      FbNameSystemSection.addGenstampV1Limit(nsFbb, blockIdManager.getGenerationStampV1Limit());
+      FbNameSystemSection.addGenstampV2(nsFbb, blockIdManager.getGenerationStampV2());
+      FbNameSystemSection.addLastAllocatedBlockId(nsFbb, blockIdManager.getLastAllocatedBlockId());
+      FbNameSystemSection.addTransactionId(nsFbb, context.getTxId());
+      FbNameSystemSection.addNamespaceId(nsFbb, fsn.unprotectedGetNamespaceInfo().getNamespaceID());
       if (fsn.isRollingUpgrade()) {
-        IntelNameSystemSection.addRollingUpgradeStartTime(nsFbb, fsn.getRollingUpgradeInfo().getStartTime());
+        FbNameSystemSection.addRollingUpgradeStartTime(nsFbb, fsn.getRollingUpgradeInfo().getStartTime());
       }
-      int offset = IntelNameSystemSection.endIntelNameSystemSection(nsFbb);
-      IntelNameSystemSection.finishIntelNameSystemSectionBuffer(nsFbb, offset);
+      int offset = FbNameSystemSection.endIntelNameSystemSection(nsFbb);
+      FbNameSystemSection.finishIntelNameSystemSectionBuffer(nsFbb, offset);
       byte[] bytes = nsFbb.sizedByteArray();
       writeTo(bytes, bytes.length, sectionOutputStream);
       return commitIntelSection(SectionName.NS_INFO ,fbb);
@@ -871,14 +871,14 @@ public final class FSImageFormatProtobuf {
       OutputStream out = sectionOutputStream;
       FlatBufferBuilder stsfbb = new FlatBufferBuilder();
       FlatBufferBuilder entryfbb = new FlatBufferBuilder();
-      int inv = IntelStringTableSection.createIntelStringTableSection(stsfbb, saverContext.stringMap.size());
-      IntelStringTableSection.finishIntelStringTableSectionBuffer(stsfbb, inv);
+      int inv = FbStringTableSection.createIntelStringTableSection(stsfbb, saverContext.stringMap.size());
+      FbStringTableSection.finishIntelStringTableSectionBuffer(stsfbb, inv);
       byte[] bytes = stsfbb.sizedByteArray();
       writeTo(bytes, bytes.length, out);
 
       for (Entry<String, Integer> e : saverContext.stringMap.entrySet()) {
-        int offset = IntelEntry.createIntelEntry(entryfbb, e.getValue(), entryfbb.createString(e.getKey()));
-        IntelEntry.finishIntelEntryBuffer(entryfbb, offset);
+        int offset = FbEntry.createIntelEntry(entryfbb, e.getValue(), entryfbb.createString(e.getKey()));
+        FbEntry.finishIntelEntryBuffer(entryfbb, offset);
         byte[] bytes1 = entryfbb.sizedByteArray();
         writeTo(bytes1, bytes1.length, out);
       }
@@ -891,7 +891,7 @@ public final class FSImageFormatProtobuf {
       OutputStream out = sectionOutputStream;
 
       int numEntry = saverContext.stringMap.size();
-      IntelStringTableSection.createIntelStringTableSection(fbb, numEntry);
+      FbStringTableSection.createIntelStringTableSection(fbb, numEntry);
 
       ByteBuffer byteBuffer = fbb.dataBuffer();
       int serializedLength = byteBuffer.capacity() - byteBuffer.position();
@@ -902,7 +902,7 @@ public final class FSImageFormatProtobuf {
       dos.write(bytes);
       dos.flush();
       for (Entry<String, Integer> e : saverContext.stringMap.entrySet()) {
-        IntelEntry.createIntelEntry(fbb, e.getValue(), fbb.createString(e.getKey()));
+        FbEntry.createIntelEntry(fbb, e.getValue(), fbb.createString(e.getKey()));
         ByteBuffer byteBuffer1 = fbb.dataBuffer();
         byteBuffer1 = fbb.dataBuffer();
         int serializedLength1 = byteBuffer1.capacity() - byteBuffer1.position();

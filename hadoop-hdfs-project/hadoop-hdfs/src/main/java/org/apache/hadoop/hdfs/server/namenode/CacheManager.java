@@ -73,7 +73,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor.CachedBlocksList;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor.CachedBlocksList.Type;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelCacheManagerSection;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbCacheManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.CacheManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot;
@@ -180,11 +180,11 @@ public final class CacheManager {
 
   public static final class PersistState {
     public final CacheManagerSection section;
-    public final IntelCacheManagerSection intelSection;
+    public final FbCacheManagerSection intelSection;
     public final List<CachePoolInfoProto> pools;
     public final List<CacheDirectiveInfoProto> directives;
 
-    public PersistState(CacheManagerSection section, IntelCacheManagerSection intelSection,
+    public PersistState(CacheManagerSection section, FbCacheManagerSection intelSection,
         List<CachePoolInfoProto> pools, List<CacheDirectiveInfoProto> directives) {
       this.section = section;
       this.intelSection = intelSection;
@@ -1066,12 +1066,12 @@ public final class CacheManager {
      * Get IntelCacheManagerSection
      */
     FlatBufferBuilder fbb = new FlatBufferBuilder();
-    int offset = IntelCacheManagerSection.createIntelCacheManagerSection(fbb,
+    int offset = FbCacheManagerSection.createIntelCacheManagerSection(fbb,
         nextDirectiveId, pools.size(), directives.size());
-    IntelCacheManagerSection.finishIntelCacheManagerSectionBuffer(fbb, offset);
+    FbCacheManagerSection.finishIntelCacheManagerSectionBuffer(fbb, offset);
     ByteBuffer byteBuffer = fbb.dataBuffer();
-    IntelCacheManagerSection is =
-        IntelCacheManagerSection.getRootAsIntelCacheManagerSection(byteBuffer);
+    FbCacheManagerSection is =
+        FbCacheManagerSection.getRootAsIntelCacheManagerSection(byteBuffer);
 
     return new PersistState(s, is, pools, directives);
   }

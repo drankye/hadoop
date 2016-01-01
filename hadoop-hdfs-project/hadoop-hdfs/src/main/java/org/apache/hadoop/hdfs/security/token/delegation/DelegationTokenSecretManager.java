@@ -33,9 +33,9 @@ import com.google.flatbuffers.FlatBufferBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelDelegationKey;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelPersistToken;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelSecretManagerSection;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbDelegationKey;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbPersistToken;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbSecretManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.SecretManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
@@ -57,7 +57,6 @@ import org.apache.hadoop.security.token.delegation.DelegationKey;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.protobuf.ByteString;
 
 /**
  * A HDFS specific delegation token secret manager.
@@ -184,18 +183,18 @@ public class DelegationTokenSecretManager
 
   public static class SecretManagerState {
     public final SecretManagerSection section;
-    public final IntelSecretManagerSection intelSection;
+    public final FbSecretManagerSection intelSection;
     public final List<SecretManagerSection.DelegationKey> keys;
-    public final List<IntelDelegationKey> intelKeys;
+    public final List<FbDelegationKey> intelKeys;
     public final List<SecretManagerSection.PersistToken> tokens;
-    public final List<IntelPersistToken> intelTokens;
+    public final List<FbPersistToken> intelTokens;
 
     public SecretManagerState(
         SecretManagerSection s,
-        IntelSecretManagerSection intelSection,
+        FbSecretManagerSection intelSection,
         List<SecretManagerSection.DelegationKey> keys,
-        List<IntelDelegationKey> intelKeys,
-        List<IntelPersistToken> intelTokens,
+        List<FbDelegationKey> intelKeys,
+        List<FbPersistToken> intelTokens,
         List<SecretManagerSection.PersistToken> tokens) {
       this.section = s;
       this.intelSection = intelSection;
@@ -212,12 +211,12 @@ public class DelegationTokenSecretManager
         "Can't load state from image in a running SecretManager.");
     currentId = (int)state.intelSection.currentId();
     delegationTokenSequenceNumber = (int)state.intelSection.tokenSequenceNumber();
-    for (IntelDelegationKey k : state.intelKeys) {
+    for (FbDelegationKey k : state.intelKeys) {
       addKey(new DelegationKey((int)k.id(), k.expiryDate(), k.key() != null ? k
           .key().getBytes() : null));
     }
 
-    for (IntelPersistToken t : state.intelTokens) {
+    for (FbPersistToken t : state.intelTokens) {
       DelegationTokenIdentifier id = new DelegationTokenIdentifier(new Text(
           t.owner()), new Text(t.renewer()), new Text(t.realUser()));
       id.setIssueDate(t.issueDate());
@@ -245,27 +244,27 @@ public class DelegationTokenSecretManager
     FlatBufferBuilder fbb = new FlatBufferBuilder();
     ByteBuffer byteBuffer = null;
 
-    int offset = IntelSecretManagerSection.createIntelSecretManagerSection(fbb,
+    int offset = FbSecretManagerSection.createIntelSecretManagerSection(fbb,
         currentId,
         delegationTokenSequenceNumber,
         allKeys.size(),
         currentTokens.size());
-    IntelSecretManagerSection.finishIntelSecretManagerSectionBuffer(fbb, offset);
+    FbSecretManagerSection.finishIntelSecretManagerSectionBuffer(fbb, offset);
     byteBuffer = fbb.dataBuffer();
-    IntelSecretManagerSection is = IntelSecretManagerSection.
+    FbSecretManagerSection is = FbSecretManagerSection.
         getRootAsIntelSecretManagerSection(byteBuffer);
 
-    ArrayList<IntelDelegationKey> intelKeys = Lists
+    ArrayList<FbDelegationKey> intelKeys = Lists
         .newArrayListWithCapacity(allKeys.size());
-    ArrayList<IntelPersistToken> intelTokens = Lists
+    ArrayList<FbPersistToken> intelTokens = Lists
         .newArrayListWithCapacity(currentTokens.size());
 
     for (DelegationKey v : allKeys.values()) {
       FlatBufferBuilder fbb1 = new FlatBufferBuilder();
       ByteBuffer byteBuffer1 = null;
-      IntelDelegationKey.startIntelDelegationKey(fbb1);
-      IntelDelegationKey.addId(fbb1, v.getKeyId());
-      IntelDelegationKey.addExpiryDate(fbb1, v.getExpiryDate());
+      FbDelegationKey.startIntelDelegationKey(fbb1);
+      FbDelegationKey.addId(fbb1, v.getKeyId());
+      FbDelegationKey.addExpiryDate(fbb1, v.getExpiryDate());
 //      SecretManagerSection.DelegationKey.Builder b = SecretManagerSection.DelegationKey
 //          .newBuilder().setId(v.getKeyId()).setExpiryDate(v.getExpiryDate());
       if (v.getEncodedKey() != null) {
@@ -273,13 +272,13 @@ public class DelegationTokenSecretManager
         int keyOffset = 0;
         byte[] bytes = v.getEncodedKey();
         keyOffset = fbb1.createString(ByteBuffer.wrap(bytes));
-        IntelDelegationKey.addKey(fbb1, keyOffset);
+        FbDelegationKey.addKey(fbb1, keyOffset);
       }
-      int inv = IntelDelegationKey.endIntelDelegationKey(fbb1);
-      IntelDelegationKey.finishIntelDelegationKeyBuffer(fbb1, inv);
+      int inv = FbDelegationKey.endIntelDelegationKey(fbb1);
+      FbDelegationKey.finishIntelDelegationKeyBuffer(fbb1, inv);
       byteBuffer1 = fbb1.dataBuffer();
-      IntelDelegationKey intelDelegationKey =
-          IntelDelegationKey.getRootAsIntelDelegationKey(byteBuffer1);
+      FbDelegationKey intelDelegationKey =
+          FbDelegationKey.getRootAsIntelDelegationKey(byteBuffer1);
       intelKeys.add(intelDelegationKey);
     }
 
@@ -291,21 +290,21 @@ public class DelegationTokenSecretManager
       FlatBufferBuilder fbb2 = new FlatBufferBuilder();
       ByteBuffer byteBuffer2 = null;
 
-      IntelPersistToken.startIntelPersistToken(fbb2);
-      IntelPersistToken.addOwner(fbb2, fbb2.createString(id.getOwner().toString()));
-      IntelPersistToken.addRenewer(fbb2, fbb2.createString(id.getRenewer().toString()));
-      IntelPersistToken.addRealUser(fbb2, fbb2.createString(id.getRealUser().toString()));
-      IntelPersistToken.addIssueDate(fbb2, id.getIssueDate());
-      IntelPersistToken.addMaxDate(fbb2, id.getMaxDate());
-      IntelPersistToken.addSequenceNumber(fbb2, id.getSequenceNumber());
-      IntelPersistToken.addMasterKeyId(fbb2, id.getMasterKeyId());
-      IntelPersistToken.addExpiryDate(fbb2, e.getValue().getRenewDate());
-      int inv = IntelPersistToken.endIntelPersistToken(fbb2);
-      IntelPersistToken.finishIntelPersistTokenBuffer(fbb2, inv);
+      FbPersistToken.startIntelPersistToken(fbb2);
+      FbPersistToken.addOwner(fbb2, fbb2.createString(id.getOwner().toString()));
+      FbPersistToken.addRenewer(fbb2, fbb2.createString(id.getRenewer().toString()));
+      FbPersistToken.addRealUser(fbb2, fbb2.createString(id.getRealUser().toString()));
+      FbPersistToken.addIssueDate(fbb2, id.getIssueDate());
+      FbPersistToken.addMaxDate(fbb2, id.getMaxDate());
+      FbPersistToken.addSequenceNumber(fbb2, id.getSequenceNumber());
+      FbPersistToken.addMasterKeyId(fbb2, id.getMasterKeyId());
+      FbPersistToken.addExpiryDate(fbb2, e.getValue().getRenewDate());
+      int inv = FbPersistToken.endIntelPersistToken(fbb2);
+      FbPersistToken.finishIntelPersistTokenBuffer(fbb2, inv);
       byteBuffer2 = fbb2.dataBuffer();
-      IntelPersistToken intelPersistToken =
-          IntelPersistToken.getRootAsIntelPersistToken(byteBuffer2);
-      intelTokens.add(intelPersistToken);
+      FbPersistToken fbPersistToken =
+          FbPersistToken.getRootAsIntelPersistToken(byteBuffer2);
+      intelTokens.add(fbPersistToken);
     }
 
     return new SecretManagerState(null, is, null, intelKeys, intelTokens, null);

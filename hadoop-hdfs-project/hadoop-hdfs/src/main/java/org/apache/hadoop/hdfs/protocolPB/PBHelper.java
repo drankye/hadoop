@@ -188,10 +188,9 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.ReplicaState;
-import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelBlockProto;
-import org.apache.hadoop.hdfs.server.flatbuffer.IntelStorageTypeProto;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbBlockProto;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.FbStorageTypeProto;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
 import org.apache.hadoop.hdfs.server.protocol.BalancerBandwidthCommand;
 import org.apache.hadoop.hdfs.server.protocol.BlockCommand;
@@ -422,7 +421,7 @@ public class PBHelper {
   }
 
   public static int convertIntel(Block b, FlatBufferBuilder fbb) {
-    return IntelBlockProto.createIntelBlockProto(fbb,
+    return FbBlockProto.createIntelBlockProto(fbb,
         b.getBlockId(), b.getGenerationStamp(), b.getNumBytes());
   }
 
@@ -437,7 +436,7 @@ public class PBHelper {
     return new Block(b.getBlockId(), b.getNumBytes(), b.getGenStamp());
   }
 
-  public static Block convert(IntelBlockProto b) {
+  public static Block convert(FbBlockProto b) {
     return new Block(b.blockId(), b.numBytes(), b.genStamp());
   }
 
@@ -1855,13 +1854,13 @@ public class PBHelper {
 
   public static StorageType convertIntelStorageType(int type) {
     switch(type) {
-      case IntelStorageTypeProto.DISK:
+      case FbStorageTypeProto.DISK:
         return StorageType.DISK;
-      case IntelStorageTypeProto.SSD:
+      case FbStorageTypeProto.SSD:
         return StorageType.SSD;
-      case IntelStorageTypeProto.ARCHIVE:
+      case FbStorageTypeProto.ARCHIVE:
         return StorageType.ARCHIVE;
-      case IntelStorageTypeProto.RAM_DISK:
+      case FbStorageTypeProto.RAM_DISK:
         return StorageType.RAM_DISK;
       default:
         throw new IllegalStateException(
@@ -1888,13 +1887,13 @@ public class PBHelper {
   public static int convertIntelStorageType(StorageType type) {
     switch (type) {
       case DISK:
-        return IntelStorageTypeProto.DISK;
+        return FbStorageTypeProto.DISK;
       case SSD:
-        return IntelStorageTypeProto.SSD;
+        return FbStorageTypeProto.SSD;
       case ARCHIVE:
-        return IntelStorageTypeProto.ARCHIVE;
+        return FbStorageTypeProto.ARCHIVE;
       case RAM_DISK:
-        return IntelStorageTypeProto.RAM_DISK;
+        return FbStorageTypeProto.RAM_DISK;
       default:
         throw new IllegalStateException(
             "BUG: StorageType not found, type=" + type

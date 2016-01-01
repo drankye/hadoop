@@ -31,7 +31,7 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.BlockProto;
 import org.apache.hadoop.hdfs.protocolPB.PBHelper;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
-import org.apache.hadoop.hdfs.server.flatbuffer.*;
+import org.apache.hadoop.hdfs.server.namenode.flatbuffer.*;
 import org.apache.hadoop.hdfs.server.namenode.*;
 import org.apache.hadoop.hdfs.server.namenode.FSImageFormatProtobuf.LoaderContext;
 import org.apache.hadoop.hdfs.server.namenode.FSImageFormatProtobuf.SectionName;
@@ -88,7 +88,7 @@ public class FSImageFormatPBSnapshot {
         if(bytes==null){
           break;
         }
-        IntelINodeReference ie = IntelINodeReference.
+        FbINodeReference ie = FbINodeReference.
             getRootAsIntelINodeReference(ByteBuffer.wrap(bytes));
 
         INodeReference ref = loadIntelINodeReference(ie); // success
@@ -115,7 +115,7 @@ public class FSImageFormatPBSnapshot {
       }
     }
 
-    private INodeReference loadIntelINodeReference(IntelINodeReference r) throws IOException {
+    private INodeReference loadIntelINodeReference(FbINodeReference r) throws IOException {
       long referredId = r.referredId();
       INode referred = fsDir.getInode(referredId);
       WithCount withCount = (WithCount) referred.getParentReference();
@@ -159,7 +159,7 @@ public class FSImageFormatPBSnapshot {
     public void loadIntelSnapshotSection(InputStream in) throws IOException {
       SnapshotManager sm = fsn.getSnapshotManager();
 
-      IntelSnapshotSection isection = IntelSnapshotSection.
+      FbSnapshotSection isection = FbSnapshotSection.
           getRootAsIntelSnapshotSection(ByteBuffer.wrap(parseFrom(in)));
 
       int snum = (int)isection.numSnapshots();
@@ -208,7 +208,7 @@ public class FSImageFormatPBSnapshot {
     private void loadIntelSnapshots(InputStream in, int size) throws IOException {
       for (int i = 0; i < size; i++)
       {
-        IntelSnapshot ipbs = IntelSnapshot.getRootAsIntelSnapshot(ByteBuffer.wrap(parseFrom(in)));
+        FbSnapshot ipbs = FbSnapshot.getRootAsIntelSnapshot(ByteBuffer.wrap(parseFrom(in)));
 //        SnapshotSection.Snapshot pbs = SnapshotSection.Snapshot
 //            .parseDelimitedFrom(in);
 
@@ -252,15 +252,15 @@ public class FSImageFormatPBSnapshot {
         if (bytes == null) {
           break;
         }
-        IntelDiffEntry ientry = IntelDiffEntry.getRootAsIntelDiffEntry(ByteBuffer.wrap(bytes));
+        FbDiffEntry ientry = FbDiffEntry.getRootAsIntelDiffEntry(ByteBuffer.wrap(bytes));
         long inodeId = ientry.inodeId();
         INode inode = fsDir.getInode(inodeId);
         int itype = ientry.type();
         switch (itype) {
-          case IntelType.FILEDIFF:
+          case FbType.FILEDIFF:
             loadIntelFileDiffList(in, inode.asFile(), (int)ientry.numOfDiff()); // finished
             break;
-          case IntelType.DIRECTORYDIFF:
+          case FbType.DIRECTORYDIFF:
             loadIntelDirectoryDiffList(in, inode.asDirectory(), (int)ientry.numOfDiff(), refList); // finished
             break;
         }
@@ -300,10 +300,10 @@ public class FSImageFormatPBSnapshot {
       final FileDiffList diffs = new FileDiffList();
       final LoaderContext state = parent.getLoaderContext();
       for (int i = 0; i < size; i++) {
-        IntelFileDiff ipbf = IntelFileDiff.getRootAsIntelFileDiff(ByteBuffer.wrap(parseFrom(in)));
+        FbFileDiff ipbf = FbFileDiff.getRootAsIntelFileDiff(ByteBuffer.wrap(parseFrom(in)));
         INodeFileAttributes copy = null;
         if (ipbf.snapshotCopy() != null) {
-          IntelINodeFile ifileInPb = ipbf.snapshotCopy();
+          FbINodeFile ifileInPb = ipbf.snapshotCopy();
           PermissionStatus permission = loadPermission(
               ifileInPb.permission(), state.getStringTable());
           AclFeature acl = null;
@@ -331,7 +331,7 @@ public class FSImageFormatPBSnapshot {
         FileDiff diff = new FileDiff((int)ipbf.snapshotId(), copy, null,
             ipbf.fileSize());
 
-        List<IntelBlockProto> ibpl = null;
+        List<FbBlockProto> ibpl = null;
         for (int j = 0; j < ipbf.blocksLength() ; j++) {
           ibpl.add(ipbf.blocks(j));
         }
@@ -416,7 +416,7 @@ public class FSImageFormatPBSnapshot {
       List<INode> clist = new ArrayList<INode>(size);
       for (long c = 0; c < size; c++) {
 
-        IntelCreatedListEntry ientry = IntelCreatedListEntry.getRootAsIntelCreatedListEntry(ByteBuffer.wrap(parseFrom(in)));
+        FbCreatedListEntry ientry = FbCreatedListEntry.getRootAsIntelCreatedListEntry(ByteBuffer.wrap(parseFrom(in)));
         INode created = SnapshotFSImageFormat.loadCreated(ientry.name().getBytes(), dir);
         clist.add(created);
       }
@@ -472,7 +472,7 @@ public class FSImageFormatPBSnapshot {
       final LoaderContext state = parent.getLoaderContext();
 
       for (int i = 0; i < size; i++) {
-        IntelDirectoryDiff idiffInPb = IntelDirectoryDiff.getRootAsIntelDirectoryDiff(ByteBuffer.wrap(parseFrom(in)));
+        FbDirectoryDiff idiffInPb = FbDirectoryDiff.getRootAsIntelDirectoryDiff(ByteBuffer.wrap(parseFrom(in)));
 
         final int snapshotId = (int)idiffInPb.snapshotId();
         final Snapshot snapshot = snapshotMap.get(snapshotId);
@@ -487,7 +487,7 @@ public class FSImageFormatPBSnapshot {
           copy = snapshot.getRoot();
         } else if (idiffInPb.snapshotCopy() != null) {
 
-          IntelINodeDirectory idirCopyInPb = idiffInPb.snapshotCopy();
+          FbINodeDirectory idirCopyInPb = idiffInPb.snapshotCopy();
 
 //          INodeSection.INodeDirectory dirCopyInPb = diffInPb.getSnapshotCopy();
           final byte[] name = idiffInPb.name().getBytes();
@@ -678,15 +678,15 @@ public class FSImageFormatPBSnapshot {
       }
       Long[] data = list.toArray(new Long[list.size()]);
 
-      snapshottableDirOffset = IntelSnapshotSection.
+      snapshottableDirOffset = FbSnapshotSection.
           createSnapshottableDirVector(fbb, ArrayUtils.toPrimitive(data));
 
-      IntelSnapshotSection.startIntelSnapshotSection(fbb);
-      IntelSnapshotSection.addSnapshotCounter(fbb, sm.getSnapshotCounter());
-      IntelSnapshotSection.addNumSnapshots(fbb, sm.getNumSnapshots());
-      IntelSnapshotSection.addSnapshottableDir(fbb, snapshottableDirOffset);
-      int inv = IntelSnapshotSection.endIntelSnapshotSection(fbb);
-      IntelSnapshotSection.finishIntelSnapshotSectionBuffer(fbb, inv);
+      FbSnapshotSection.startIntelSnapshotSection(fbb);
+      FbSnapshotSection.addSnapshotCounter(fbb, sm.getSnapshotCounter());
+      FbSnapshotSection.addNumSnapshots(fbb, sm.getNumSnapshots());
+      FbSnapshotSection.addSnapshottableDir(fbb, snapshottableDirOffset);
+      int inv = FbSnapshotSection.endIntelSnapshotSection(fbb);
+      FbSnapshotSection.finishIntelSnapshotSectionBuffer(fbb, inv);
       byte[] bytes = fbb.sizedByteArray();
       writeTo(bytes, bytes.length, out);
       FlatBufferBuilder fbb1 = new FlatBufferBuilder();
@@ -697,15 +697,15 @@ public class FSImageFormatPBSnapshot {
           Root sroot = s.getRoot();
           int intelINodeDirectory =
               buildIntelINodeDirectory(sroot, parent.getSaverContext(),fbb1);
-          int r = IntelINode.createIntelINode(fbb1, IntelTypee.DIRECTORY, sroot.getId(),
+          int r = FbINode.createIntelINode(fbb1, FbTypee.DIRECTORY, sroot.getId(),
               fbb1.createString(sroot.getLocalName()), 0, intelINodeDirectory, 0);
           int offset = 0;
 
-          IntelSnapshot.startIntelSnapshot(fbb1);
-          IntelSnapshot.addSnapshotId(fbb1, s.getId());
-          IntelSnapshot.addRoot(fbb1, r);
-          offset = IntelSnapshot.endIntelSnapshot(fbb1);
-          IntelSnapshot.finishIntelSnapshotBuffer(fbb1, offset);
+          FbSnapshot.startIntelSnapshot(fbb1);
+          FbSnapshot.addSnapshotId(fbb1, s.getId());
+          FbSnapshot.addRoot(fbb1, r);
+          offset = FbSnapshot.endIntelSnapshot(fbb1);
+          FbSnapshot.finishIntelSnapshotBuffer(fbb1, offset);
           byte[] bytes1 = fbb1.sizedByteArray();
           writeTo(bytes1, bytes1.length, out);
           i++;
@@ -777,9 +777,9 @@ public class FSImageFormatPBSnapshot {
         } else if (ref instanceof DstReference) {
           dstSnapshotId = ref.getDstSnapshotId();
         }
-        int offset = IntelINodeReference.createIntelINodeReference(fbb, ref.getId(),
+        int offset = FbINodeReference.createIntelINodeReference(fbb, ref.getId(),
             name, dstSnapshotId, lastSnapshotId);
-        IntelINodeReference.finishIntelINodeReferenceBuffer(fbb, offset);
+        FbINodeReference.finishIntelINodeReferenceBuffer(fbb, offset);
         byte[] bytes = fbb.sizedByteArray();
         writeTo(bytes, bytes.length, out);
       }
@@ -869,9 +869,9 @@ public class FSImageFormatPBSnapshot {
       FlatBufferBuilder fbb = new FlatBufferBuilder();
       // local names of the created list member
       for (INode c : created) {
-        int inv =IntelCreatedListEntry.createIntelCreatedListEntry(fbb,
+        int inv = FbCreatedListEntry.createIntelCreatedListEntry(fbb,
             fbb.createString(bytesToString(c.getLocalNameBytes())));
-        IntelCreatedListEntry.finishIntelCreatedListEntryBuffer(fbb, inv);
+        FbCreatedListEntry.finishIntelCreatedListEntryBuffer(fbb, inv);
         byte[] bytes = fbb.sizedByteArray();
         writeTo(bytes, bytes.length, out);
       }
@@ -894,8 +894,8 @@ public class FSImageFormatPBSnapshot {
         List<FileDiff> diffList = sf.getDiffs().asList();
         FlatBufferBuilder fbb = new FlatBufferBuilder();
 
-        int inv = IntelDiffEntry.createIntelDiffEntry(fbb, IntelType.FILEDIFF, file.getId(), diffList.size());
-        IntelDiffEntry.finishIntelDiffEntryBuffer(fbb, inv);
+        int inv = FbDiffEntry.createIntelDiffEntry(fbb, FbType.FILEDIFF, file.getId(), diffList.size());
+        FbDiffEntry.finishIntelDiffEntryBuffer(fbb, inv);
         byte[] bytes = fbb.sizedByteArray();
         writeTo(bytes, bytes.length, out);
 
@@ -909,7 +909,7 @@ public class FSImageFormatPBSnapshot {
             }
           }
           int[] data = ArrayUtils.toPrimitive(list.toArray(new Integer[list.size()]));
-          int blocks = IntelFileDiff.createBlocksVector(fbb1, data);
+          int blocks = FbFileDiff.createBlocksVector(fbb1, data);
           int name = 0;
           int snapshotcopy = 0;
           INodeFileAttributes copy = diff.snapshotINode;
@@ -918,9 +918,9 @@ public class FSImageFormatPBSnapshot {
             name = fbb1.createString(bytesToString(copy.getLocalNameBytes()));
             snapshotcopy = buildIntelINodeFile(fbb1, copy, parent.getSaverContext());
           }
-          int offset = IntelFileDiff.createIntelFileDiff(fbb1, diff.getSnapshotId(),
+          int offset = FbFileDiff.createIntelFileDiff(fbb1, diff.getSnapshotId(),
               diff.getFileSize(), name, snapshotcopy, blocks);
-          IntelFileDiff.finishIntelFileDiffBuffer(fbb1, offset);
+          FbFileDiff.finishIntelFileDiffBuffer(fbb1, offset);
           byte[] bytes1 = fbb1.sizedByteArray();
           writeTo(bytes1, bytes1.length, out);
         }
@@ -964,9 +964,9 @@ public class FSImageFormatPBSnapshot {
         List<DirectoryDiff> diffList = sf.getDiffs().asList();
 
         FlatBufferBuilder fbb = new FlatBufferBuilder();
-        int offset = IntelDiffEntry.createIntelDiffEntry(fbb, IntelType.DIRECTORYDIFF,
+        int offset = FbDiffEntry.createIntelDiffEntry(fbb, FbType.DIRECTORYDIFF,
             dir.getId(), diffList.size());
-        IntelDiffEntry.finishIntelDiffEntryBuffer(fbb, offset);
+        FbDiffEntry.finishIntelDiffEntryBuffer(fbb, offset);
         byte[] bytes = fbb.sizedByteArray();
         writeTo(bytes, bytes.length, out);
 
@@ -996,15 +996,15 @@ public class FSImageFormatPBSnapshot {
               list2.add(d.getId());
             }
           }
-          deletedINodeRef = IntelDirectoryDiff.createDeletedINodeRefVector(fbb1,
+          deletedINodeRef = FbDirectoryDiff.createDeletedINodeRefVector(fbb1,
               ArrayUtils.toPrimitive(list1.toArray(new Integer[list1.size()])));
-          deletedINode = IntelDirectoryDiff.createDeletedINodeVector(fbb1,
+          deletedINode = FbDirectoryDiff.createDeletedINodeVector(fbb1,
               ArrayUtils.toPrimitive(list2.toArray(new Long[list2.size()])));
-          int inv = IntelDirectoryDiff.createIntelDirectoryDiff(fbb1, diff.getSnapshotId(),
+          int inv = FbDirectoryDiff.createIntelDirectoryDiff(fbb1, diff.getSnapshotId(),
               diff.getChildrenSize(), diff.isSnapshotRoot(), name, snapshotCopy,
               createdListSize, deletedINode, deletedINodeRef
               );
-          IntelDirectoryDiff.finishIntelDirectoryDiffBuffer(fbb1, inv);
+          FbDirectoryDiff.finishIntelDirectoryDiffBuffer(fbb1, inv);
           byte[] bytes1 = fbb1.sizedByteArray();
           writeTo(bytes1, bytes1.length, out);
           saveIntelCreatedList(created, out); // intel will have rewrite
