@@ -35,7 +35,6 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.HardLink;
-import org.apache.hadoop.io.AltFileInputStream;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SecureIOUtils.AlreadyExistsException;
 import org.apache.hadoop.util.NativeCodeLoader;
@@ -713,7 +712,7 @@ public class NativeIO {
    * user account name, of the format DOMAIN\UserName. This method
    * will remove the domain part of the full logon name.
    *
-   * @param Fthe full principal name containing the domain
+   * @param name full principal name containing the domain
    * @return name with domain removed
    */
   private static String stripDomain(String name) {
@@ -779,14 +778,14 @@ public class NativeIO {
    * the file the FileInputStream is reading. Only Windows implementation
    * uses the native interface.
    */
-  public static AltFileInputStream getShareDeleteFileInputStream(File f, long seekOffset)
+  public static FileInputStream getShareDeleteFileInputStream(File f, long seekOffset)
       throws IOException {
     if (!Shell.WINDOWS) {
       RandomAccessFile rf = new RandomAccessFile(f, "r");
       if (seekOffset > 0) {
         rf.seek(seekOffset);
       }
-      return new AltFileInputStream(rf.getFD(), rf.getChannel());
+      return new FileInputStream(rf.getFD());
     } else {
       // Use Windows native interface to create a FileInputStream that
       // shares delete permission on the file opened, and set it to the
@@ -801,7 +800,7 @@ public class NativeIO {
           NativeIO.Windows.OPEN_EXISTING);
       if (seekOffset > 0)
         NativeIO.Windows.setFilePointer(fd, seekOffset, NativeIO.Windows.FILE_BEGIN);
-      return new AltFileInputStream(new FileInputStream(fd));
+      return new FileInputStream(fd);
     }
   }
 

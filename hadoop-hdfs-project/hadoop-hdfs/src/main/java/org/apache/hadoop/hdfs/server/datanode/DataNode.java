@@ -46,6 +46,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_MAX_NUM_BLOCKS_TO_LOG_DEF
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_MAX_NUM_BLOCKS_TO_LOG_KEY;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.File;
 import java.io.ByteArrayInputStream;
@@ -162,7 +163,6 @@ import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.ReplicaRecoveryInfo;
 import org.apache.hadoop.http.HttpConfig;
-import org.apache.hadoop.io.AltFileInputStream;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ReadaheadPool;
 import org.apache.hadoop.io.nativeio.NativeIO;
@@ -206,7 +206,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.google.protobuf.BlockingService;
-import sun.tools.tree.CastExpression;
 
 /**********************************************************
  * DataNode is a class (and program) that stores a set of
@@ -1596,7 +1595,7 @@ public class DataNode extends ReconfigurableBase
     }
   }
 
-  AltFileInputStream[] requestShortCircuitFdsForRead(final ExtendedBlock blk,
+  FileInputStream[] requestShortCircuitFdsForRead(final ExtendedBlock blk,
                                                   final Token<BlockTokenIdentifier> token, int maxVersion)
       throws ShortCircuitFdsUnsupportedException,
       ShortCircuitFdsVersionException, IOException {
@@ -1614,9 +1613,9 @@ public class DataNode extends ReconfigurableBase
     }
     metrics.incrBlocksGetLocalPathInfo();
 
-    AltFileInputStream fis[] = new AltFileInputStream[2];
+    FileInputStream fis[] = new FileInputStream[2];
     try {
-      fis[0] = (AltFileInputStream)data.getBlockInputStream(blk, 0);
+      fis[0] = (FileInputStream)data.getBlockInputStream(blk, 0);
       fis[1] = DatanodeUtil.getMetaDataInputStream(blk, data);
     } catch (ClassCastException e) {
       LOG.debug("requestShortCircuitFdsForRead failed", e);

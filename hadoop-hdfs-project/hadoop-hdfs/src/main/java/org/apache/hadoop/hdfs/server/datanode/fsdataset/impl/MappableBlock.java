@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hdfs.server.datanode.fsdataset.impl;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.BufferedInputStream;
@@ -32,7 +33,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.ChecksumException;
 import org.apache.hadoop.hdfs.server.datanode.BlockMetadataHeader;
-import org.apache.hadoop.io.AltFileInputStream;
 import org.apache.hadoop.io.nativeio.NativeIO;
 import org.apache.hadoop.util.DataChecksum;
 
@@ -77,8 +77,8 @@ public class MappableBlock implements Closeable {
    * @return               The Mappable block.
    */
   public static MappableBlock load(long length,
-      AltFileInputStream blockIn, AltFileInputStream metaIn,
-      String blockFileName) throws IOException {
+                                   FileInputStream blockIn, FileInputStream metaIn,
+                                   String blockFileName) throws IOException {
     MappableBlock mappableBlock = null;
     MappedByteBuffer mmap = null;
     FileChannel blockChannel = null;
@@ -106,7 +106,7 @@ public class MappableBlock implements Closeable {
    * Verifies the block's checksum. This is an I/O intensive operation.
    */
   private static void verifyChecksum(long length,
-      AltFileInputStream metaIn, FileChannel blockChannel, String blockFileName)
+                                     FileInputStream metaIn, FileChannel blockChannel, String blockFileName)
           throws IOException, ChecksumException {
     // Verify the checksum from the block's meta file
     // Get the DataChecksum from the meta file header

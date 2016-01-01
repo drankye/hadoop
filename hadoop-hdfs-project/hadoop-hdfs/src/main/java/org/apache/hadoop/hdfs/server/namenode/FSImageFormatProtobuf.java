@@ -55,7 +55,6 @@ import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress.Co
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.Step;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StepType;
 import org.apache.hadoop.hdfs.util.MD5FileUtils;
-import org.apache.hadoop.io.AltFileInputStream;
 import org.apache.hadoop.io.MD5Hash;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressorStream;
@@ -65,8 +64,6 @@ import org.apache.hadoop.util.Time;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.protobuf.CodedOutputStream;
-
-import javax.xml.crypto.Data;
 
 /**
  * Utility class to read / write fsimage in protobuf format.
@@ -174,7 +171,7 @@ public final class FSImageFormatProtobuf {
       long start = Time.monotonicNow();
       imgDigest = MD5FileUtils.computeMd5ForFile(file);
       RandomAccessFile raFile = new RandomAccessFile(file, "r");
-      AltFileInputStream fin = new AltFileInputStream(file);
+      FileInputStream fin = new FileInputStream(file);
       try {
         loadIntelInternal(raFile, fin);
         long end = Time.monotonicNow();
@@ -206,7 +203,7 @@ public final class FSImageFormatProtobuf {
       }
     }
 
-    private void loadIntelInternal(RandomAccessFile raFile, AltFileInputStream fin)
+    private void loadIntelInternal(RandomAccessFile raFile, FileInputStream fin)
       throws IOException{
       if (!FSImageUtil.checkFileFormat(raFile)) {
         throw new IOException("Unrecongnized file format");
