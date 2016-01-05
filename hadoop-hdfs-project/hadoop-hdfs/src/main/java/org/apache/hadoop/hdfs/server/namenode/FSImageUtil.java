@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 import org.apache.commons.io.Charsets;
@@ -56,26 +57,27 @@ public final class FSImageUtil {
   public static FbFileSummary loadFbSummary(RandomAccessFile file)
     throws IOException{
     final int FILE_LENGTH_FIELD_SIZE = 4;
-    long fileLength = file.length(); // the file size, measured by bytes
+    long fileLength = file.length();
     file.seek(fileLength - FILE_LENGTH_FIELD_SIZE);
-    int summaryLength = file.readInt(); // FbFileSummary length is summaryLength
+    int summaryLength = file.readInt();
     if (summaryLength <=0) {
       throw new IOException("Negative length of the file");
     }
     file.seek(fileLength - FILE_LENGTH_FIELD_SIZE - summaryLength);
+    /*
+    ByteBuffer summaryBuffer = file.getChannel().map(FileChannel.MapMode.READ_ONLY,
+        fileLength - FILE_LENGTH_FIELD_SIZE - summaryLength, summaryLength);
+    FbFileSummary fbFileSummary = FbFileSummary.getRootAsFbFileSummary(summaryBuffer);
+    */
     byte[] summaryBytes = new byte[summaryLength];
     byte[] bytes = new byte[file.readInt()];
     file.readFully(bytes);
     FbFileSummary fbFileSummary =
-        FbFileSummary.getRootAsFbFileSummary(ByteBuffer.wrap(bytes));
-//    int temp = (int) fbFileSummary.layoutVersion();
+    FbFileSummary.getRootAsFbFileSummary(ByteBuffer.wrap(bytes));
+
     if (fbFileSummary.ondiskVersion() != FILE_VERSION) {
       throw new IOException("Unsopported file version " + fbFileSummary.ondiskVersion());
     }
-//    if (!NameNodeLayoutVersion.supports(Feature.PROTOBUF_FORMAT, (int)fbFileSummary.layoutVersion())) {
-//      throw new IOException("Unsupported layout version "
-//          + fbFileSummary.layoutVersion());
-//    }
     return fbFileSummary;
   }
 

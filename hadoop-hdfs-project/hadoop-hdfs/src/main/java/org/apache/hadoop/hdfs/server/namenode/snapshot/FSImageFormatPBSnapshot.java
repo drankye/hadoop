@@ -79,17 +79,17 @@ public class FSImageFormatPBSnapshot {
      * The sequence of the ref node in refList must be strictly the same with
      * the sequence in fsimage
      */
-    public void loadFbINodeReferenceSection(InputStream in) throws IOException {
+    public void loadFbINodeReferenceSection(ByteBuffer in) throws IOException {
       final List<INodeReference> refList = parent.getLoaderContext()
           .getRefList();
 
       while (true) {
-        byte[] bytes = parseFrom(in);
+        ByteBuffer bytes = parseFrom(in);
         if(bytes==null){
           break;
         }
         FbINodeReference ie = FbINodeReference.
-            getRootAsFbINodeReference(ByteBuffer.wrap(bytes));
+            getRootAsFbINodeReference(bytes);
 
         INodeReference ref = loadFbINodeReference(ie); // success
         refList.add(ref);
@@ -160,7 +160,7 @@ public class FSImageFormatPBSnapshot {
       SnapshotManager sm = fsn.getSnapshotManager();
 
       FbSnapshotSection isection = FbSnapshotSection.
-          getRootAsFbSnapshotSection(ByteBuffer.wrap(parseFrom(in)));
+          getRootAsFbSnapshotSection(parseFrom(null));
 
       int snum = (int)isection.numSnapshots();
       sm.setNumSnapshots(snum);
@@ -208,7 +208,7 @@ public class FSImageFormatPBSnapshot {
     private void loadFbSnapshots(InputStream in, int size) throws IOException {
       for (int i = 0; i < size; i++)
       {
-        FbSnapshot ipbs = FbSnapshot.getRootAsFbSnapshot(ByteBuffer.wrap(parseFrom(in)));
+        FbSnapshot ipbs = FbSnapshot.getRootAsFbSnapshot(parseFrom(null));
 //        SnapshotSection.Snapshot pbs = SnapshotSection.Snapshot
 //            .parseDelimitedFrom(in);
 
@@ -248,11 +248,11 @@ public class FSImageFormatPBSnapshot {
       final List<INodeReference> refList = parent.getLoaderContext()
           .getRefList();
       while (true) {
-        byte[] bytes = parseFrom(in);
+        ByteBuffer bytes = parseFrom(null);
         if (bytes == null) {
           break;
         }
-        FbDiffEntry ientry = FbDiffEntry.getRootAsFbDiffEntry(ByteBuffer.wrap(bytes));
+        FbDiffEntry ientry = FbDiffEntry.getRootAsFbDiffEntry(bytes);
         long inodeId = ientry.inodeId();
         INode inode = fsDir.getInode(inodeId);
         int itype = ientry.type();
@@ -300,7 +300,7 @@ public class FSImageFormatPBSnapshot {
       final FileDiffList diffs = new FileDiffList();
       final LoaderContext state = parent.getLoaderContext();
       for (int i = 0; i < size; i++) {
-        FbFileDiff ipbf = FbFileDiff.getRootAsFbFileDiff(ByteBuffer.wrap(parseFrom(in)));
+        FbFileDiff ipbf = FbFileDiff.getRootAsFbFileDiff(parseFrom(null));
         INodeFileAttributes copy = null;
         if (ipbf.snapshotCopy() != null) {
           FbINodeFile ifileInPb = ipbf.snapshotCopy();
@@ -416,7 +416,7 @@ public class FSImageFormatPBSnapshot {
       List<INode> clist = new ArrayList<INode>(size);
       for (long c = 0; c < size; c++) {
 
-        FbCreatedListEntry ientry = FbCreatedListEntry.getRootAsFbCreatedListEntry(ByteBuffer.wrap(parseFrom(in)));
+        FbCreatedListEntry ientry = FbCreatedListEntry.getRootAsFbCreatedListEntry(parseFrom(null));
         INode created = SnapshotFSImageFormat.loadCreated(ientry.name().getBytes(), dir);
         clist.add(created);
       }
@@ -472,7 +472,7 @@ public class FSImageFormatPBSnapshot {
       final LoaderContext state = parent.getLoaderContext();
 
       for (int i = 0; i < size; i++) {
-        FbDirectoryDiff idiffInPb = FbDirectoryDiff.getRootAsFbDirectoryDiff(ByteBuffer.wrap(parseFrom(in)));
+        FbDirectoryDiff idiffInPb = FbDirectoryDiff.getRootAsFbDirectoryDiff(parseFrom(null));
 
         final int snapshotId = (int)idiffInPb.snapshotId();
         final Snapshot snapshot = snapshotMap.get(snapshotId);

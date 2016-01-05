@@ -356,16 +356,16 @@ public final class FSImageFormatPBINode {
       this.parent = parent;
     }
 
-    void loadFbINodeDirectorySection(InputStream in) throws IOException {
+    void loadFbINodeDirectorySection(ByteBuffer in) throws IOException {
       final List<INodeReference> refList = parent.getLoaderContext()
           .getRefList();
       while (true) {
 
-        byte[] bytes = parseFrom(in);
+        ByteBuffer bytes = parseFrom(in);
         if (bytes == null) {
           break;
         }
-        FbDirEntry ie = FbDirEntry.getRootAsFbDirEntry(ByteBuffer.wrap(bytes));
+        FbDirEntry ie = FbDirEntry.getRootAsFbDirEntry(bytes);
         // note that in is a LimitedInputStream
         INodeDirectory p = dir.getInode(ie.parent()).asDirectory();
 
@@ -403,23 +403,16 @@ public final class FSImageFormatPBINode {
       }
     }
 
-    public static byte[] parseFrom(InputStream in) throws IOException {
-      DataInputStream inputStream = new DataInputStream(in);
+    public static ByteBuffer parseFrom(ByteBuffer in) throws IOException {
       int len;
-      try {
-        len = inputStream.readInt();
-      } catch (EOFException e) {
-        return null;
-      }
-      byte[] data = new byte[len];
-      inputStream.read(data);
-      return data;
+      len = in.getInt();
+      return in;
     }
 
-    void loadFbINodeSection(InputStream in, StartupProgress prog,
+    void loadFbINodeSection(ByteBuffer in, StartupProgress prog,
                                Step currentStep) throws IOException {
       FbINodeSection is =
-          FbINodeSection.getRootAsFbINodeSection(ByteBuffer.wrap(parseFrom(in)));
+          FbINodeSection.getRootAsFbINodeSection(parseFrom(in));
 
       fsn.dir.resetLastInodeId(is.lastInodeId());
       long numInodes = is.numInodes();
@@ -429,9 +422,9 @@ public final class FSImageFormatPBINode {
       Counter counter = prog.getCounter(Phase.LOADING_FSIMAGE, currentStep);
       // hack here
       for (int i = 0; i < numInodes; ++i) {
-        byte[] b = parseFrom(in);
-        if (b == null || b.length <= 0) continue;
-        FbINode iNode = FbINode.getRootAsFbINode(ByteBuffer.wrap(b));
+        ByteBuffer b = parseFrom(in);
+        if (b == null || b.remaining() <= 0) continue;
+        FbINode iNode = FbINode.getRootAsFbINode(b);
 
         if (iNode.id() == INodeId.ROOT_INODE_ID) {
           loadRootFbINode(iNode);
@@ -446,14 +439,14 @@ public final class FSImageFormatPBINode {
     /**
      * Load the under-construction files section, and update the lease map
      */
-    void loadFbFilesUnderConstructionSection(InputStream in) throws IOException {
+    void loadFbFilesUnderConstructionSection(ByteBuffer in) throws IOException {
       while (true) {
-        byte[] bytes = parseFrom(in);
+        ByteBuffer bytes = parseFrom(in);
         if (bytes == null) {
           break;
         }
         FbFileUnderConstructionEntry ientry = FbFileUnderConstructionEntry.
-            getRootAsFbFileUnderConstructionEntry(ByteBuffer.wrap(bytes));
+            getRootAsFbFileUnderConstructionEntry(bytes);
         // update the lease manager
         INodeFile file = dir.getInode(ientry.inodeId()).asFile();
         FileUnderConstructionFeature uc = file.getFileUnderConstructionFeature();

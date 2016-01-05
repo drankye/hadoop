@@ -26,6 +26,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -168,46 +169,21 @@ public final class FSImageFormatProtobuf {
     }
 
     void load(File file) throws IOException {
-      long start = Time.monotonicNow();
       imgDigest = MD5FileUtils.computeMd5ForFile(file);
       RandomAccessFile raFile = new RandomAccessFile(file, "r");
-      FileInputStream fin = new FileInputStream(file);
       try {
-        loadFbInternal(raFile, fin);
-        long end = Time.monotonicNow();
-        LOG.info("Loaded FSImage in " + (end - start) / 1000 + " seconds.");
-        /**
-         * Number Of Blocks : 1043093
-         * Block Size : 5MB
-         * Load Time :
-         *
-         *          4482 Milliseconds
-         *          4180 Milliseconds
-         *          4599 Milliseconds
-         *          4472 Milliseconds
-         *          4223 Milliseconds
-         *
-         *  Average Load FSImage Time : 4391 Milliseconds
-         */
-        long time = end - start;
-        File file1 = new File("/tmp/intervalTime.txt");
-        FileOutputStream out = new FileOutputStream(file1);
-        OutputStreamWriter osw  = new OutputStreamWriter(out);
-        BufferedWriter bw = new BufferedWriter(osw);
-        bw.write(String.valueOf(time) + " Milliseconds ");
-        bw.flush();
-
+        loadFbInternal(raFile);
       } finally {
-        fin.close();
         raFile.close();
       }
     }
 
-    private void loadFbInternal(RandomAccessFile raFile, FileInputStream fin)
+    private void loadFbInternal(RandomAccessFile raFile)
       throws IOException{
       if (!FSImageUtil.checkFileFormat(raFile)) {
         throw new IOException("Unrecongnized file format");
       }
+
       FbFileSummary summary = FSImageUtil.loadFbSummary(raFile);
       if (requireSameLayoutVersion &&
           summary.layoutVersion() != HdfsServerConstants.NAMENODE_LAYOUT_VERSION) {
@@ -215,13 +191,13 @@ public final class FSImageFormatProtobuf {
             "is not equal to the software version " +
             HdfsServerConstants.NAMENODE_LAYOUT_VERSION);
       }
-      FileChannel channel = fin.getChannel();
+      FileChannel channel = raFile.getChannel();
       FSImageFormatPBINode.Loader inodeLoader = new FSImageFormatPBINode.Loader(
           fsn, this);
       FSImageFormatPBSnapshot.Loader snapshotLoader = new FSImageFormatPBSnapshot.Loader(
           fsn, this);
 
-      ArrayList<FbSection> sections = new ArrayList<FbSection>();
+      List<FbSection> sections = new ArrayList<>();
       for (int i = 0; i < summary.sectionsLength();i++) {
         sections.add(summary.sections(i));
       }
@@ -242,11 +218,11 @@ public final class FSImageFormatProtobuf {
       StartupProgress prog = NameNode.getStartupProgress();
       Step currentStep = null;
       for (FbSection s:sections) {
-        channel.position(s.offset());
-        InputStream in = new BufferedInputStream(new LimitInputStream(fin,
-            s.length()));
-        in = FSImageUtil.wrapInputStreamForCompression(conf,
-            summary.codec(), in);
+        ByteBuffer in = channel.map(FileChannel.MapMode.READ_ONLY,
+            s.offset(), s.length());
+        //channel.position(s.offset());
+        //in = FSImageUtil.wrapInputStreamForCompression(conf,
+        //    summary.codec(), in);
 
         String n = s.name();
 
@@ -273,10 +249,10 @@ public final class FSImageFormatProtobuf {
             inodeLoader.loadFbFilesUnderConstructionSection(in); // success
             break;
           case SNAPSHOT:
-            snapshotLoader.loadFbSnapshotSection(in); // success
+            //snapshotLoader.loadFbSnapshotSection(in); // success
             break;
           case SNAPSHOT_DIFF:
-            snapshotLoader.loadFbSnapshotDiffSection(in); // succcess
+            //snapshotLoader.loadFbSnapshotDiffSection(in); // succcess
             break;
           case SECRET_MANAGER: {
             prog.endStep(Phase.LOADING_FSIMAGE, currentStep);
@@ -289,7 +265,7 @@ public final class FSImageFormatProtobuf {
           case CACHE_MANAGER: {
             Step step = new Step(StepType.CACHE_POOLS);
             prog.beginStep(Phase.LOADING_FSIMAGE, step);
-            loadFbCacheManagerSection(in, prog, step); // success
+            //loadFbCacheManagerSection(in, prog, step); // success
             prog.endStep(Phase.LOADING_FSIMAGE, step);
           }
           break;
@@ -300,16 +276,13 @@ public final class FSImageFormatProtobuf {
       }
     }
 
-    public static byte[] parseFrom(InputStream in) throws IOException {
-      DataInputStream inputStream = new DataInputStream(in);
-      int len = inputStream.readInt();
-      byte[] data = new byte[len];
-      inputStream.read(data);
-      return data;
+    public static ByteBuffer parseFrom(ByteBuffer in) throws IOException {
+      int len = in.getInt();
+      return in;
     }
 
-    private void loadFbNameSystemSection(InputStream in) throws IOException {
-      ByteBuffer byteBuffer = ByteBuffer.wrap(parseFrom(in));
+    private void loadFbNameSystemSection(ByteBuffer in) throws IOException {
+      ByteBuffer byteBuffer = parseFrom(in);
       FbNameSystemSection fbNameSystemSection =
           FbNameSystemSection.getRootAsFbNameSystemSection(byteBuffer);
       BlockIdManager blockIdManager = fsn.getBlockIdManager();
@@ -344,15 +317,14 @@ public final class FSImageFormatProtobuf {
       }
     }
 
-    private void loadFbStringTableSection(InputStream in) throws IOException {
-      ByteBuffer byteBuffer = ByteBuffer.wrap(parseFrom(in));
+    private void loadFbStringTableSection(ByteBuffer in) throws IOException {
+      parseFrom(in);
       FbStringTableSection fbSts =
-          FbStringTableSection.getRootAsFbStringTableSection(byteBuffer);
+          FbStringTableSection.getRootAsFbStringTableSection(in);
       ctx.stringTable = new String[(int)fbSts.numEntry() + 1];
       for (int i = 0; i < fbSts.numEntry(); ++i) {
-        byte[] bytes1 = parseFrom(in);
-        ByteBuffer byteBuffer1 = ByteBuffer.wrap(bytes1);
-        FbEntry fbEntry = FbEntry.getRootAsFbEntry(byteBuffer1);
+        parseFrom(in);
+        FbEntry fbEntry = FbEntry.getRootAsFbEntry(in);
         ctx.stringTable[(int) fbEntry.id()] = fbEntry.str();
       }
     }
@@ -367,10 +339,9 @@ public final class FSImageFormatProtobuf {
       }
     }
 
-    private void loadFbSecretManagerSection(InputStream in, StartupProgress prog,
+    private void loadFbSecretManagerSection(ByteBuffer in, StartupProgress prog,
                                           Step currentStep) throws IOException {
-      byte[] bytes = parseFrom(in);
-      ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+      ByteBuffer byteBuffer = parseFrom(in);
       FbSecretManagerSection is = FbSecretManagerSection.
           getRootAsFbSecretManagerSection(byteBuffer);
 
@@ -381,8 +352,7 @@ public final class FSImageFormatProtobuf {
           .newArrayListWithCapacity((int)numTokens);
 
       for (int i = 0; i < numKeys; ++i) {
-        byte[] bytes1 = parseFrom(in);
-        ByteBuffer byteBuffer1 = ByteBuffer.wrap(bytes1);
+        ByteBuffer byteBuffer1 = parseFrom(in);
         FbDelegationKey fbDelegationKey = FbDelegationKey.getRootAsFbDelegationKey(byteBuffer1);
         fbkeys.add(fbDelegationKey);
       }
@@ -390,8 +360,7 @@ public final class FSImageFormatProtobuf {
       prog.setTotal(Phase.LOADING_FSIMAGE, currentStep, numTokens);
       Counter counter = prog.getCounter(Phase.LOADING_FSIMAGE, currentStep);
       for (int i = 0; i < numTokens; ++i) {
-        byte[] bytes2 = parseFrom(in);
-        ByteBuffer byteBuffer2 = ByteBuffer.wrap(bytes2);
+        ByteBuffer byteBuffer2 = parseFrom(in);
         FbPersistToken fbPersistToken = FbPersistToken.getRootAsFbPersistToken(byteBuffer2);
         fbtokens.add(fbPersistToken);
         counter.increment();
@@ -425,10 +394,9 @@ public final class FSImageFormatProtobuf {
 
     private void loadFbCacheManagerSection(InputStream in, StartupProgress prog,
                                          Step currentStep) throws IOException {
-      byte[] bytes = parseFrom(in);
-      ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-      FbCacheManagerSection cs =
-          FbCacheManagerSection.getRootAsFbCacheManagerSection(byteBuffer);
+      //ByteBuffer byteBuffer = parseFrom(in);
+      FbCacheManagerSection cs = null;
+      //    FbCacheManagerSection.getRootAsFbCacheManagerSection(byteBuffer);
 
       long numPools = cs.numPools();
       ArrayList<CachePoolInfoProto> pools = Lists
@@ -604,7 +572,7 @@ public final class FSImageFormatProtobuf {
     private void saveFbInternal(FileOutputStream fout, FSImageCompression compression, String filePath)
         throws IOException {
 
-      ArrayList<Integer> listSection = new ArrayList<Integer>();
+      ArrayList<Integer> listSection = new ArrayList<>();
 
       StartupProgress prog = NameNode.getStartupProgress();
       MessageDigest digester = MD5Hash.getDigester();
@@ -648,19 +616,7 @@ public final class FSImageFormatProtobuf {
       for (int i = 0; i < data.length ; i++) {
         data[i] = listSection.get(i);
       }
-      /**
-       * how to construct these data?  Use FbSection.createFbSection() will
-       * return an int represent the current section.
-       * construct a section use four param below. Now, see how protobuf op these
-       * four param.
-       * {
-       *    FlatBufferBuilder builder,
-       *    int name,
-       *    long length,
-       *    long offset
-       * }
-       *
-       */
+
       int sections = FbFileSummary.createSectionsVector(fbb, ArrayUtils.toPrimitive(data));
       int end = FbFileSummary.createFbFileSummary
                     (fbb, disk_version, layout_version, code, sections);
