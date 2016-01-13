@@ -234,7 +234,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       new DFSHedgedReadMetrics();
   private static ThreadPoolExecutor HEDGED_READ_THREAD_POOL;
   private static volatile ThreadPoolExecutor STRIPED_READ_THREAD_POOL;
-  private final int smallBufferSize;
+  protected final int smallBufferSize;
 
   public DfsClientConf getConf() {
     return dfsClientConf;
@@ -1676,184 +1676,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public MD5MD5CRC32FileChecksum getFileChecksum(String src, long length)
       throws IOException {
-    checkOpen();
-    Preconditions.checkArgument(length >= 0);
-    //get block locations for the file range
-    LocatedBlocks blockLocations = callGetBlockLocations(namenode, src, 0,
-        length);
-    if (null == blockLocations) {
-      throw new FileNotFoundException("File does not exist: " + src);
-    }
-    if (blockLocations.isUnderConstruction()) {
-      throw new IOException("Fail to get checksum, since file " + src
-          + " is under construction.");
-    }
-    List<LocatedBlock> locatedblocks = blockLocations.getLocatedBlocks();
-    final DataOutputBuffer md5out = new DataOutputBuffer();
-    int bytesPerCRC = -1;
-    DataChecksum.Type crcType = DataChecksum.Type.DEFAULT;
-    long crcPerBlock = 0;
-    boolean refetchBlocks = false;
-    int lastRetriedIndex = -1;
-
-    // get block checksum for each block
-    long remaining = length;
-    if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
-      remaining = Math.min(length, blockLocations.getFileLength());
-    }
-    for(int i = 0; i < locatedblocks.size() && remaining > 0; i++) {
-      if (refetchBlocks) {  // refetch to get fresh tokens
-        blockLocations = callGetBlockLocations(namenode, src, 0, length);
-        if (null == blockLocations) {
-          throw new FileNotFoundException("File does not exist: " + src);
-        }
-        if (blockLocations.isUnderConstruction()) {
-          throw new IOException("Fail to get checksum, since file " + src
-              + " is under construction.");
-        }
-        locatedblocks = blockLocations.getLocatedBlocks();
-        refetchBlocks = false;
-      }
-      LocatedBlock lb = locatedblocks.get(i);
-      final ExtendedBlock block = lb.getBlock();
-      if (remaining < block.getNumBytes()) {
-        block.setNumBytes(remaining);
-      }
-      remaining -= block.getNumBytes();
-      final DatanodeInfo[] datanodes = lb.getLocations();
-
-      //try each datanode location of the block
-      final int timeout = 3000 * datanodes.length +
-          dfsClientConf.getSocketTimeout();
-      boolean done = false;
-      for(int j = 0; !done && j < datanodes.length; j++) {
-        DataOutputStream out = null;
-        DataInputStream in = null;
-
-        try {
-          //connect to a datanode
-          IOStreamPair pair = connectToDN(datanodes[j], timeout, lb);
-          out = new DataOutputStream(new BufferedOutputStream(pair.out,
-              smallBufferSize));
-          in = new DataInputStream(pair.in);
-
-          LOG.debug("write to {}: {}, block={}",
-              datanodes[j], Op.BLOCK_CHECKSUM, block);
-          // get block MD5
-          new Sender(out).blockChecksum(block, lb.getBlockToken());
-
-          final BlockOpResponseProto reply =
-              BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
-
-          String logInfo = "for block " + block + " from datanode " +
-              datanodes[j];
-          DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
-
-          OpBlockChecksumResponseProto checksumData =
-              reply.getChecksumResponse();
-
-          //read byte-per-checksum
-          final int bpc = checksumData.getBytesPerCrc();
-          if (i == 0) { //first block
-            bytesPerCRC = bpc;
-          }
-          else if (bpc != bytesPerCRC) {
-            throw new IOException("Byte-per-checksum not matched: bpc=" + bpc
-                + " but bytesPerCRC=" + bytesPerCRC);
-          }
-
-          //read crc-per-block
-          final long cpb = checksumData.getCrcPerBlock();
-          if (locatedblocks.size() > 1 && i == 0) {
-            crcPerBlock = cpb;
-          }
-
-          //read md5
-          final MD5Hash md5 = new MD5Hash(
-              checksumData.getMd5().toByteArray());
-          md5.write(md5out);
-
-          // read crc-type
-          final DataChecksum.Type ct;
-          if (checksumData.hasCrcType()) {
-            ct = PBHelperClient.convert(checksumData
-                .getCrcType());
-          } else {
-            LOG.debug("Retrieving checksum from an earlier-version DataNode: " +
-                "inferring checksum by reading first byte");
-            ct = inferChecksumTypeByReading(lb, datanodes[j]);
-          }
-
-          if (i == 0) { // first block
-            crcType = ct;
-          } else if (crcType != DataChecksum.Type.MIXED
-              && crcType != ct) {
-            // if crc types are mixed in a file
-            crcType = DataChecksum.Type.MIXED;
-          }
-
-          done = true;
-
-          if (LOG.isDebugEnabled()) {
-            if (i == 0) {
-              LOG.debug("set bytesPerCRC=" + bytesPerCRC
-                  + ", crcPerBlock=" + crcPerBlock);
-            }
-            LOG.debug("got reply from " + datanodes[j] + ": md5=" + md5);
-          }
-        } catch (InvalidBlockTokenException ibte) {
-          if (i > lastRetriedIndex) {
-            LOG.debug("Got access token error in response to OP_BLOCK_CHECKSUM "
-                    + "for file {} for block {} from datanode {}. Will retry "
-                    + "the block once.",
-                src, block, datanodes[j]);
-            lastRetriedIndex = i;
-            done = true; // actually it's not done; but we'll retry
-            i--; // repeat at i-th block
-            refetchBlocks = true;
-            break;
-          }
-        } catch (IOException ie) {
-          LOG.warn("src=" + src + ", datanodes["+j+"]=" + datanodes[j], ie);
-        } finally {
-          IOUtils.closeStream(in);
-          IOUtils.closeStream(out);
-        }
-      }
-
-      if (!done) {
-        throw new IOException("Fail to get block MD5 for " + block);
-      }
-    }
-
-    //compute file MD5
-    final MD5Hash fileMD5 = MD5Hash.digest(md5out.getData());
-    switch (crcType) {
-    case CRC32:
-      return new MD5MD5CRC32GzipFileChecksum(bytesPerCRC,
-          crcPerBlock, fileMD5);
-    case CRC32C:
-      return new MD5MD5CRC32CastagnoliFileChecksum(bytesPerCRC,
-          crcPerBlock, fileMD5);
-    default:
-      // If there is no block allocated for the file,
-      // return one with the magic entry that matches what previous
-      // hdfs versions return.
-      if (locatedblocks.size() == 0) {
-        return new MD5MD5CRC32GzipFileChecksum(0, 0, fileMD5);
-      }
-
-      // we should never get here since the validity was checked
-      // when getCrcType() was called above.
-      return null;
-    }
+    FileChecksumHelper checksumHelper = new FileChecksumHelper(namenode, this);
+    return checksumHelper.getFileChecksum(src, length);
   }
 
   /**
    * Connect to the given datanode's datantrasfer port, and return
    * the resulting IOStreamPair. This includes encryption wrapping, etc.
    */
-  private IOStreamPair connectToDN(DatanodeInfo dn, int timeout,
+  protected IOStreamPair connectToDN(DatanodeInfo dn, int timeout,
       LocatedBlock lb) throws IOException {
     boolean success = false;
     Socket sock = null;
@@ -1888,7 +1719,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @return the inferred checksum type
    * @throws IOException if an error occurs
    */
-  private Type inferChecksumTypeByReading(LocatedBlock lb, DatanodeInfo dn)
+  protected Type inferChecksumTypeByReading(LocatedBlock lb, DatanodeInfo dn)
       throws IOException {
     IOStreamPair pair = connectToDN(dn, dfsClientConf.getSocketTimeout(), lb);
 
