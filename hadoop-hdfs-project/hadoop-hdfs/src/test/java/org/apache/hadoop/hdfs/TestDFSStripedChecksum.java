@@ -15,39 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdfs.server.datanode;
+package org.apache.hadoop.hdfs;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileChecksum;
-import org.apache.hadoop.fs.HdfsBlockLocation;
-import org.apache.hadoop.fs.MD5MD5CRC32CastagnoliFileChecksum;
-import org.apache.hadoop.fs.MD5MD5CRC32GzipFileChecksum;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.DFSUtilClient;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.StripedFileTestUtil;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
-import org.apache.hadoop.hdfs.util.StripedBlockUtil;
-import org.apache.hadoop.io.DataOutputBuffer;
-import org.apache.hadoop.io.MD5Hash;
-import org.apache.hadoop.util.DataChecksum;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 
 /**
@@ -97,12 +77,16 @@ public class TestDFSStripedChecksum {
   @Test
   public void testFileChecksum() throws Exception {
     // One block group
-    int fileSize = stripesPerBlock * cellSize * dataBlocks;
+    int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
     byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
-    FileChecksum stripedFileChecksum = calcStripedChecksum(fileData);
 
-    FileChecksum replicaFileChecksum = getReplicaFileChecksum(fileData);
-    Assert.assertTrue(replicaFileChecksum.equals(stripedFileChecksum));
+    String file1 = ecDir + "/stripedFileChecksum1";
+    FileChecksum stripedFileChecksum1 = getStripedChecksum(file1, fileData);
+
+    String file2 = ecDir + "/stripedFileChecksum2";
+    FileChecksum stripedFileChecksum2 = getStripedChecksum(file2, fileData);
+
+    Assert.assertTrue(stripedFileChecksum1.equals(stripedFileChecksum2));
   }
 
   private FileChecksum getReplicaFileChecksum(byte[] fileData) throws Exception {
@@ -115,6 +99,16 @@ public class TestDFSStripedChecksum {
     return fc;
   }
 
+  private FileChecksum getStripedChecksum(String filePath, byte[] fileData) throws Exception {
+    Path testPath = new Path(filePath);
+
+    DFSTestUtil.writeFile(fs, testPath, fileData);
+    StripedFileTestUtil.waitBlockGroupsReported(fs, filePath);
+
+    return fs.getFileChecksum(testPath);
+  }
+
+  /*
   private FileChecksum calcStripedChecksum(byte[] fileData) throws Exception {
     String file = ecDir + "/stripedFileChecksum";
     Path testPath = new Path(file);
@@ -204,4 +198,5 @@ public class TestDFSStripedChecksum {
     }
     return null;
   }
+  */
 }

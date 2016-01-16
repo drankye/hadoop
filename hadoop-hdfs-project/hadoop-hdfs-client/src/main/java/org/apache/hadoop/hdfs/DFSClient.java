@@ -1676,8 +1676,36 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public MD5MD5CRC32FileChecksum getFileChecksum(String src, long length)
       throws IOException {
-    FileChecksumHelper checksumHelper = new FileChecksumHelper(namenode, this);
-    return checksumHelper.getFileChecksum(src, length);
+    checkOpen();
+    Preconditions.checkArgument(length >= 0);
+
+    LocatedBlocks blockLocations = getBlockLocations(src, length);
+
+    FileChecksumHelper.FileChecksumMaker maker;
+    ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
+    maker = ecPolicy != null ?
+        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+            blockLocations, namenode, this) :
+        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+            blockLocations, namenode, this);
+
+    return maker.make();
+  }
+
+  protected LocatedBlocks getBlockLocations(String src,
+                                            long length) throws IOException {
+    //get block locations for the file range
+    LocatedBlocks blockLocations = callGetBlockLocations(namenode,
+        src, 0, length);
+    if (null == blockLocations) {
+      throw new FileNotFoundException("File does not exist: " + src);
+    }
+    if (blockLocations.isUnderConstruction()) {
+      throw new IOException("Fail to get checksum, since file " + src
+          + " is under construction.");
+    }
+
+    return blockLocations;
   }
 
   /**
