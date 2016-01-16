@@ -2308,6 +2308,41 @@ public abstract class FileSystem extends Configured implements Closeable {
   }
 
   /**
+   * Get the checksum of a file using the specified algorithm
+   *
+   * @param f The file path
+   * @return The file checksum.  The default return value is null,
+   *  which indicates that no checksum algorithm is implemented
+   *  in the corresponding FileSystem.
+   */
+  public FileChecksum getFileChecksum(Path f,
+                                      String algorithm) throws IOException {
+    return getFileChecksum(f, Long.MAX_VALUE, algorithm);
+  }
+
+  /**
+   * Get the checksum of a file, from the beginning of the file till the
+   * specific length, using the specified algorithm
+   * @param f The file path
+   * @param length The length of the file range for checksum calculation
+   * @return The file checksum.
+   */
+  public FileChecksum getFileChecksum(Path f, final long length,
+                                      String algorithm) throws IOException {
+    return null;
+  }
+
+  /**
+   * Determine if the specified file supports the specified algorithm or not
+   * @param f The file path
+   * @return true if the algorithm is supported, false otherwise.
+   */
+  public boolean supportFileChecksum(Path f,
+                                     String algorithm) throws IOException {
+    return false;
+  }
+
+  /**
    * Set the verify checksum flag. This is only applicable if the 
    * corresponding FileSystem supports checksum. By default doesn't do anything.
    * @param verifyChecksum

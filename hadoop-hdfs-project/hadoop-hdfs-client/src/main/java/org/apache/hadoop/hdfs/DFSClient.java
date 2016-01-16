@@ -1667,7 +1667,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
-   * Get the checksum of the whole file of a range of the file. Note that the
+   * Get the checksum of the whole file or a range of the file. Note that the
    * range always starts from the beginning of the file.
    * @param src The file path
    * @param length the length of the range, i.e., the range is [0, length]
@@ -1690,6 +1690,45 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             blockLocations, namenode, this);
 
     return maker.make();
+  }
+
+  /**
+   * Get the checksum of the whole file or a range of the file. Note that the
+   * range always starts from the beginning of the file.
+   * @param src The file path
+   * @param length the length of the range, i.e., the range is [0, length]
+   * @param algorithm the algorithm for the file checksum
+   * @return The checksum
+   * @see DistributedFileSystem#getFileChecksum(Path)
+   */
+  public MD5MD5CRC32FileChecksum getFileChecksum(String src,
+                          long length, String algorithm) throws IOException {
+    checkOpen();
+    Preconditions.checkArgument(length >= 0);
+
+    LocatedBlocks blockLocations = getBlockLocations(src, length);
+
+    FileChecksumHelper.FileChecksumMaker maker;
+    ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
+    maker = ecPolicy != null ?
+        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+            blockLocations, namenode, this) :
+        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+            blockLocations, namenode, this);
+
+    return maker.make();
+  }
+
+  /**
+   * Determines if the specified file supports the algorithm or not.
+   * @param src The file path
+   * @param algorithm The algorithm that wants to be determined
+   * @return true if the algorithm is supported for the file, false otherwise
+   * @throws IOException
+   */
+  public boolean supportFileChecksum(String src,
+                                String algorithm) throws IOException {
+    return false;
   }
 
   protected LocatedBlocks getBlockLocations(String src,

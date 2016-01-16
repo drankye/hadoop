@@ -1415,6 +1415,60 @@ public class DistributedFileSystem extends FileSystem {
   }
 
   @Override
+  public FileChecksum getFileChecksum(Path f,
+                                final String algorithm) throws IOException {
+    return getFileChecksum(f, Long.MAX_VALUE, algorithm);
+  }
+
+  @Override
+  public FileChecksum getFileChecksum(Path f, final long length,
+                                  final String algorithm) throws IOException {
+    statistics.incrementReadOps(1);
+    Path absF = fixRelativePart(f);
+    return new FileSystemLinkResolver<FileChecksum>() {
+      @Override
+      public FileChecksum doCall(final Path p) throws IOException {
+        return dfs.getFileChecksum(getPathName(p), length, algorithm);
+      }
+
+      @Override
+      public FileChecksum next(final FileSystem fs, final Path p)
+          throws IOException {
+        if (fs instanceof DistributedFileSystem) {
+          return fs.getFileChecksum(p, length, algorithm);
+        } else {
+          throw new UnsupportedFileSystemException(
+              "getFileChecksum(Path, long) is not supported by "
+                  + fs.getClass().getSimpleName());
+        }
+      }
+    }.resolve(this, absF);
+  }
+
+  @Override
+  public boolean supportFileChecksum(Path f,
+                               final String algorithm) throws IOException {
+    statistics.incrementReadOps(1);
+    Path absF = fixRelativePart(f);
+    return new FileSystemLinkResolver<Boolean>() {
+      @Override
+      public Boolean doCall(final Path p) throws IOException {
+        return dfs.supportFileChecksum(getPathName(p), algorithm);
+      }
+
+      @Override
+      public Boolean next(final FileSystem fs, final Path p)
+          throws IOException {
+        if (fs instanceof DistributedFileSystem) {
+          return fs.supportFileChecksum(p, algorithm);
+        } else {
+          return false;
+        }
+      }
+    }.resolve(this, absF);
+  }
+
+  @Override
   public void setPermission(Path p, final FsPermission permission
   ) throws IOException {
     statistics.incrementWriteOps(1);
