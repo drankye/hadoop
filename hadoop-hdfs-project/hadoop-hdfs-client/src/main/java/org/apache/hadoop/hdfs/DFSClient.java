@@ -1684,8 +1684,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     FileChecksumHelper.FileChecksumMaker maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
-            blockLocations, namenode, this) :
+        new FileChecksumHelper.StripedFileChecksumMaker(src, length,
+            blockLocations, namenode, this, ecPolicy) :
         new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
             blockLocations, namenode, this);
 
