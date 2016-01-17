@@ -75,37 +75,43 @@ public class TestDFSStripedChecksum {
   }
 
   @Test
-  public void testFileChecksum() throws Exception {
+  public void testStripedFileChecksum() throws Exception {
     // One block group
     int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
     byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
 
     String file1 = ecDir + "/stripedFileChecksum1";
-    FileChecksum stripedFileChecksum1 = getStripedChecksum(file1, fileData);
+    FileChecksum stripedFileChecksum1 = getFileChecksum(file1, fileData);
 
     String file2 = ecDir + "/stripedFileChecksum2";
-    FileChecksum stripedFileChecksum2 = getStripedChecksum(file2, fileData);
+    FileChecksum stripedFileChecksum2 = getFileChecksum(file2, fileData);
 
     Assert.assertTrue(stripedFileChecksum1.equals(stripedFileChecksum2));
   }
 
-  private FileChecksum getReplicaFileChecksum(byte[] fileData) throws Exception {
-    String file = "/replicatedFileChecksum";
-    Path testPath = new Path(file);
+  @Test
+  public void testStripedAdnReplicatedFileChecksum() throws Exception {
+    // One block group
+    int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
+    byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
+
+    String file1 = ecDir + "/stripedFileChecksum1";
+    FileChecksum stripedFileChecksum1 = getFileChecksum(file1, fileData);
+
+    String file2 = "/replicatedFileChecksum";
+    FileChecksum stripedFileChecksum2 = getFileChecksum(file2, fileData);
+
+    Assert.assertFalse(stripedFileChecksum1.equals(stripedFileChecksum2));
+  }
+
+  private FileChecksum getFileChecksum(String filePath,
+                                       byte[] fileData) throws Exception {
+    Path testPath = new Path(filePath);
 
     DFSTestUtil.writeFile(fs, testPath, new String(fileData));
 
     FileChecksum fc = fs.getFileChecksum(testPath);
     return fc;
-  }
-
-  private FileChecksum getStripedChecksum(String filePath, byte[] fileData) throws Exception {
-    Path testPath = new Path(filePath);
-
-    DFSTestUtil.writeFile(fs, testPath, fileData);
-    StripedFileTestUtil.waitBlockGroupsReported(fs, filePath);
-
-    return fs.getFileChecksum(testPath);
   }
 
   /*
