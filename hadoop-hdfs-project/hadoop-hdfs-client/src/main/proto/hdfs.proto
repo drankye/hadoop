@@ -72,6 +72,13 @@ message DatanodeLocalInfoProto {
 /**
  * DatanodeInfo array
  */
+message DatanodeIDsProto {
+  repeated DatanodeIDProto datanodes = 1;
+}
+
+/**
+ * DatanodeInfo array
+ */
 message DatanodeInfosProto {
   repeated DatanodeInfoProto datanodes = 1;
 }

@@ -24,6 +24,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitShm.SlotId;
@@ -199,4 +200,14 @@ public interface DataTransferProtocol {
    */
   void blockChecksum(final ExtendedBlock blk,
       final Token<BlockTokenIdentifier> blockToken) throws IOException;
+
+  /**
+   * Get striped block group checksum (MD5 of CRC32).
+   *
+   * @param stripedBlockInfo a striped block info.
+   * @param blockToken security token for accessing the block.
+   * @throws IOException
+   */
+  void stripedBlockChecksum(final StripedBlockInfo stripedBlockInfo,
+              final Token<BlockTokenIdentifier> blockToken) throws IOException;
 }

@@ -56,6 +56,7 @@ import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
+import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
 import org.apache.hadoop.hdfs.protocol.datatransfer.BlockConstructionStage;
 import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtoUtil;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
@@ -983,6 +984,71 @@ class DataXceiver extends Receiver implements Runnable {
   }
 
   @Override
+  public void stripedBlockChecksum(final StripedBlockInfo stripedBlockInfo,
+           final Token<BlockTokenIdentifier> blockToken) throws IOException {
+    /*
+    updateCurrentThreadName("Getting striped block group checksum for block " +
+        block);
+    final DataOutputStream out = new DataOutputStream(
+        getOutputStream());
+    checkAccess(out, true, block, blockToken,
+        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
+    // client side now can specify a range of the block for checksum
+    long requestLength = block.getNumBytes();
+    Preconditions.checkArgument(requestLength >= 0);
+    long visibleLength = datanode.data.getReplicaVisibleLength(block);
+    boolean partialBlk = requestLength < visibleLength;
+
+    final LengthInputStream metadataIn = datanode.data
+        .getMetaDataInputStream(block);
+
+    final DataInputStream checksumIn = new DataInputStream(
+        new BufferedInputStream(metadataIn, ioFileBufferSize));
+    try {
+      //read metadata file
+      final BlockMetadataHeader header = BlockMetadataHeader
+          .readHeader(checksumIn);
+      final DataChecksum checksum = header.getChecksum();
+      final int csize = checksum.getChecksumSize();
+      final int bytesPerCRC = checksum.getBytesPerChecksum();
+      final long crcPerBlock = csize <= 0 ? 0 :
+          (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
+
+      final MD5Hash md5 = partialBlk && crcPerBlock > 0 ?
+          calcPartialBlockChecksum(block, requestLength, checksum, checksumIn)
+          : MD5Hash.digest(checksumIn);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
+            + ", crcPerBlock=" + crcPerBlock + ", md5=" + md5);
+      }
+
+      //write reply
+      BlockOpResponseProto.newBuilder()
+          .setStatus(SUCCESS)
+          .setChecksumResponse(OpBlockChecksumResponseProto.newBuilder()
+              .setBytesPerCrc(bytesPerCRC)
+              .setCrcPerBlock(crcPerBlock)
+              .setMd5(ByteString.copyFrom(md5.getDigest()))
+              .setCrcType(PBHelperClient.convert(checksum.getChecksumType())))
+          .build()
+          .writeDelimitedTo(out);
+      out.flush();
+    } catch (IOException ioe) {
+      LOG.info("blockChecksum " + block + " received exception " + ioe);
+      incrDatanodeNetworkErrors();
+      throw ioe;
+    } finally {
+      IOUtils.closeStream(out);
+      IOUtils.closeStream(checksumIn);
+      IOUtils.closeStream(metadataIn);
+    }
+
+    //update metrics
+    datanode.metrics.addBlockChecksumOp(elapsed());
+    */
+  }
+
+  @Override
   public void copyBlock(final ExtendedBlock block,
       final Token<BlockTokenIdentifier> blockToken) throws IOException {
     updateCurrentThreadName("Copying block " + block);
@@ -1271,7 +1337,7 @@ class DataXceiver extends Receiver implements Runnable {
   /**
    * Wait until the BP is registered, upto the configured amount of time.
    * Throws an exception if times out, which should fail the client request.
-   * @param the requested block
+   * @param block requested block
    */
   void checkAndWaitForBP(final ExtendedBlock block)
       throws IOException {

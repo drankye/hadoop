@@ -28,11 +28,13 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.CachingStrategyProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ClientOperationHeaderProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.DataTransferTraceInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpStripedBlockChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpCopyBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReadBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReplaceBlockProto;
@@ -257,6 +259,21 @@ public class Sender implements DataTransferProtocol {
       final Token<BlockTokenIdentifier> blockToken) throws IOException {
     OpBlockChecksumProto proto = OpBlockChecksumProto.newBuilder()
         .setHeader(DataTransferProtoUtil.buildBaseHeader(blk, blockToken))
+        .build();
+
+    send(out, Op.BLOCK_CHECKSUM, proto);
+  }
+
+  @Override
+  public void stripedBlockChecksum(StripedBlockInfo stripedBlockInfo,
+                  Token<BlockTokenIdentifier> blockToken) throws IOException {
+    OpStripedBlockChecksumProto proto = OpStripedBlockChecksumProto.newBuilder()
+        .setHeader(DataTransferProtoUtil.buildBaseHeader(
+            stripedBlockInfo.getBlock(), blockToken))
+        .setDatanodes(PBHelperClient.convertToDnIDsProto(
+            stripedBlockInfo.getDatanodes()))
+        .setEcPolicy(PBHelperClient.convertErasureCodingPolicy(
+            stripedBlockInfo.getErasureCodingPolicy()))
         .build();
 
     send(out, Op.BLOCK_CHECKSUM, proto);

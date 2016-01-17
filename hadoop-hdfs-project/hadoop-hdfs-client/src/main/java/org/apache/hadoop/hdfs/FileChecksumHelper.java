@@ -134,9 +134,10 @@ public class FileChecksumHelper {
           locatedblocks = blockLocations.getLocatedBlocks();
           refetchBlocks = false;
         }
-        LocatedBlock lb = locatedblocks.get(i);
 
-        getBlockChecksumData(i, lb);
+        LocatedBlock locatedBlock = locatedblocks.get(i);
+
+        getBlockChecksumData(i, locatedBlock);
       }
 
       return computeFileChecksum();

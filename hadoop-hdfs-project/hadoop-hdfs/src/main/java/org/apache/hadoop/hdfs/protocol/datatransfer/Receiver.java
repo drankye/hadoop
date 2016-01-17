@@ -26,11 +26,14 @@ import java.io.IOException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BaseHeaderProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.CachingStrategyProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ClientOperationHeaderProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.DataTransferTraceInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpStripedBlockChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpCopyBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReadBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReplaceBlockProto;
@@ -110,6 +113,9 @@ public abstract class Receiver implements DataTransferProtocol {
       break;
     case BLOCK_CHECKSUM:
       opBlockChecksum(in);
+      break;
+    case STRIPED_BLOCK_CHECKSUM:
+      opStripedBlockChecksum(in);
       break;
     case TRANSFER_BLOCK:
       opTransferBlock(in);
@@ -286,6 +292,24 @@ public abstract class Receiver implements DataTransferProtocol {
     try {
     blockChecksum(PBHelperClient.convert(proto.getHeader().getBlock()),
         PBHelperClient.convert(proto.getHeader().getToken()));
+    } finally {
+      if (traceScope != null) traceScope.close();
+    }
+  }
+
+  /** Receive OP_STRIPED_BLOCK_CHECKSUM */
+  private void opStripedBlockChecksum(DataInputStream in) throws IOException {
+    OpStripedBlockChecksumProto proto = OpStripedBlockChecksumProto.parseFrom(vintPrefixed(in));
+    TraceScope traceScope = continueTraceSpan(proto.getHeader(),
+        proto.getClass().getSimpleName());
+    StripedBlockInfo stripedBlockInfo = new StripedBlockInfo(
+        PBHelperClient.convert(proto.getHeader().getBlock()),
+        PBHelperClient.convert(proto.getDatanodes()),
+        PBHelperClient.convertErasureCodingPolicy(proto.getEcPolicy())
+    );
+    try {
+      stripedBlockChecksum(stripedBlockInfo,
+          PBHelperClient.convert(proto.getHeader().getToken()));
     } finally {
       if (traceScope != null) traceScope.close();
     }

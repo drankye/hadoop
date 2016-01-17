@@ -74,7 +74,6 @@ message OpReadBlockProto {
   optional CachingStrategyProto cachingStrategy = 5;
 }
 
-
 message ChecksumProto {
   required ChecksumTypeProto type = 1;
   required uint32 bytesPerChecksum = 2;
@@ -147,6 +146,12 @@ message OpCopyBlockProto {
 
 message OpBlockChecksumProto { 
   required BaseHeaderProto header = 1;
+}
+
+message OpStripedBlockChecksumProto {
+  required BaseHeaderProto header = 1;
+  required DatanodeIDsProto datanodes = 2;
+  required ErasureCodingPolicyProto ecPolicy = 3;
 }
 
 /**

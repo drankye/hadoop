@@ -2398,6 +2398,16 @@ public class PBHelperClient {
     return infos;
   }
 
+  public static DatanodeID[] convert(
+      HdfsProtos.DatanodeIDsProto datanodeIDsProto) {
+    List<DatanodeIDProto> proto = datanodeIDsProto.getDatanodesList();
+    DatanodeID[] ids = new DatanodeID[proto.size()];
+    for (int i = 0; i < ids.length; i++) {
+      ids[i] = convert(proto.get(i));
+    }
+    return ids;
+  }
+
   static List<DatanodeInfosProto> convert(DatanodeInfo[][] targets) {
     DatanodeInfosProto[] ret = new DatanodeInfosProto[targets.length];
     for (int i = 0; i < targets.length; i++) {
@@ -2447,6 +2457,16 @@ public class PBHelperClient {
         .setName(policy.getName())
         .setSchema(convertECSchema(policy.getSchema()))
         .setCellSize(policy.getCellSize());
+    return builder.build();
+  }
+
+  public static HdfsProtos.DatanodeIDsProto convertToDnIDsProto(
+      DatanodeID[] datanodeIDs) {
+    HdfsProtos.DatanodeIDsProto.Builder builder =
+        HdfsProtos.DatanodeIDsProto.newBuilder();
+    for (DatanodeID datanodeID : datanodeIDs) {
+      builder.addDatanodes(PBHelperClient.convert(datanodeID));
+    }
     return builder.build();
   }
 }
