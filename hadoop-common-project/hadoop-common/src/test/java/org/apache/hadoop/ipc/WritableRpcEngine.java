@@ -45,26 +45,29 @@ import org.apache.hadoop.conf.*;
 import org.apache.htrace.core.TraceScope;
 import org.apache.htrace.core.Tracer;
 
-/** An RpcEngine implementation for Writable data. */
+/**
+ * An RpcEngine implementation for Writable data.
+ * Removed from production codes as it's obsolete.
+ */
 @InterfaceStability.Evolving
 public class WritableRpcEngine implements RpcEngine {
   private static final Log LOG = LogFactory.getLog(RPC.class);
-  
+
   //writableRpcVersion should be updated if there is a change
   //in format of the rpc messages.
-  
+
   // 2L - added declared class to Invocation
   public static final long writableRpcVersion = 2L;
-  
+
   /**
    * Whether or not this class has been initialized.
    */
   private static boolean isInitialized = false;
-  
-  static { 
+
+  static {
     ensureInitialized();
   }
-  
+
   /**
    * Initialize this class if it isn't already.
    */
@@ -73,7 +76,7 @@ public class WritableRpcEngine implements RpcEngine {
       initialize();
     }
   }
-  
+
   /**
    * Register the rpcRequest deserializer for WritableRpcEngine
    */
@@ -83,7 +86,7 @@ public class WritableRpcEngine implements RpcEngine {
     isInitialized = true;
   }
 
-  
+
   /** A method invocation, including the method name and its parameters.*/
   private static class Invocation implements Writable, Configurable {
     private String methodName;
@@ -93,7 +96,7 @@ public class WritableRpcEngine implements RpcEngine {
     private long clientVersion;
     private int clientMethodsHash;
     private String declaringClassProtocolName;
-    
+
     //This could be different from static writableRpcVersion when received
     //at server, if client is using a different version.
     private long rpcVersion;
@@ -115,7 +118,7 @@ public class WritableRpcEngine implements RpcEngine {
         this.clientMethodsHash = ProtocolSignature.getFingerprint(method
             .getDeclaringClass().getMethods());
       }
-      this.declaringClassProtocolName = 
+      this.declaringClassProtocolName =
           RPC.getProtocolName(method.getDeclaringClass());
     }
 
@@ -127,7 +130,7 @@ public class WritableRpcEngine implements RpcEngine {
 
     /** The parameter instances. */
     public Object[] getParameters() { return parameters; }
-    
+
     private long getProtocolVersion() {
       return clientVersion;
     }
@@ -136,7 +139,7 @@ public class WritableRpcEngine implements RpcEngine {
     private int getClientMethodsHash() {
       return clientMethodsHash;
     }
-    
+
     /**
      * Returns the rpc version used by the client.
      * @return rpcVersion
@@ -157,7 +160,7 @@ public class WritableRpcEngine implements RpcEngine {
       parameterClasses = new Class[parameters.length];
       ObjectWritable objectWritable = new ObjectWritable();
       for (int i = 0; i < parameters.length; i++) {
-        parameters[i] = 
+        parameters[i] =
             ObjectWritable.readObject(in, objectWritable, this.conf);
         parameterClasses[i] = objectWritable.getDeclaredClass();
       }
@@ -208,7 +211,7 @@ public class WritableRpcEngine implements RpcEngine {
   }
 
   private static ClientCache CLIENTS=new ClientCache();
-  
+
   private static class Invoker implements RpcInvocationHandler {
     private Client.ConnectionId remoteId;
     private Client client;
@@ -256,8 +259,8 @@ public class WritableRpcEngine implements RpcEngine {
       }
       return value.get();
     }
-    
-    /* close the IPC client that's responsible for this invoker's RPCs */ 
+
+    /* close the IPC client that's responsible for this invoker's RPCs */
     @Override
     synchronized public void close() {
       if (!isClosed) {
@@ -271,16 +274,16 @@ public class WritableRpcEngine implements RpcEngine {
       return remoteId;
     }
   }
-  
+
   // for unit testing only
   @InterfaceAudience.Private
   @InterfaceStability.Unstable
   static Client getClient(Configuration conf) {
     return CLIENTS.getClient(conf);
   }
-  
+
   /** Construct a client-side proxy object that implements the named protocol,
-   * talking to a server at the named address. 
+   * talking to a server at the named address.
    * @param <T>*/
   @Override
   public <T> ProtocolProxy<T> getProxy(Class<T> protocol, long clientVersion,
@@ -293,7 +296,7 @@ public class WritableRpcEngine implements RpcEngine {
   }
 
   /** Construct a client-side proxy object that implements the named protocol,
-   * talking to a server at the named address. 
+   * talking to a server at the named address.
    * @param <T>*/
   @Override
   @SuppressWarnings("unchecked")
@@ -302,7 +305,7 @@ public class WritableRpcEngine implements RpcEngine {
                          Configuration conf, SocketFactory factory,
                          int rpcTimeout, RetryPolicy connectionRetryPolicy,
                          AtomicBoolean fallbackToSimpleAuth)
-    throws IOException {    
+    throws IOException {
 
     if (connectionRetryPolicy != null) {
       throw new UnsupportedOperationException(
@@ -314,7 +317,7 @@ public class WritableRpcEngine implements RpcEngine {
             factory, rpcTimeout, fallbackToSimpleAuth));
     return new ProtocolProxy<T>(protocol, proxy, true);
   }
-  
+
   /* Construct a server for a protocol implementation instance listening on a
    * port and address. */
   @Override
@@ -323,7 +326,7 @@ public class WritableRpcEngine implements RpcEngine {
                       int numHandlers, int numReaders, int queueSizePerHandler,
                       boolean verbose, Configuration conf,
                       SecretManager<? extends TokenIdentifier> secretManager,
-                      String portRangeConfig) 
+                      String portRangeConfig)
     throws IOException {
     return new Server(protocolClass, protocolImpl, conf, bindAddress, port,
         numHandlers, numReaders, queueSizePerHandler, verbose, secretManager,
@@ -333,22 +336,22 @@ public class WritableRpcEngine implements RpcEngine {
 
   /** An RPC Server. */
   public static class Server extends RPC.Server {
-    /** 
+    /**
      * Construct an RPC server.
      * @param instance the instance whose methods will be called
      * @param conf the configuration to use
      * @param bindAddress the address to bind on to listen for connection
      * @param port the port to listen for connections on
-     * 
-     * @deprecated Use #Server(Class, Object, Configuration, String, int)    
+     *
+     * @deprecated Use #Server(Class, Object, Configuration, String, int)
      */
     @Deprecated
     public Server(Object instance, Configuration conf, String bindAddress,
         int port) throws IOException {
       this(null, instance, conf,  bindAddress, port);
     }
-    
-    
+
+
     /** Construct an RPC server.
      * @param protocolClass class
      * @param protocolImpl the instance whose methods will be called
@@ -356,14 +359,14 @@ public class WritableRpcEngine implements RpcEngine {
      * @param bindAddress the address to bind on to listen for connection
      * @param port the port to listen for connections on
      */
-    public Server(Class<?> protocolClass, Object protocolImpl, 
-        Configuration conf, String bindAddress, int port) 
+    public Server(Class<?> protocolClass, Object protocolImpl,
+        Configuration conf, String bindAddress, int port)
       throws IOException {
       this(protocolClass, protocolImpl, conf,  bindAddress, port, 1, -1, -1,
           false, null, null);
     }
-    
-    /** 
+
+    /**
      * Construct an RPC server.
      * @param protocolImpl the instance whose methods will be called
      * @param conf the configuration to use
@@ -371,22 +374,22 @@ public class WritableRpcEngine implements RpcEngine {
      * @param port the port to listen for connections on
      * @param numHandlers the number of method handler threads to run
      * @param verbose whether each call should be logged
-     * 
-     * @deprecated use Server#Server(Class, Object, 
+     *
+     * @deprecated use Server#Server(Class, Object,
      *      Configuration, String, int, int, int, int, boolean, SecretManager)
      */
     @Deprecated
     public Server(Object protocolImpl, Configuration conf, String bindAddress,
         int port, int numHandlers, int numReaders, int queueSizePerHandler,
-        boolean verbose, SecretManager<? extends TokenIdentifier> secretManager) 
+        boolean verbose, SecretManager<? extends TokenIdentifier> secretManager)
             throws IOException {
        this(null, protocolImpl,  conf,  bindAddress,   port,
-                   numHandlers,  numReaders,  queueSizePerHandler,  verbose, 
+                   numHandlers,  numReaders,  queueSizePerHandler,  verbose,
                    secretManager, null);
-   
+
     }
-    
-    /** 
+
+    /**
      * Construct an RPC server.
      * @param protocolClass - the protocol being registered
      *     can be null for compatibility with old usage (see below for details)
@@ -399,9 +402,9 @@ public class WritableRpcEngine implements RpcEngine {
      */
     public Server(Class<?> protocolClass, Object protocolImpl,
         Configuration conf, String bindAddress,  int port,
-        int numHandlers, int numReaders, int queueSizePerHandler, 
+        int numHandlers, int numReaders, int queueSizePerHandler,
         boolean verbose, SecretManager<? extends TokenIdentifier> secretManager,
-        String portRangeConfig) 
+        String portRangeConfig)
         throws IOException {
       super(bindAddress, port, null, numHandlers, numReaders,
           queueSizePerHandler, conf,
@@ -409,14 +412,14 @@ public class WritableRpcEngine implements RpcEngine {
           portRangeConfig);
 
       this.verbose = verbose;
-      
-      
+
+
       Class<?>[] protocols;
       if (protocolClass == null) { // derive protocol from impl
         /*
          * In order to remain compatible with the old usage where a single
          * target protocolImpl is suppled for all protocol interfaces, and
-         * the protocolImpl is derived from the protocolClass(es) 
+         * the protocolImpl is derived from the protocolClass(es)
          * we register all interfaces extended by the protocolImpl
          */
         protocols = RPC.getProtocolInterfaces(protocolImpl.getClass());
@@ -444,7 +447,7 @@ public class WritableRpcEngine implements RpcEngine {
         value = value.substring(0, 55)+"...";
       LOG.info(value);
     }
-    
+
     static class WritableRpcInvoker implements RpcInvoker {
 
      @Override
@@ -473,7 +476,7 @@ public class WritableRpcEngine implements RpcEngine {
           //
           // Versioned protocol methods should go the protocolName protocol
           // rather than the declaring class of the method since the
-          // the declaring class is VersionedProtocol which is not 
+          // the declaring class is VersionedProtocol which is not
           // registered directly.
           // Send the call to the highest  protocol version
           VerProtocolImpl highest = server.getHighestSupportedProtocol(
@@ -486,13 +489,13 @@ public class WritableRpcEngine implements RpcEngine {
           protoName = call.declaringClassProtocolName;
 
           // Find the right impl for the protocol based on client version.
-          ProtoNameVer pv = 
+          ProtoNameVer pv =
               new ProtoNameVer(call.declaringClassProtocolName, clientVersion);
-          protocolImpl = 
+          protocolImpl =
               server.getProtocolImplMap(RPC.RpcKind.RPC_WRITABLE).get(pv);
           if (protocolImpl == null) { // no match for Protocol AND Version
-             VerProtocolImpl highest = 
-                 server.getHighestSupportedProtocol(RPC.RpcKind.RPC_WRITABLE, 
+             VerProtocolImpl highest =
+                 server.getHighestSupportedProtocol(RPC.RpcKind.RPC_WRITABLE,
                      protoName);
             if (highest == null) {
               throw new RpcServerException("Unknown protocol: " + protoName);
@@ -502,7 +505,7 @@ public class WritableRpcEngine implements RpcEngine {
             }
           }
         }
-          
+
 
           // Invoke the protocol method
        long startTime = Time.now();
@@ -514,7 +517,7 @@ public class WritableRpcEngine implements RpcEngine {
               call.getParameterClasses());
           method.setAccessible(true);
           server.rpcDetailedMetrics.init(protocolImpl.protocolClass);
-          Object value = 
+          Object value =
               method.invoke(protocolImpl.protocolImpl, call.getParameters());
           if (server.verbose) log("Return: "+value);
           return new ObjectWritable(method.getReturnType(), value);

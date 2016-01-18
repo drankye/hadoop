@@ -103,11 +103,16 @@ public class TestRPC {
   private static Configuration conf;
   
   @Before
-  public void setupConf() {
+  public void setup() {
     conf = new Configuration();
-    conf.setClass("rpc.engine." + StoppedProtocol.class.getName(),
-        StoppedRpcEngine.class, RpcEngine.class);
+
     UserGroupInformation.setConfiguration(conf);
+
+    RPC.setProtocolEngine(conf,
+        StoppedProtocol.class, StoppedRpcEngine.class);
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol.class, WritableRpcEngine.class);
   }
 
   int datasize = 1024*100;

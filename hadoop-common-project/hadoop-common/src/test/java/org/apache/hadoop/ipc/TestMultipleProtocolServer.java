@@ -64,12 +64,11 @@ public class TestMultipleProtocolServer {
     public static final long versionID = 0L;
     void hello() throws IOException;
   }
+
   interface Bar extends Mixin {
     public static final long versionID = 0L;
     int echo(int i) throws IOException;
   }
-  
-  
   
   class Foo0Impl implements Foo0 {
 
@@ -174,6 +173,12 @@ public class TestMultipleProtocolServer {
   }
   @Before
   public void setUp() throws Exception {
+    RPC.setProtocolEngine(conf, Foo0.class, WritableRpcEngine.class);
+    RPC.setProtocolEngine(conf, FooUnimplemented.class, WritableRpcEngine.class);
+    RPC.setProtocolEngine(conf, Foo1.class, WritableRpcEngine.class);
+    RPC.setProtocolEngine(conf, Bar.class, WritableRpcEngine.class);
+    RPC.setProtocolEngine(conf, Mixin.class, WritableRpcEngine.class);
+
     // create a server with two handlers
     server = new RPC.Builder(conf).setProtocol(Foo0.class)
         .setInstance(new Foo0Impl()).setBindAddress(ADDRESS).setPort(0)
@@ -185,8 +190,7 @@ public class TestMultipleProtocolServer {
     
     // Add Protobuf server
     // Create server side implementation
-    PBServerImpl pbServerImpl = 
-        new PBServerImpl();
+    PBServerImpl pbServerImpl = new PBServerImpl();
     BlockingService service = TestProtobufRpcProto
         .newReflectiveBlockingService(pbServerImpl);
     server.addProtocol(RPC.RpcKind.RPC_PROTOCOL_BUFFER, TestRpcService.class,

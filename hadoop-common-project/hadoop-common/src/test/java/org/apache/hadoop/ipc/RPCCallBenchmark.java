@@ -240,6 +240,8 @@ public class RPCCallBenchmark implements Tool {
           .setInstance(service).setBindAddress(opts.host).setPort(opts.getPort())
           .setNumHandlers(opts.serverThreads).setVerbose(false).build();
     } else if (opts.rpcEngine == WritableRpcEngine.class) {
+      RPC.setProtocolEngine(conf,
+          TestProtocol.class, WritableRpcEngine.class);
       server = new RPC.Builder(conf).setProtocol(TestProtocol.class)
           .setInstance(new TestRPC.TestImpl()).setBindAddress(opts.host)
           .setPort(opts.getPort()).setNumHandlers(opts.serverThreads)
@@ -402,6 +404,9 @@ public class RPCCallBenchmark implements Tool {
         }
       };
     } else if (opts.rpcEngine == WritableRpcEngine.class) {
+      RPC.setProtocolEngine(conf,
+          TestProtocol.class, WritableRpcEngine.class);
+
       final TestProtocol proxy = RPC.getProxy(
           TestProtocol.class, TestProtocol.versionID, addr, conf);
       return new RpcServiceWrapper() {

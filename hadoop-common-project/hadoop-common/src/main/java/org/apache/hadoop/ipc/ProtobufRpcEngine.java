@@ -68,7 +68,7 @@ import com.google.protobuf.TextFormat;
 public class ProtobufRpcEngine implements RpcEngine {
   public static final Log LOG = LogFactory.getLog(ProtobufRpcEngine.class);
   
-  static { // Register the rpcRequest deserializer for WritableRpcEngine 
+  static { // Register the rpcRequest deserializer for ProtobufRpcEngine
     org.apache.hadoop.ipc.Server.registerProtocolEngine(
         RPC.RpcKind.RPC_PROTOCOL_BUFFER, RpcRequestWrapper.class,
         new Server.ProtoBufRpcInvoker());
@@ -197,7 +197,8 @@ public class ProtobufRpcEngine implements RpcEngine {
       }
       
       if (args.length != 2) { // RpcController + Message
-        throw new ServiceException("Too many parameters for request. Method: ["
+        throw new ServiceException(
+            "Too many or few parameters for request. Method: ["
             + method.getName() + "]" + ", Expected: 2, Actual: "
             + args.length);
       }

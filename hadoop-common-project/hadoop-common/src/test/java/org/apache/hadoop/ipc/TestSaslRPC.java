@@ -42,16 +42,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -190,6 +187,9 @@ public class TestSaslRPC {
     enableSecretManager = null;
     forceSecretManager = null;
     clientFallBackToSimpleAllowed = true;
+
+    RPC.setProtocolEngine(conf,
+        TestSaslProtocol.class, WritableRpcEngine.class);
   }
 
   static String getQOPNames (QualityOfProtection[] qops){
@@ -366,8 +366,8 @@ public class TestSaslRPC {
     public TokenInfo getTokenInfo(Class<?> protocol, Configuration conf) {
       return new TokenInfo() {
         @Override
-        public Class<? extends TokenSelector<? extends 
-            TokenIdentifier>> value() {
+        public Class<? extends TokenSelector<? extends
+                    TokenIdentifier>> value() {
           return TestTokenSelector.class;
         }
         @Override

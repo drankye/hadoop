@@ -18,9 +18,9 @@
 package org.apache.hadoop.ipc;
 
 import org.apache.hadoop.conf.Configuration;
-import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.*;
 import org.apache.hadoop.ipc.TestRPC.TestProtocol;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +29,9 @@ import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedByInterruptException;
+
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_CLIENT_CONNECT_MAX_RETRIES_KEY;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_CLIENT_CONNECT_MAX_RETRIES_ON_SOCKET_TIMEOUTS_KEY;
 
 /**
  * tests that the proxy can be interrupted
@@ -39,6 +42,12 @@ public class TestRPCWaitForProxy extends Assert {
       LOG = LoggerFactory.getLogger(TestRPCWaitForProxy.class);
 
   private static final Configuration conf = new Configuration();
+
+  @Before
+  public void setup() {
+    RPC.setProtocolEngine(conf,
+        TestProtocol.class, WritableRpcEngine.class);
+  }
 
   /**
    * This tests that the time-bounded wait for a proxy operation works, and

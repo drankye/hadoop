@@ -120,6 +120,21 @@ public class TestRPCCompatibility {
   @Before
   public void setUp() {
     ProtocolSignature.resetCache();
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol0.class, WritableRpcEngine.class);
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol1.class, WritableRpcEngine.class);
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol2.class, WritableRpcEngine.class);
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol3.class, WritableRpcEngine.class);
+
+    RPC.setProtocolEngine(conf,
+        TestProtocol4.class, WritableRpcEngine.class);
   }
   
   @After
