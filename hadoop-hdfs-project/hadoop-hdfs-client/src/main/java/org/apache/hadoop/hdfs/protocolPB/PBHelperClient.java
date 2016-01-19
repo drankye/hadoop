@@ -2460,12 +2460,12 @@ public class PBHelperClient {
     return builder.build();
   }
 
-  public static HdfsProtos.DatanodeIDsProto convertToDnIDsProto(
-      DatanodeID[] datanodeIDs) {
-    HdfsProtos.DatanodeIDsProto.Builder builder =
-        HdfsProtos.DatanodeIDsProto.newBuilder();
-    for (DatanodeID datanodeID : datanodeIDs) {
-      builder.addDatanodes(PBHelperClient.convert(datanodeID));
+  public static HdfsProtos.DatanodeInfosProto convertToProto(
+      DatanodeInfo[] datanodeInfos) {
+    HdfsProtos.DatanodeInfosProto.Builder builder =
+        HdfsProtos.DatanodeInfosProto.newBuilder();
+    for (DatanodeInfo datanodeInfo : datanodeInfos) {
+      builder.addDatanodes(PBHelperClient.convert(datanodeInfo));
     }
     return builder.build();
   }

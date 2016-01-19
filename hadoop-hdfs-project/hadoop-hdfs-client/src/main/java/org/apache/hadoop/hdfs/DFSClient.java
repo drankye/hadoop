@@ -80,9 +80,7 @@ import org.apache.hadoop.fs.FsStatus;
 import org.apache.hadoop.fs.FsTracer;
 import org.apache.hadoop.fs.HdfsBlockLocation;
 import org.apache.hadoop.fs.InvalidPathException;
-import org.apache.hadoop.fs.MD5MD5CRC32CastagnoliFileChecksum;
 import org.apache.hadoop.fs.MD5MD5CRC32FileChecksum;
-import org.apache.hadoop.fs.MD5MD5CRC32GzipFileChecksum;
 import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Options.ChecksumOpt;
 import org.apache.hadoop.fs.ParentNotDirectoryException;
@@ -136,7 +134,6 @@ import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtoUtil;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Op;
 import org.apache.hadoop.hdfs.protocol.datatransfer.ReplaceDatanodeOnFailure;
 import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
 import org.apache.hadoop.hdfs.protocol.datatransfer.TrustedChannelResolver;
@@ -144,20 +141,16 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataEncryptionKeyFactor
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataTransferSaslUtil;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.SaslDataTransferClient;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumResponseProto;
 import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
-import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.util.IOUtilsClient;
-import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.MD5Hash;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.io.retry.LossyRetryInvocationHandler;
@@ -1684,7 +1677,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     FileChecksumHelper.FileChecksumMaker maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.StripedFileChecksumMaker(src, length,
+        new FileChecksumHelper.StripedFileChecksumMaker2(src, length,
             blockLocations, namenode, this, ecPolicy) :
         new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
             blockLocations, namenode, this);
@@ -1752,7 +1745,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * the resulting IOStreamPair. This includes encryption wrapping, etc.
    */
   protected IOStreamPair connectToDN(DatanodeInfo dn, int timeout,
-      LocatedBlock lb) throws IOException {
+                   Token<BlockTokenIdentifier> blockToken) throws IOException {
     boolean success = false;
     Socket sock = null;
     try {
@@ -1765,7 +1758,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       OutputStream unbufOut = NetUtils.getOutputStream(sock);
       InputStream unbufIn = NetUtils.getInputStream(sock);
       IOStreamPair ret = saslClient.newSocketSend(sock, unbufOut, unbufIn, this,
-          lb.getBlockToken(), dn);
+          blockToken, dn);
       success = true;
       return ret;
     } finally {
@@ -1788,7 +1781,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   protected Type inferChecksumTypeByReading(LocatedBlock lb, DatanodeInfo dn)
       throws IOException {
-    IOStreamPair pair = connectToDN(dn, dfsClientConf.getSocketTimeout(), lb);
+    IOStreamPair pair = connectToDN(dn, dfsClientConf.getSocketTimeout(),
+        lb.getBlockToken());
 
     try {
       DataOutputStream out = new DataOutputStream(

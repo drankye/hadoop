@@ -148,9 +148,9 @@ message OpBlockChecksumProto {
   required BaseHeaderProto header = 1;
 }
 
-message OpStripedBlockChecksumProto {
+message OpBlockGroupChecksumProto {
   required BaseHeaderProto header = 1;
-  required DatanodeIDsProto datanodes = 2;
+  required DatanodeInfosProto datanodes = 2;
   required ErasureCodingPolicyProto ecPolicy = 3;
 }
 

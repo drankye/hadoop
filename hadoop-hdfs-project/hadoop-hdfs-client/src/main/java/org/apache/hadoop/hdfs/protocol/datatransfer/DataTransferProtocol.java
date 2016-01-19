@@ -208,6 +208,6 @@ public interface DataTransferProtocol {
    * @param blockToken security token for accessing the block.
    * @throws IOException
    */
-  void stripedBlockChecksum(final StripedBlockInfo stripedBlockInfo,
+  void blockGroupChecksum(final StripedBlockInfo stripedBlockInfo,
               final Token<BlockTokenIdentifier> blockToken) throws IOException;
 }

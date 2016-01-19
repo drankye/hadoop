@@ -31,10 +31,10 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 @InterfaceStability.Evolving
 public class StripedBlockInfo {
     private final ExtendedBlock block;
-    private final DatanodeID[] datanodes;
+    private final DatanodeInfo[] datanodes;
     private final ErasureCodingPolicy ecPolicy;
 
-    public StripedBlockInfo(ExtendedBlock block, DatanodeID[] datanodes,
+    public StripedBlockInfo(ExtendedBlock block, DatanodeInfo[] datanodes,
         ErasureCodingPolicy ecPolicy) {
       this.block = block;
       this.datanodes = datanodes;
@@ -45,7 +45,7 @@ public class StripedBlockInfo {
       return block;
     }
 
-    public DatanodeID[] getDatanodes() {
+    public DatanodeInfo[] getDatanodes() {
       return datanodes;
     }
 

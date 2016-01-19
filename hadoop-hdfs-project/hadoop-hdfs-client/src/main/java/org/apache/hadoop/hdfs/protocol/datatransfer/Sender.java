@@ -34,7 +34,7 @@ import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ClientOperationHeaderProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.DataTransferTraceInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpStripedBlockChecksumProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockGroupChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpCopyBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReadBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReplaceBlockProto;
@@ -265,12 +265,12 @@ public class Sender implements DataTransferProtocol {
   }
 
   @Override
-  public void stripedBlockChecksum(StripedBlockInfo stripedBlockInfo,
+  public void blockGroupChecksum(StripedBlockInfo stripedBlockInfo,
                   Token<BlockTokenIdentifier> blockToken) throws IOException {
-    OpStripedBlockChecksumProto proto = OpStripedBlockChecksumProto.newBuilder()
+    OpBlockGroupChecksumProto proto = OpBlockGroupChecksumProto.newBuilder()
         .setHeader(DataTransferProtoUtil.buildBaseHeader(
             stripedBlockInfo.getBlock(), blockToken))
-        .setDatanodes(PBHelperClient.convertToDnIDsProto(
+        .setDatanodes(PBHelperClient.convertToProto(
             stripedBlockInfo.getDatanodes()))
         .setEcPolicy(PBHelperClient.convertErasureCodingPolicy(
             stripedBlockInfo.getErasureCodingPolicy()))

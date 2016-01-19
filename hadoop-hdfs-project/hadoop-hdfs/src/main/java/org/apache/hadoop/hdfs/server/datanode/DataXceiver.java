@@ -43,7 +43,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedChannelException;
-import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -77,11 +76,9 @@ import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.DataNode.ShortCircuitFdsUnsupportedException;
 import org.apache.hadoop.hdfs.server.datanode.DataNode.ShortCircuitFdsVersionException;
 import org.apache.hadoop.hdfs.server.datanode.ShortCircuitRegistry.NewShmInfo;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitShm.SlotId;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.MD5Hash;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.unix.DomainSocket;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
@@ -884,152 +881,31 @@ class DataXceiver extends Receiver implements Runnable {
     }
   }
 
-  private MD5Hash calcPartialBlockChecksum(ExtendedBlock block,
-      long requestLength, DataChecksum checksum, DataInputStream checksumIn)
-      throws IOException {
-    final int bytesPerCRC = checksum.getBytesPerChecksum();
-    final int csize = checksum.getChecksumSize();
-    final byte[] buffer = new byte[4*1024];
-    MessageDigest digester = MD5Hash.getDigester();
-
-    long remaining = requestLength / bytesPerCRC * csize;
-    for (int toDigest = 0; remaining > 0; remaining -= toDigest) {
-      toDigest = checksumIn.read(buffer, 0,
-          (int) Math.min(remaining, buffer.length));
-      if (toDigest < 0) {
-        break;
-      }
-      digester.update(buffer, 0, toDigest);
-    }
-    
-    int partialLength = (int) (requestLength % bytesPerCRC);
-    if (partialLength > 0) {
-      byte[] buf = new byte[partialLength];
-      final InputStream blockIn = datanode.data.getBlockInputStream(block,
-          requestLength - partialLength);
-      try {
-        // Get the CRC of the partialLength.
-        IOUtils.readFully(blockIn, buf, 0, partialLength);
-      } finally {
-        IOUtils.closeStream(blockIn);
-      }
-      checksum.update(buf, 0, partialLength);
-      byte[] partialCrc = new byte[csize];
-      checksum.writeValue(partialCrc, 0, true);
-      digester.update(partialCrc);
-    }
-    return new MD5Hash(digester.digest());
-  }
-
   @Override
   public void blockChecksum(final ExtendedBlock block,
-      final Token<BlockTokenIdentifier> blockToken) throws IOException {
+                            final Token<BlockTokenIdentifier> blockToken)
+      throws IOException {
     updateCurrentThreadName("Getting checksum for block " + block);
     final DataOutputStream out = new DataOutputStream(
         getOutputStream());
     checkAccess(out, true, block, blockToken,
         Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
-    // client side now can specify a range of the block for checksum
-    long requestLength = block.getNumBytes();
-    Preconditions.checkArgument(requestLength >= 0);
-    long visibleLength = datanode.data.getReplicaVisibleLength(block);
-    boolean partialBlk = requestLength < visibleLength;
 
-    final LengthInputStream metadataIn = datanode.data
-        .getMetaDataInputStream(block);
-    
-    final DataInputStream checksumIn = new DataInputStream(
-        new BufferedInputStream(metadataIn, ioFileBufferSize));
+    BlockChecksumHelper.BlockChecksumMaker maker =
+        new BlockChecksumHelper.ReplicatedBlockChecksumMaker(datanode,
+            block, blockToken);
+
     try {
-      //read metadata file
-      final BlockMetadataHeader header = BlockMetadataHeader
-          .readHeader(checksumIn);
-      final DataChecksum checksum = header.getChecksum();
-      final int csize = checksum.getChecksumSize();
-      final int bytesPerCRC = checksum.getBytesPerChecksum();
-      final long crcPerBlock = csize <= 0 ? 0 : 
-        (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
-
-      final MD5Hash md5 = partialBlk && crcPerBlock > 0 ? 
-          calcPartialBlockChecksum(block, requestLength, checksum, checksumIn)
-            : MD5Hash.digest(checksumIn);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
-            + ", crcPerBlock=" + crcPerBlock + ", md5=" + md5);
-      }
-
-      //write reply
-      BlockOpResponseProto.newBuilder()
-        .setStatus(SUCCESS)
-        .setChecksumResponse(OpBlockChecksumResponseProto.newBuilder()             
-          .setBytesPerCrc(bytesPerCRC)
-          .setCrcPerBlock(crcPerBlock)
-          .setMd5(ByteString.copyFrom(md5.getDigest()))
-          .setCrcType(PBHelperClient.convert(checksum.getChecksumType())))
-        .build()
-        .writeDelimitedTo(out);
-      out.flush();
-    } catch (IOException ioe) {
-      LOG.info("blockChecksum " + block + " received exception " + ioe);
-      incrDatanodeNetworkErrors();
-      throw ioe;
-    } finally {
-      IOUtils.closeStream(out);
-      IOUtils.closeStream(checksumIn);
-      IOUtils.closeStream(metadataIn);
-    }
-
-    //update metrics
-    datanode.metrics.addBlockChecksumOp(elapsed());
-  }
-
-  @Override
-  public void stripedBlockChecksum(final StripedBlockInfo stripedBlockInfo,
-           final Token<BlockTokenIdentifier> blockToken) throws IOException {
-    /*
-    updateCurrentThreadName("Getting striped block group checksum for block " +
-        block);
-    final DataOutputStream out = new DataOutputStream(
-        getOutputStream());
-    checkAccess(out, true, block, blockToken,
-        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
-    // client side now can specify a range of the block for checksum
-    long requestLength = block.getNumBytes();
-    Preconditions.checkArgument(requestLength >= 0);
-    long visibleLength = datanode.data.getReplicaVisibleLength(block);
-    boolean partialBlk = requestLength < visibleLength;
-
-    final LengthInputStream metadataIn = datanode.data
-        .getMetaDataInputStream(block);
-
-    final DataInputStream checksumIn = new DataInputStream(
-        new BufferedInputStream(metadataIn, ioFileBufferSize));
-    try {
-      //read metadata file
-      final BlockMetadataHeader header = BlockMetadataHeader
-          .readHeader(checksumIn);
-      final DataChecksum checksum = header.getChecksum();
-      final int csize = checksum.getChecksumSize();
-      final int bytesPerCRC = checksum.getBytesPerChecksum();
-      final long crcPerBlock = csize <= 0 ? 0 :
-          (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
-
-      final MD5Hash md5 = partialBlk && crcPerBlock > 0 ?
-          calcPartialBlockChecksum(block, requestLength, checksum, checksumIn)
-          : MD5Hash.digest(checksumIn);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
-            + ", crcPerBlock=" + crcPerBlock + ", md5=" + md5);
-      }
+      maker.make();
 
       //write reply
       BlockOpResponseProto.newBuilder()
           .setStatus(SUCCESS)
           .setChecksumResponse(OpBlockChecksumResponseProto.newBuilder()
-              .setBytesPerCrc(bytesPerCRC)
-              .setCrcPerBlock(crcPerBlock)
-              .setMd5(ByteString.copyFrom(md5.getDigest()))
-              .setCrcType(PBHelperClient.convert(checksum.getChecksumType())))
+              .setBytesPerCrc(maker.bytesPerCRC)
+              .setCrcPerBlock(maker.crcPerBlock)
+              .setMd5(ByteString.copyFrom(maker.md5out.getDigest()))
+              .setCrcType(PBHelperClient.convert(maker.crcType)))
           .build()
           .writeDelimitedTo(out);
       out.flush();
@@ -1039,13 +915,16 @@ class DataXceiver extends Receiver implements Runnable {
       throw ioe;
     } finally {
       IOUtils.closeStream(out);
-      IOUtils.closeStream(checksumIn);
-      IOUtils.closeStream(metadataIn);
     }
 
     //update metrics
     datanode.metrics.addBlockChecksumOp(elapsed());
-    */
+  }
+
+  @Override
+  public void blockGroupChecksum(final StripedBlockInfo stripedBlockInfo,
+           final Token<BlockTokenIdentifier> blockToken) throws IOException {
+
   }
 
   @Override
