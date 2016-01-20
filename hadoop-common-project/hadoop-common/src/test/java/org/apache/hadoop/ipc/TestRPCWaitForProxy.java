@@ -19,6 +19,7 @@ package org.apache.hadoop.ipc;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.TestRPC.TestProtocol;
+import org.apache.hadoop.ipc.protobuf.TestProtos;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,18 +37,11 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_CLIENT_CONN
 /**
  * tests that the proxy can be interrupted
  */
-public class TestRPCWaitForProxy extends Assert {
-  private static final String ADDRESS = "0.0.0.0";
+public class TestRPCWaitForProxy extends TestRpcBase {
   private static final Logger
       LOG = LoggerFactory.getLogger(TestRPCWaitForProxy.class);
 
   private static final Configuration conf = new Configuration();
-
-  @Before
-  public void setup() {
-    RPC.setProtocolEngine(conf,
-        TestProtocol.class, WritableRpcEngine.class);
-  }
 
   /**
    * This tests that the time-bounded wait for a proxy operation works, and
@@ -61,7 +55,7 @@ public class TestRPCWaitForProxy extends Assert {
     worker.start();
     worker.join();
     Throwable caught = worker.getCaught();
-    assertNotNull("No exception was raised", caught);
+    Assert.assertNotNull("No exception was raised", caught);
     if (!(caught instanceof ConnectException)) {
       throw caught;
     }
@@ -78,11 +72,11 @@ public class TestRPCWaitForProxy extends Assert {
     RpcThread worker = new RpcThread(100);
     worker.start();
     Thread.sleep(1000);
-    assertTrue("worker hasn't started", worker.waitStarted);
+    Assert.assertTrue("worker hasn't started", worker.waitStarted);
     worker.interrupt();
     worker.join();
     Throwable caught = worker.getCaught();
-    assertNotNull("No exception was raised", caught);
+    Assert.assertNotNull("No exception was raised", caught);
     // looking for the root cause here, which can be wrapped
     // as part of the NetUtils work. Having this test look
     // a the type of exception there would be brittle to improvements
@@ -121,12 +115,18 @@ public class TestRPCWaitForProxy extends Assert {
             IPC_CLIENT_CONNECT_MAX_RETRIES_ON_SOCKET_TIMEOUTS_KEY,
             connectRetries);
         waitStarted = true;
-        TestProtocol proxy = RPC.waitForProxy(TestProtocol.class,
-            TestProtocol.versionID,
-            new InetSocketAddress(ADDRESS, 20),
-            config,
-            15000L);
-        proxy.echo("");
+
+        short invalidPort = 20;
+        InetSocketAddress invalidAddress = new InetSocketAddress(ADDRESS,
+            invalidPort);
+        TestRpcBase.TestRpcService proxy = RPC.getProxy(
+            TestRpcBase.TestRpcService.class,
+            1L, invalidAddress, conf);
+        // Test echo method
+        TestProtos.EchoRequestProto echoRequest =
+            TestProtos.EchoRequestProto.newBuilder().setMessage("hello").build();
+        proxy.echo(null, echoRequest);
+
       } catch (Throwable throwable) {
         caught = throwable;
       }

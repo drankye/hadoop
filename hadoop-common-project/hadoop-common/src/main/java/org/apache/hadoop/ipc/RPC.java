@@ -288,6 +288,7 @@ public class RPC {
    * @return the proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> T waitForProxy(
       Class<T> protocol,
       long clientVersion,
@@ -308,6 +309,7 @@ public class RPC {
    * @return the protocol proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> ProtocolProxy<T> waitForProtocolProxy(Class<T> protocol,
                              long clientVersion,
                              InetSocketAddress addr,
@@ -327,6 +329,7 @@ public class RPC {
    * @return the proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> T waitForProxy(Class<T> protocol, long clientVersion,
                              InetSocketAddress addr, Configuration conf,
                              long connTimeout) throws IOException { 
@@ -346,6 +349,7 @@ public class RPC {
    * @return the protocol proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> ProtocolProxy<T> waitForProtocolProxy(Class<T> protocol,
                              long clientVersion,
                              InetSocketAddress addr, Configuration conf,
@@ -366,6 +370,7 @@ public class RPC {
    * @return the proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> T waitForProxy(Class<T> protocol,
                              long clientVersion,
                              InetSocketAddress addr, Configuration conf,
@@ -388,6 +393,7 @@ public class RPC {
    * @return the proxy
    * @throws IOException if the far end through a RemoteException
    */
+  @Deprecated
   public static <T> ProtocolProxy<T> waitForProtocolProxy(Class<T> protocol,
                                long clientVersion,
                                InetSocketAddress addr, Configuration conf,

@@ -566,8 +566,8 @@ public class TestRPC  extends TestRpcBase {
         invalidPort);
     long invalidClientVersion = 1L;
     try {
-      TestRpcService proxy = RPC.waitForProxy(TestRpcService.class,
-          invalidClientVersion, invalidAddress, conf, 15000L);
+      TestRpcService proxy = RPC.getProxy(TestRpcService.class,
+          invalidClientVersion, invalidAddress, conf);
       // Test echo method
       TestProtos.EchoRequestProto echoRequest =
           TestProtos.EchoRequestProto.newBuilder().setMessage("hello").build();
