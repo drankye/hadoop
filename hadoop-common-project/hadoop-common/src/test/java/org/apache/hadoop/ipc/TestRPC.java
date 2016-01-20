@@ -43,6 +43,7 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -58,6 +59,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.SocketFactory;
 
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.HadoopIllegalArgumentException;
@@ -71,6 +74,8 @@ import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.ipc.Client.ConnectionId;
 import org.apache.hadoop.ipc.protobuf.RpcHeaderProtos.RpcResponseHeaderProto.RpcErrorCodeProto;
 import org.apache.hadoop.ipc.Server.Call;
+import org.apache.hadoop.ipc.protobuf.TestProtos;
+import org.apache.hadoop.ipc.protobuf.TestRpcServiceProtos;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.AccessControlException;
@@ -84,6 +89,7 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.test.MetricsAsserts;
 import org.apache.hadoop.test.MockitoUtil;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -94,11 +100,9 @@ import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
 
 /** Unit tests for RPC. */
 @SuppressWarnings("deprecation")
-public class TestRPC {
-  private static final String ADDRESS = "0.0.0.0";
+public class TestRPC  extends TestRpcBase {
 
-  public static final Log LOG =
-    LogFactory.getLog(TestRPC.class);
+  public static final Log LOG = LogFactory.getLog(TestRPC.class);
   
   private static Configuration conf;
   
@@ -110,16 +114,13 @@ public class TestRPC {
 
     RPC.setProtocolEngine(conf,
         StoppedProtocol.class, StoppedRpcEngine.class);
-
-    RPC.setProtocolEngine(conf,
-        TestProtocol.class, WritableRpcEngine.class);
   }
 
   int datasize = 1024*100;
   int numThreads = 50;
 
   public interface TestProtocol extends VersionedProtocol {
-    public static final long versionID = 1L;
+    long versionID = 1L;
     
     void ping() throws IOException;
     void slowPing(boolean shouldSlow) throws IOException;
@@ -286,10 +287,10 @@ public class TestRPC {
   /**
    * A basic interface for testing client-side RPC resource cleanup.
    */
-  private static interface StoppedProtocol {
+  private interface StoppedProtocol {
     long versionID = 0;
 
-    public void stop();
+    void stop();
   }
   
   /**
@@ -559,14 +560,24 @@ public class TestRPC {
   }
   
   @Test
-  public void testStandaloneClient() throws IOException {
+  public void testClientWithoutServer() throws Exception {
+    short invalidPort = 20;
+    InetSocketAddress invalidAddress = new InetSocketAddress(ADDRESS,
+        invalidPort);
+    long invalidClientVersion = 1L;
     try {
-      TestProtocol proxy = RPC.waitForProxy(TestProtocol.class,
-        TestProtocol.versionID, new InetSocketAddress(ADDRESS, 20), conf, 15000L);
-      proxy.echo("");
+      TestRpcService proxy = RPC.waitForProxy(TestRpcService.class,
+          invalidClientVersion, invalidAddress, conf, 15000L);
+      // Test echo method
+      TestProtos.EchoRequestProto echoRequest =
+          TestProtos.EchoRequestProto.newBuilder().setMessage("hello").build();
+      proxy.echo(null, echoRequest);
       fail("We should not have reached here");
-    } catch (ConnectException ioe) {
+    } catch (ServiceException ioe) {
       //this is what we expected
+      if (!(ioe.getCause() instanceof ConnectException)) {
+        fail("We should not have reached here");
+      }
     }
   }
   

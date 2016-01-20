@@ -55,57 +55,18 @@ import com.google.protobuf.ServiceException;
  * This test depends on test.proto definition of types in src/test/proto
  * and protobuf service definition from src/test/test_rpc_service.proto
  */
-public class TestProtoBufRpc {
-  public final static String ADDRESS = "0.0.0.0";
+public class TestProtoBufRpc extends TestRpcBase {
   public final static int PORT = 0;
   private static InetSocketAddress addr;
   private static Configuration conf;
   private static RPC.Server server;
   private final static int SLEEP_DURATION = 1000;
 
-  @ProtocolInfo(protocolName = "testProto", protocolVersion = 1)
-  public interface TestRpcService
-      extends TestProtobufRpcProto.BlockingInterface {
-  }
-
   @ProtocolInfo(protocolName = "testProto2", protocolVersion = 1)
   public interface TestRpcService2 extends
       TestProtobufRpc2Proto.BlockingInterface {
   }
 
-  public static class PBServerImpl implements TestRpcService {
-
-    @Override
-    public EmptyResponseProto ping(RpcController unused,
-        EmptyRequestProto request) throws ServiceException {
-      // Ensure clientId is received
-      byte[] clientId = Server.getClientId();
-      Assert.assertNotNull(Server.getClientId());
-      Assert.assertEquals(16, clientId.length);
-      return EmptyResponseProto.newBuilder().build();
-    }
-
-    @Override
-    public EchoResponseProto echo(RpcController unused, EchoRequestProto request)
-        throws ServiceException {
-      return EchoResponseProto.newBuilder().setMessage(request.getMessage())
-          .build();
-    }
-
-    @Override
-    public EmptyResponseProto error(RpcController unused,
-        EmptyRequestProto request) throws ServiceException {
-      throw new ServiceException("error", new RpcServerException("error"));
-    }
-    
-    @Override
-    public EmptyResponseProto error2(RpcController unused,
-        EmptyRequestProto request) throws ServiceException {
-      throw new ServiceException("error", new URISyntaxException("",
-          "testException"));
-    }
-  }
-  
   public static class PBServer2Impl implements TestRpcService2 {
 
     @Override
@@ -167,17 +128,11 @@ public class TestProtoBufRpc {
   }
 
   private static TestRpcService getClient() throws IOException {
-    // Set RPC engine to protobuf RPC engine
-    RPC.setProtocolEngine(conf, TestRpcService.class, ProtobufRpcEngine.class);
     return RPC.getProxy(TestRpcService.class, 0, addr, conf);
   }
-  
+
   private static TestRpcService2 getClient2() throws IOException {
-    // Set RPC engine to protobuf RPC engine
-    RPC.setProtocolEngine(conf, TestRpcService2.class,
-        ProtobufRpcEngine.class);
-        return RPC.getProxy(TestRpcService2.class, 0, addr,
-        conf);
+    return RPC.getProxy(TestRpcService2.class, 0, addr, conf);
   }
 
   @Test (timeout=5000)
