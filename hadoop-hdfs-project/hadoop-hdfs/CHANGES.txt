@@ -936,6 +936,12 @@ Release 2.9.0 - UNRELEASED
     HDFS-9624. DataNode start slowly due to the initial DU command operations.
     (Lin Yiqun via wang)
 
+<<<<<<< HEAD
+=======
+    HDFS-9576: HTrace: collect position/length information on read operations
+    (zhz via cmccabe)
+
+>>>>>>> trunk
   OPTIMIZATIONS
 
   BUG FIXES
@@ -1819,6 +1825,12 @@ Release 2.8.0 - UNRELEASED
     HDFS-9415. Document dfs.cluster.administrators and
     dfs.permissions.superusergroup. (Xiaobing Zhou via Arpit Agarwal)
 
+<<<<<<< HEAD
+=======
+    HDFS-9655. NN should start JVM pause monitor before loading fsimage.
+    (John Zhuge via Lei (Eddy) Xu)
+
+>>>>>>> trunk
   OPTIMIZATIONS
 
     HDFS-8026. Trace FSOutputSummer#writeChecksumChunks rather than
@@ -2596,6 +2608,15 @@ Release 2.8.0 - UNRELEASED
     HDFS-9612. DistCp worker threads are not terminated after jobs are done.
     (Wei-Chiu Chuang via Yongjun Zhang)
 
+<<<<<<< HEAD
+=======
+    HDFS-9623. Update example configuration of block state change log in
+    log4j.properties. (Masatake Iwasaki via aajisaka)
+
+    HDFS-6054. MiniQJMHACluster should not use static port to avoid binding
+    failure in unit test. (Yongjun Zhang)
+
+>>>>>>> trunk
 Release 2.7.3 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -2640,6 +2661,12 @@ Release 2.7.3 - UNRELEASED
     HDFS-9648. TestStartup.testImageChecksum is broken by HDFS-9569's message
     change. (Wei-Chiu Chuang via Yongjun Zhang)
 
+<<<<<<< HEAD
+=======
+    HDFS-9661. Deadlock in DN.FsDatasetImpl between moveBlockAcrossStorage and
+    createRbw (ade via vinayakumarb)
+
+>>>>>>> trunk
 Release 2.7.2 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -2717,9 +2744,6 @@ Release 2.7.2 - UNRELEASED
 
     HDFS-9426. Rollingupgrade finalization is not backward compatible
     (Kihwal Lee via vinayakumarb)
-
-    HDFS-9294. DFSClient deadlock when close file and failed to renew lease.
-    (Brahma Reddy Battula via szetszwo)
 
     HDFS-9445. Datanode may deadlock while handling a bad volume.
     (Wlater Su via Kihwal)
@@ -3763,6 +3787,9 @@ Release 2.6.4 - UNRELEASED
 
     HDFS-9600. do not check replication if the block is under construction
     (Phil Yang via vinayakumarb)
+
+    HDFS-9294. DFSClient deadlock when close file and failed to renew lease.
+    (Brahma Reddy Battula via szetszwo)
 
 Release 2.6.3 - 2015-12-17
 
