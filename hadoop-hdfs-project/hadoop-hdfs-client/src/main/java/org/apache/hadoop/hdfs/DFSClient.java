@@ -1674,15 +1674,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LocatedBlocks blockLocations = getBlockLocations(src, length);
 
-    FileChecksumHelper.FileChecksumMaker maker;
+    FileChecksumHelper.FileChecksumComputer maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.StripedFileChecksumMaker2(src, length,
+        new FileChecksumHelper.StripedFileChecksumComputer2(src, length,
             blockLocations, namenode, this, ecPolicy) :
-        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
-    return maker.make();
+    return maker.compute();
   }
 
   /**
@@ -1701,15 +1701,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LocatedBlocks blockLocations = getBlockLocations(src, length);
 
-    FileChecksumHelper.FileChecksumMaker maker;
+    FileChecksumHelper.FileChecksumComputer maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this) :
-        new FileChecksumHelper.ReplicatedFileChecksumMaker(src, length,
+        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
-    return maker.make();
+    return maker.compute();
   }
 
   /**

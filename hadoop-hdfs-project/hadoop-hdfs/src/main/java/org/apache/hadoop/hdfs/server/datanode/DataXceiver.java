@@ -891,12 +891,12 @@ class DataXceiver extends Receiver implements Runnable {
     checkAccess(out, true, block, blockToken,
         Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
-    BlockChecksumHelper.BlockChecksumMaker maker =
-        new BlockChecksumHelper.ReplicatedBlockChecksumMaker(datanode,
+    BlockChecksumHelper.BlockChecksumComputer maker =
+        new BlockChecksumHelper.ReplicatedBlockChecksumComputer(datanode,
             block, blockToken);
 
     try {
-      maker.make();
+      maker.compute();
 
       //write reply
       BlockOpResponseProto.newBuilder()

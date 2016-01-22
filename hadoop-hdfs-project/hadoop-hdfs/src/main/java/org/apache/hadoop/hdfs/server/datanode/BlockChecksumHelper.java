@@ -18,32 +18,11 @@
 package org.apache.hadoop.hdfs.server.datanode;
 
 import com.google.common.base.Preconditions;
-import com.google.protobuf.ByteString;
-import org.apache.hadoop.fs.MD5MD5CRC32CastagnoliFileChecksum;
-import org.apache.hadoop.fs.MD5MD5CRC32FileChecksum;
-import org.apache.hadoop.fs.MD5MD5CRC32GzipFileChecksum;
-import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSUtilClient;
-import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
 import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
-import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtoUtil;
-import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Op;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumResponseProto;
-import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
-import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
-import org.apache.hadoop.hdfs.util.StripedBlockUtil;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.MD5Hash;
@@ -53,40 +32,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
-import java.util.List;
-
-import static org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.Status.SUCCESS;
 
 public class BlockChecksumHelper {
   public static final Logger LOG =
       LoggerFactory.getLogger(BlockChecksumHelper.class);
 
-  static abstract class BlockChecksumMaker {
+  static abstract class BlockChecksumComputer {
     final DataNode datanode;
     MD5Hash md5out;
     int bytesPerCRC = -1;
     DataChecksum.Type crcType = null;
     long crcPerBlock = -1;
 
-    public BlockChecksumMaker(DataNode datanode) throws IOException {
+    public BlockChecksumComputer(DataNode datanode) throws IOException {
       this.datanode = datanode;
     }
 
-    abstract public void make() throws IOException;
+    abstract public void compute() throws IOException;
   }
 
-  static class ReplicatedBlockChecksumMaker extends BlockChecksumMaker {
+  static class ReplicatedBlockChecksumComputer extends BlockChecksumComputer {
     final ExtendedBlock block;
     final Token<BlockTokenIdentifier> blockToken;
 
-    public ReplicatedBlockChecksumMaker(DataNode datanode, ExtendedBlock block,
-                                        Token<BlockTokenIdentifier> blockToken) throws IOException {
+    public ReplicatedBlockChecksumComputer(DataNode datanode, ExtendedBlock block,
+                                           Token<BlockTokenIdentifier> blockToken) throws IOException {
       super(datanode);
       this.block = block;
       this.blockToken = blockToken;
@@ -130,7 +104,7 @@ public class BlockChecksumHelper {
     }
 
     @Override
-    public void make() throws IOException {
+    public void compute() throws IOException {
       // client side now can specify a range of the block for checksum
       long requestLength = block.getNumBytes();
       Preconditions.checkArgument(requestLength >= 0);
@@ -168,19 +142,19 @@ public class BlockChecksumHelper {
     }
   }
 
-  static class StripedBlockChecksumMaker extends BlockChecksumMaker {
+  static class StripedBlockChecksumComputer extends BlockChecksumComputer {
     final StripedBlockInfo stripedBlockInfo;
     final DataOutputBuffer md5writer = new DataOutputBuffer();
 
-    public StripedBlockChecksumMaker(DataNode datanode,
-                                     StripedBlockInfo stripedBlockInfo)
+    public StripedBlockChecksumComputer(DataNode datanode,
+                                        StripedBlockInfo stripedBlockInfo)
         throws IOException {
       super(datanode);
       this.stripedBlockInfo = stripedBlockInfo;
     }
 
     @Override
-    public void make() throws IOException {
+    public void compute() throws IOException {
       /*
       LocatedBlock[] stripBlocks = StripedBlockUtil.parseStripedBlockGroup(
           blockGroup, ecPolicy);

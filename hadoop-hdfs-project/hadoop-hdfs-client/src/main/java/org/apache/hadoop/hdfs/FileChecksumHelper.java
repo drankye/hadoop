@@ -57,7 +57,7 @@ public class FileChecksumHelper {
   public static final Logger LOG =
       LoggerFactory.getLogger(FileChecksumHelper.class);
 
-  static abstract class FileChecksumMaker {
+  static abstract class FileChecksumComputer {
     String src;
     long length;
     LocatedBlocks blockLocations;
@@ -75,10 +75,10 @@ public class FileChecksumHelper {
     boolean refetchBlocks = false;
     int lastRetriedIndex = -1;
 
-    public FileChecksumMaker(String src, long length,
-                             LocatedBlocks blockLocations,
-                             ClientProtocol namenode,
-                             DFSClient client) throws IOException {
+    public FileChecksumComputer(String src, long length,
+                                LocatedBlocks blockLocations,
+                                ClientProtocol namenode,
+                                DFSClient client) throws IOException {
       this.src = src;
       this.length = length;
       this.blockLocations = blockLocations;
@@ -86,7 +86,7 @@ public class FileChecksumHelper {
       this.client = client;
     }
 
-    abstract public MD5MD5CRC32FileChecksum make() throws IOException;
+    abstract public MD5MD5CRC32FileChecksum compute() throws IOException;
 
     protected MD5MD5CRC32FileChecksum computeFileChecksum() {
       //compute file MD5
@@ -113,17 +113,17 @@ public class FileChecksumHelper {
     }
   }
 
-  static class ReplicatedFileChecksumMaker extends FileChecksumMaker {
+  static class ReplicatedFileChecksumComputer extends FileChecksumComputer {
 
-    public ReplicatedFileChecksumMaker(String src, long length,
-                                       LocatedBlocks blockLocations,
-                                       ClientProtocol namenode,
-                                       DFSClient client) throws IOException {
+    public ReplicatedFileChecksumComputer(String src, long length,
+                                          LocatedBlocks blockLocations,
+                                          ClientProtocol namenode,
+                                          DFSClient client) throws IOException {
       super(src, length, blockLocations, namenode, client);
     }
 
     @Override
-    public MD5MD5CRC32FileChecksum make() throws IOException {
+    public MD5MD5CRC32FileChecksum compute() throws IOException {
       locatedblocks = blockLocations.getLocatedBlocks();
       long remaining = length;
       if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
@@ -262,14 +262,14 @@ public class FileChecksumHelper {
     }
   }
 
-  static class StripedFileChecksumMaker extends FileChecksumMaker {
+  static class StripedFileChecksumComputer extends FileChecksumComputer {
     private ErasureCodingPolicy ecPolicy;
 
-    public StripedFileChecksumMaker(String src, long length,
-                                    LocatedBlocks blockLocations,
-                                    ClientProtocol namenode,
-                                    DFSClient client,
-                                    ErasureCodingPolicy ecPolicy)
+    public StripedFileChecksumComputer(String src, long length,
+                                       LocatedBlocks blockLocations,
+                                       ClientProtocol namenode,
+                                       DFSClient client,
+                                       ErasureCodingPolicy ecPolicy)
         throws IOException {
       super(src, length, blockLocations, namenode, client);
 
@@ -277,7 +277,7 @@ public class FileChecksumHelper {
     }
 
     @Override
-    public MD5MD5CRC32FileChecksum make() throws IOException {
+    public MD5MD5CRC32FileChecksum compute() throws IOException {
       locatedblocks = blockLocations.getLocatedBlocks();
       long remaining = length;
       if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
@@ -413,14 +413,14 @@ public class FileChecksumHelper {
     }
   }
 
-  static class StripedFileChecksumMaker2 extends FileChecksumMaker {
+  static class StripedFileChecksumComputer2 extends FileChecksumComputer {
     private ErasureCodingPolicy ecPolicy;
 
-    public StripedFileChecksumMaker2(String src, long length,
-                                     LocatedBlocks blockLocations,
-                                     ClientProtocol namenode,
-                                     DFSClient client,
-                                     ErasureCodingPolicy ecPolicy)
+    public StripedFileChecksumComputer2(String src, long length,
+                                        LocatedBlocks blockLocations,
+                                        ClientProtocol namenode,
+                                        DFSClient client,
+                                        ErasureCodingPolicy ecPolicy)
         throws IOException {
       super(src, length, blockLocations, namenode, client);
 
@@ -428,7 +428,7 @@ public class FileChecksumHelper {
     }
 
     @Override
-    public MD5MD5CRC32FileChecksum make() throws IOException {
+    public MD5MD5CRC32FileChecksum compute() throws IOException {
       locatedblocks = blockLocations.getLocatedBlocks();
       long remaining = length;
       if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
