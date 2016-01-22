@@ -202,6 +202,16 @@ public interface DataTransferProtocol {
       final Token<BlockTokenIdentifier> blockToken) throws IOException;
 
   /**
+   * Get raw block checksum data (the first level, CRC32).
+   *
+   * @param blk a block.
+   * @param blockToken security token for accessing the block.
+   * @throws IOException
+   */
+  void rawBlockChecksum(final ExtendedBlock blk, int offset, int length,
+              final Token<BlockTokenIdentifier> blockToken) throws IOException;
+
+  /**
    * Get striped block group checksum (MD5 of CRC32).
    *
    * @param stripedBlockInfo a striped block info.

@@ -67,6 +67,7 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.InvalidMagicNumberExcep
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ClientReadStatusProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpRawBlockChecksumResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ReadOpChecksumInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ReleaseShortCircuitAccessResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ShortCircuitShmResponseProto;
@@ -882,8 +883,8 @@ class DataXceiver extends Receiver implements Runnable {
   }
 
   @Override
-  public void blockChecksum(final ExtendedBlock block,
-                            final Token<BlockTokenIdentifier> blockToken)
+  public void blockChecksum(ExtendedBlock block,
+                            Token<BlockTokenIdentifier> blockToken)
       throws IOException {
     updateCurrentThreadName("Getting checksum for block " + block);
     final DataOutputStream out = new DataOutputStream(
@@ -893,7 +894,7 @@ class DataXceiver extends Receiver implements Runnable {
 
     BlockChecksumHelper.BlockChecksumComputer maker =
         new BlockChecksumHelper.ReplicatedBlockChecksumComputer(datanode,
-            block, blockToken);
+            block);
 
     try {
       maker.compute();
@@ -911,6 +912,46 @@ class DataXceiver extends Receiver implements Runnable {
       out.flush();
     } catch (IOException ioe) {
       LOG.info("blockChecksum " + block + " received exception " + ioe);
+      incrDatanodeNetworkErrors();
+      throw ioe;
+    } finally {
+      IOUtils.closeStream(out);
+    }
+
+    //update metrics
+    datanode.metrics.addBlockChecksumOp(elapsed());
+  }
+
+  @Override
+  public void rawBlockChecksum(ExtendedBlock block, int offset, int length,
+                            Token<BlockTokenIdentifier> blockToken)
+      throws IOException {
+    updateCurrentThreadName("Getting raw checksum for block " + block);
+    final DataOutputStream out = new DataOutputStream(
+        getOutputStream());
+    checkAccess(out, true, block, blockToken,
+        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
+
+    BlockChecksumHelper.BlockChecksumComputer maker =
+        new BlockChecksumHelper.RawBlockChecksumComputer(datanode, block,
+            offset, length);
+
+    try {
+      maker.compute();
+
+      //write reply
+      BlockOpResponseProto.newBuilder()
+          .setStatus(SUCCESS)
+          .setRawChecksumResponse(OpRawBlockChecksumResponseProto.newBuilder()
+              .setBytesPerCrc(maker.bytesPerCRC)
+              .setCrcPerBlock(maker.crcPerBlock)
+              .setCrc32(ByteString.copyFrom(maker.md5out.getDigest()))
+              .setCrcType(PBHelperClient.convert(maker.crcType)))
+          .build()
+          .writeDelimitedTo(out);
+      out.flush();
+    } catch (IOException ioe) {
+      LOG.info("rawBlockChecksum " + block + " received exception " + ioe);
       incrDatanodeNetworkErrors();
       throw ioe;
     } finally {

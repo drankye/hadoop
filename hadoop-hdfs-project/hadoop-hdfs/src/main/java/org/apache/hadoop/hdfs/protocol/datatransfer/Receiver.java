@@ -32,6 +32,7 @@ import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.CachingStrategyP
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ClientOperationHeaderProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.DataTransferTraceInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpRawBlockChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockGroupChecksumProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpCopyBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpReadBlockProto;
@@ -113,6 +114,9 @@ public abstract class Receiver implements DataTransferProtocol {
     case BLOCK_CHECKSUM:
       opBlockChecksum(in);
       break;
+      case RAW_BLOCK_CHECKSUM:
+        opRawBlockChecksum(in);
+        break;
     case STRIPED_BLOCK_CHECKSUM:
       opStripedBlockChecksum(in);
       break;
@@ -291,6 +295,20 @@ public abstract class Receiver implements DataTransferProtocol {
     try {
     blockChecksum(PBHelperClient.convert(proto.getHeader().getBlock()),
         PBHelperClient.convert(proto.getHeader().getToken()));
+    } finally {
+      if (traceScope != null) traceScope.close();
+    }
+  }
+
+  /** Receive OP_RAW_BLOCK_CHECKSUM */
+  private void opRawBlockChecksum(DataInputStream in) throws IOException {
+    OpRawBlockChecksumProto proto = OpRawBlockChecksumProto.parseFrom(vintPrefixed(in));
+    TraceScope traceScope = continueTraceSpan(proto.getHeader(),
+        proto.getClass().getSimpleName());
+    try {
+      rawBlockChecksum(PBHelperClient.convert(proto.getHeader().getBlock()),
+          proto.getOffset(), proto.getLength(),
+          PBHelperClient.convert(proto.getHeader().getToken()));
     } finally {
       if (traceScope != null) traceScope.close();
     }

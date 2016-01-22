@@ -148,6 +148,12 @@ message OpBlockChecksumProto {
   required BaseHeaderProto header = 1;
 }
 
+message OpRawBlockChecksumProto {
+  required BaseHeaderProto header = 1;
+  required uint32 Offset = 2;
+  required uint32 length = 3;
+}
+
 message OpBlockGroupChecksumProto {
   required BaseHeaderProto header = 1;
   required DatanodeInfosProto datanodes = 2;
@@ -287,6 +293,7 @@ message BlockOpResponseProto {
    * read.
    */
   optional uint32 shortCircuitAccessVersion = 6;
+  optional OpRawBlockChecksumResponseProto rawChecksumResponse = 7;
 }
 
 /**
@@ -305,6 +312,13 @@ message OpBlockChecksumResponseProto {
   required uint32 bytesPerCrc = 1;
   required uint64 crcPerBlock = 2;
   required bytes md5 = 3;
+  optional ChecksumTypeProto crcType = 4;
+}
+
+message OpRawBlockChecksumResponseProto {
+  required bytes crc32 = 1;
+  required uint32 bytesPerCrc = 2;
+  required uint64 crcPerBlock = 3;
   optional ChecksumTypeProto crcType = 4;
 }
 

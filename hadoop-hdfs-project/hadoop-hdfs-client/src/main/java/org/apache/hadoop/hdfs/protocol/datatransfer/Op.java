@@ -38,7 +38,8 @@ public enum Op {
   REQUEST_SHORT_CIRCUIT_FDS((byte)87),
   RELEASE_SHORT_CIRCUIT_FDS((byte)88),
   REQUEST_SHORT_CIRCUIT_SHM((byte)89),
-  STRIPED_BLOCK_CHECKSUM((byte)90),
+  RAW_BLOCK_CHECKSUM((byte)90),
+  STRIPED_BLOCK_CHECKSUM((byte)91),
   CUSTOM((byte)127);
 
   /** The code for this operation. */

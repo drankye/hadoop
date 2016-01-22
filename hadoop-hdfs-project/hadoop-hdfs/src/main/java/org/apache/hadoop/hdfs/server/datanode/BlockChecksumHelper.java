@@ -55,15 +55,59 @@ public class BlockChecksumHelper {
     abstract public void compute() throws IOException;
   }
 
-  static class ReplicatedBlockChecksumComputer extends BlockChecksumComputer {
-    final ExtendedBlock block;
-    final Token<BlockTokenIdentifier> blockToken;
+  static class RawBlockChecksumComputer extends BlockChecksumComputer {
+    ExtendedBlock block;
+    int offset;
+    int length;
 
-    public ReplicatedBlockChecksumComputer(DataNode datanode, ExtendedBlock block,
-                                           Token<BlockTokenIdentifier> blockToken) throws IOException {
+    public RawBlockChecksumComputer(DataNode datanode, ExtendedBlock block,
+        int offset, int length) throws IOException {
       super(datanode);
       this.block = block;
-      this.blockToken = blockToken;
+      this.offset = offset;
+      this.length = length;
+    }
+
+    @Override
+    public void compute() throws IOException {
+      // client side now can specify a range of the block for checksum
+      long requestLength = block.getNumBytes();
+      Preconditions.checkArgument(requestLength >= 0);
+      LengthInputStream metadataIn = datanode.data.getMetaDataInputStream(block);
+
+      int ioFileBufferSize = DFSUtilClient.getIoFileBufferSize(datanode.getConf());
+      DataInputStream checksumIn = new DataInputStream(
+          new BufferedInputStream(metadataIn, ioFileBufferSize));
+
+      try {
+        //read metadata file
+        final BlockMetadataHeader header = BlockMetadataHeader
+            .readHeader(checksumIn);
+        final DataChecksum checksum = header.getChecksum();
+        final int csize = checksum.getChecksumSize();
+        bytesPerCRC = checksum.getBytesPerChecksum();
+        crcPerBlock = csize <= 0 ? 0 :
+            (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
+        crcType = checksum.getChecksumType();
+
+        md5out = MD5Hash.digest(checksumIn);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
+              + ", crcPerBlock=" + crcPerBlock + ", md5out=" + md5out);
+        }
+      } finally {
+        IOUtils.closeStream(checksumIn);
+        IOUtils.closeStream(metadataIn);
+      }
+    }
+  }
+
+  static class ReplicatedBlockChecksumComputer extends BlockChecksumComputer {
+    final ExtendedBlock block;
+
+    public ReplicatedBlockChecksumComputer(DataNode datanode, ExtendedBlock block) throws IOException {
+      super(datanode);
+      this.block = block;
     }
 
     private MD5Hash calcPartialBlockChecksum(ExtendedBlock block,
