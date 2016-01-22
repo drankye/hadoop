@@ -21,12 +21,10 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.MD5Hash;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.DataChecksum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +41,7 @@ public class BlockChecksumHelper {
 
   static abstract class BlockChecksumComputer {
     final DataNode datanode;
-    MD5Hash md5out;
+    byte[] outBytes;
     int bytesPerCRC = -1;
     DataChecksum.Type crcType = null;
     long crcPerBlock = -1;
@@ -90,15 +88,23 @@ public class BlockChecksumHelper {
             (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
         crcType = checksum.getChecksumType();
 
-        md5out = MD5Hash.digest(checksumIn);
+        outBytes = read(checksumIn, offset, length);
         if (LOG.isDebugEnabled()) {
           LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
-              + ", crcPerBlock=" + crcPerBlock + ", md5out=" + md5out);
+              + ", crcPerBlock=" + crcPerBlock);
         }
       } finally {
         IOUtils.closeStream(checksumIn);
         IOUtils.closeStream(metadataIn);
       }
+    }
+
+    public static byte[] read(InputStream in,
+                              int offset, int length) throws IOException {
+      in.skip(offset);
+      byte[] buffer = new byte[length];
+      in.read(buffer);
+      return buffer;
     }
   }
 
@@ -172,9 +178,10 @@ public class BlockChecksumHelper {
             (metadataIn.getLength() - BlockMetadataHeader.getHeaderSize()) / csize;
         crcType = checksum.getChecksumType();
 
-        md5out = partialBlk && crcPerBlock > 0 ?
+        MD5Hash md5out = partialBlk && crcPerBlock > 0 ?
             calcPartialBlockChecksum(block, requestLength, checksum, checksumIn)
             : MD5Hash.digest(checksumIn);
+        outBytes = md5out.getDigest();
         if (LOG.isDebugEnabled()) {
           LOG.debug("block=" + block + ", bytesPerCRC=" + bytesPerCRC
               + ", crcPerBlock=" + crcPerBlock + ", md5out=" + md5out);
@@ -208,7 +215,8 @@ public class BlockChecksumHelper {
       }
       */
 
-      md5out = MD5Hash.digest(md5writer.getData());
+      MD5Hash md5out = MD5Hash.digest(md5writer.getData());
+      outBytes = md5out.getDigest();
     }
 
     /*
