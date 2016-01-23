@@ -327,7 +327,7 @@ public abstract class Receiver implements DataTransferProtocol {
     );
     try {
       blockGroupChecksum(stripedBlockInfo,
-          PBHelperClient.convert(proto.getHeader().getToken()));
+          PBHelperClient.convert(proto.getHeader().getToken()), proto.getMode());
     } finally {
       if (traceScope != null) traceScope.close();
     }

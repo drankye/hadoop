@@ -158,6 +158,7 @@ message OpBlockGroupChecksumProto {
   required BaseHeaderProto header = 1;
   required DatanodeInfosProto datanodes = 2;
   required ErasureCodingPolicyProto ecPolicy = 3;
+  required uint32 mode = 4;
 }
 
 /**

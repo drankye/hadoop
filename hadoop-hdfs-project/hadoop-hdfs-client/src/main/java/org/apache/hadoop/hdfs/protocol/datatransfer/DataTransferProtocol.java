@@ -198,8 +198,8 @@ public interface DataTransferProtocol {
    * @param blockToken security token for accessing the block.
    * @throws IOException
    */
-  void blockChecksum(final ExtendedBlock blk,
-      final Token<BlockTokenIdentifier> blockToken) throws IOException;
+  void blockChecksum(ExtendedBlock blk,
+      Token<BlockTokenIdentifier> blockToken) throws IOException;
 
   /**
    * Get raw block checksum data (the first level, CRC32).
@@ -208,8 +208,8 @@ public interface DataTransferProtocol {
    * @param blockToken security token for accessing the block.
    * @throws IOException
    */
-  void rawBlockChecksum(final ExtendedBlock blk, int offset, int length,
-              final Token<BlockTokenIdentifier> blockToken) throws IOException;
+  void rawBlockChecksum(ExtendedBlock blk, int offset, int length,
+              Token<BlockTokenIdentifier> blockToken) throws IOException;
 
   /**
    * Get striped block group checksum (MD5 of CRC32).
@@ -218,6 +218,6 @@ public interface DataTransferProtocol {
    * @param blockToken security token for accessing the block.
    * @throws IOException
    */
-  void blockGroupChecksum(final StripedBlockInfo stripedBlockInfo,
-              final Token<BlockTokenIdentifier> blockToken) throws IOException;
+  void blockGroupChecksum(StripedBlockInfo stripedBlockInfo,
+          Token<BlockTokenIdentifier> blockToken, int mode) throws IOException;
 }

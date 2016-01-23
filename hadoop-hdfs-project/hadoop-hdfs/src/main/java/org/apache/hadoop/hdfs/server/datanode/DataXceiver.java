@@ -905,7 +905,7 @@ class DataXceiver extends Receiver implements Runnable {
           .setChecksumResponse(OpBlockChecksumResponseProto.newBuilder()
               .setBytesPerCrc(maker.bytesPerCRC)
               .setCrcPerBlock(maker.crcPerBlock)
-              .setMd5(ByteString.copyFrom(maker.md5out.getDigest()))
+              .setMd5(ByteString.copyFrom(maker.outBytes))
               .setCrcType(PBHelperClient.convert(maker.crcType)))
           .build()
           .writeDelimitedTo(out);
@@ -945,7 +945,7 @@ class DataXceiver extends Receiver implements Runnable {
           .setRawChecksumResponse(OpRawBlockChecksumResponseProto.newBuilder()
               .setBytesPerCrc(maker.bytesPerCRC)
               .setCrcPerBlock(maker.crcPerBlock)
-              .setCrc32(ByteString.copyFrom(maker.md5out.getDigest()))
+              .setCrc32(ByteString.copyFrom(maker.outBytes))
               .setCrcType(PBHelperClient.convert(maker.crcType)))
           .build()
           .writeDelimitedTo(out);
@@ -964,8 +964,43 @@ class DataXceiver extends Receiver implements Runnable {
 
   @Override
   public void blockGroupChecksum(final StripedBlockInfo stripedBlockInfo,
-           final Token<BlockTokenIdentifier> blockToken) throws IOException {
+   final Token<BlockTokenIdentifier> blockToken, int mode) throws IOException {
+    updateCurrentThreadName("Getting checksum for block group" +
+        stripedBlockInfo.getBlock());
+    final DataOutputStream out = new DataOutputStream(
+        getOutputStream());
+    checkAccess(out, true, stripedBlockInfo.getBlock(), blockToken,
+        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
+    BlockChecksumHelper.BlockChecksumComputer maker =
+        new BlockChecksumHelper.StripedBlockChecksumComputer(datanode,
+            stripedBlockInfo);
+
+    try {
+      maker.compute();
+
+      //write reply
+      BlockOpResponseProto.newBuilder()
+          .setStatus(SUCCESS)
+          .setChecksumResponse(OpBlockChecksumResponseProto.newBuilder()
+              .setBytesPerCrc(maker.bytesPerCRC)
+              .setCrcPerBlock(maker.crcPerBlock)
+              .setMd5(ByteString.copyFrom(maker.outBytes))
+              .setCrcType(PBHelperClient.convert(maker.crcType)))
+          .build()
+          .writeDelimitedTo(out);
+      out.flush();
+    } catch (IOException ioe) {
+      LOG.info("blockChecksum " + stripedBlockInfo.getBlock() +
+          " received exception " + ioe);
+      incrDatanodeNetworkErrors();
+      throw ioe;
+    } finally {
+      IOUtils.closeStream(out);
+    }
+
+    //update metrics
+    datanode.metrics.addBlockChecksumOp(elapsed());
   }
 
   @Override

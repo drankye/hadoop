@@ -488,7 +488,7 @@ public class FileChecksumHelper {
         LOG.debug("write to {}: {}, block={}",
             chosenDatanode, Op.BLOCK_CHECKSUM, leadBlock);
         // get block MD5
-        new Sender(out).blockGroupChecksum(stripedBlockInfo, blockToken);
+        new Sender(out).blockGroupChecksum(stripedBlockInfo, blockToken, 1);
 
         final BlockOpResponseProto reply =
             BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
