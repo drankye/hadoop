@@ -160,26 +160,21 @@ public class FileChecksumHelper {
 
       //try each datanode location of the block
       boolean done = false;
+      IOStreamPair pair = null;
       for (int j = 0; !done && j < datanodes.length; j++) {
-        DataOutputStream out = null;
-        DataInputStream in = null;
-
         try {
           //connect to a datanode
-          IOStreamPair pair =
-              client.connectToDN(datanodes[j], timeout,
+          pair = client.connectToDN(datanodes[j], timeout,
                   locatedBlock.getBlockToken());
-          out = new DataOutputStream(new BufferedOutputStream(pair.out,
-              client.smallBufferSize));
-          in = new DataInputStream(pair.in);
 
           LOG.debug("write to {}: {}, block={}",
               datanodes[j], Op.BLOCK_CHECKSUM, block);
           // get block MD5
-          new Sender(out).blockChecksum(block, locatedBlock.getBlockToken());
+          new Sender((DataOutputStream) pair.out).blockChecksum(block,
+              locatedBlock.getBlockToken());
 
           final BlockOpResponseProto reply =
-              BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
+              BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(pair.in));
 
           String logInfo = "for block " + block + " from datanode " +
               datanodes[j];
@@ -251,8 +246,10 @@ public class FileChecksumHelper {
         } catch (IOException ie) {
           LOG.warn("src=" + src + ", datanodes[" + j + "]=" + datanodes[j], ie);
         } finally {
-          IOUtils.closeStream(in);
-          IOUtils.closeStream(out);
+          if (pair != null) {
+            IOUtils.closeStream(pair.in);
+            IOUtils.closeStream(pair.out);
+          }
         }
       }
 

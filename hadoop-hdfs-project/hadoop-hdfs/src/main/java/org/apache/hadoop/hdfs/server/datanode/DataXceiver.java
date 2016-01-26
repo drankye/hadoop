@@ -74,6 +74,7 @@ import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ShortCircuitShmR
 import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.Status;
 import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
+import org.apache.hadoop.hdfs.server.datanode.BlockChecksumHelper.*;
 import org.apache.hadoop.hdfs.server.datanode.DataNode.ShortCircuitFdsUnsupportedException;
 import org.apache.hadoop.hdfs.server.datanode.DataNode.ShortCircuitFdsVersionException;
 import org.apache.hadoop.hdfs.server.datanode.ShortCircuitRegistry.NewShmInfo;
@@ -892,9 +893,8 @@ class DataXceiver extends Receiver implements Runnable {
     checkAccess(out, true, block, blockToken,
         Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
-    BlockChecksumHelper.BlockChecksumComputer maker =
-        new BlockChecksumHelper.ReplicatedBlockChecksumComputer(datanode,
-            block);
+    BlockChecksumComputer maker =
+        new ReplicatedBlockChecksumComputer(datanode, block);
 
     try {
       maker.compute();
@@ -932,9 +932,8 @@ class DataXceiver extends Receiver implements Runnable {
     checkAccess(out, true, block, blockToken,
         Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
-    BlockChecksumHelper.BlockChecksumComputer maker =
-        new BlockChecksumHelper.RawBlockChecksumComputer(datanode, block,
-            offset, length);
+    BlockChecksumComputer maker =
+        new RawBlockChecksumComputer(datanode, block, offset, length);
 
     try {
       maker.compute();
@@ -972,9 +971,8 @@ class DataXceiver extends Receiver implements Runnable {
     checkAccess(out, true, stripedBlockInfo.getBlock(), blockToken,
         Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
-    BlockChecksumHelper.BlockChecksumComputer maker =
-        new BlockChecksumHelper.StripedBlockChecksumComputer(datanode,
-            stripedBlockInfo);
+    AbstractBlockChecksumComputer maker =
+        new StripedBlockChecksumComputer(datanode, stripedBlockInfo);
 
     try {
       maker.compute();

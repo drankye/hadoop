@@ -1740,32 +1740,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     return blockLocations;
   }
 
-  /**
-   * Connect to the given datanode's datantrasfer port, and return
-   * the resulting IOStreamPair. This includes encryption wrapping, etc.
-   */
   protected IOStreamPair connectToDN(DatanodeInfo dn, int timeout,
-                   Token<BlockTokenIdentifier> blockToken) throws IOException {
-    boolean success = false;
-    Socket sock = null;
-    try {
-      sock = socketFactory.createSocket();
-      String dnAddr = dn.getXferAddr(getConf().isConnectToDnViaHostname());
-      LOG.debug("Connecting to datanode {}", dnAddr);
-      NetUtils.connect(sock, NetUtils.createSocketAddr(dnAddr), timeout);
-      sock.setSoTimeout(timeout);
+                                     Token<BlockTokenIdentifier> blockToken)
+      throws IOException {
 
-      OutputStream unbufOut = NetUtils.getOutputStream(sock);
-      InputStream unbufIn = NetUtils.getInputStream(sock);
-      IOStreamPair ret = saslClient.newSocketSend(sock, unbufOut, unbufIn, this,
-          blockToken, dn);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeSocket(sock);
-      }
-    }
+    return DFSUtilClient.connectToDN(dn, timeout, conf, saslClient, socketFactory,
+        getConf().isConnectToDnViaHostname(), this, blockToken);
   }
 
   /**
@@ -1785,14 +1765,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         lb.getBlockToken());
 
     try {
-      DataOutputStream out = new DataOutputStream(
-          new BufferedOutputStream(pair.out, smallBufferSize));
-      DataInputStream in = new DataInputStream(pair.in);
-
-      new Sender(out).readBlock(lb.getBlock(), lb.getBlockToken(), clientName,
+      new Sender((DataOutputStream) pair.out).readBlock(lb.getBlock(),
+          lb.getBlockToken(), clientName,
           0, 1, true, CachingStrategy.newDefaultStrategy());
       final BlockOpResponseProto reply =
-          BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
+          BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(pair.in));
       String logInfo = "trying to read " + lb.getBlock() + " from datanode " +
           dn;
       DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
