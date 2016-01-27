@@ -50,8 +50,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-public class FileChecksumHelper {
-  public static final Logger LOG =
+class FileChecksumHelper {
+  static final Logger LOG =
       LoggerFactory.getLogger(FileChecksumHelper.class);
 
   static abstract class FileChecksumComputer {
@@ -72,10 +72,10 @@ public class FileChecksumHelper {
     boolean refetchBlocks = false;
     int lastRetriedIndex = -1;
 
-    public FileChecksumComputer(String src, long length,
-                                LocatedBlocks blockLocations,
-                                ClientProtocol namenode,
-                                DFSClient client) throws IOException {
+    FileChecksumComputer(String src, long length,
+                         LocatedBlocks blockLocations,
+                         ClientProtocol namenode,
+                         DFSClient client) throws IOException {
       this.src = src;
       this.length = length;
       this.blockLocations = blockLocations;
@@ -90,7 +90,7 @@ public class FileChecksumHelper {
       this.locatedblocks = blockLocations.getLocatedBlocks();
     }
 
-    abstract public MD5MD5CRC32FileChecksum compute() throws IOException;
+    abstract MD5MD5CRC32FileChecksum compute() throws IOException;
 
     protected MD5MD5CRC32FileChecksum computeFileChecksum() {
       //compute file MD5
@@ -131,15 +131,15 @@ public class FileChecksumHelper {
 
   static class ReplicatedFileChecksumComputer extends FileChecksumComputer {
 
-    public ReplicatedFileChecksumComputer(String src, long length,
-                                          LocatedBlocks blockLocations,
-                                          ClientProtocol namenode,
-                                          DFSClient client) throws IOException {
+    ReplicatedFileChecksumComputer(String src, long length,
+                                   LocatedBlocks blockLocations,
+                                   ClientProtocol namenode,
+                                   DFSClient client) throws IOException {
       super(src, length, blockLocations, namenode, client);
     }
 
     @Override
-    public MD5MD5CRC32FileChecksum compute() throws IOException {
+    MD5MD5CRC32FileChecksum compute() throws IOException {
       // get block checksum for each block
       for (int blockIdx = 0;
            blockIdx < locatedblocks.size() && remaining > 0; blockIdx++) {
@@ -176,7 +176,7 @@ public class FileChecksumHelper {
         try {
           //connect to a datanode
           pair = client.connectToDN(datanodes[j], timeout,
-                  locatedBlock.getBlockToken());
+              locatedBlock.getBlockToken());
 
           LOG.debug("write to {}: {}, block={}",
               datanodes[j], Op.BLOCK_CHECKSUM, block);
@@ -275,12 +275,12 @@ public class FileChecksumHelper {
     final private ErasureCodingPolicy ecPolicy;
     final private int mode;
 
-    public StripedFileChecksumComputer(String src, long length,
-                                       LocatedBlocks blockLocations,
-                                       ClientProtocol namenode,
-                                       DFSClient client,
-                                       ErasureCodingPolicy ecPolicy,
-                                       int mode) throws IOException {
+    StripedFileChecksumComputer(String src, long length,
+                                LocatedBlocks blockLocations,
+                                ClientProtocol namenode,
+                                DFSClient client,
+                                ErasureCodingPolicy ecPolicy,
+                                int mode) throws IOException {
       super(src, length, blockLocations, namenode, client);
 
       this.ecPolicy = ecPolicy;
@@ -288,7 +288,7 @@ public class FileChecksumHelper {
     }
 
     @Override
-    public MD5MD5CRC32FileChecksum compute() throws IOException {
+    MD5MD5CRC32FileChecksum compute() throws IOException {
       // get block checksum for each block
       for (int bgIdx = 0;
            bgIdx < locatedblocks.size() && remaining > 0; bgIdx++) {
@@ -313,7 +313,7 @@ public class FileChecksumHelper {
      * @throws IOException
      */
     private void getBlockGroupChecksumData(int bgIdx,
-                           LocatedStripedBlock blockGroup) throws IOException {
+                                           LocatedStripedBlock blockGroup) throws IOException {
       ExtendedBlock block = blockGroup.getBlock();
       int timeout = 3000 * 1 + client.getConf().getSocketTimeout();
       DatanodeInfo datanode = blockGroup.getLocations()[0];

@@ -23,8 +23,14 @@ import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
+import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtoUtil;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumResponseProto;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.Op;
+import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
+import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos;
+import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
@@ -43,10 +49,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 
-public class BlockChecksumHelper {
+class BlockChecksumHelper {
 
-  public static final Logger LOG =
-      LoggerFactory.getLogger(BlockChecksumHelper.class);
+  static final Logger LOG = LoggerFactory.getLogger(BlockChecksumHelper.class);
 
   /**
    * The abstract base block checksum computer.
@@ -59,11 +64,23 @@ public class BlockChecksumHelper {
     long crcPerBlock = -1;
     int checksumSize = -1;
 
-    public AbstractBlockChecksumComputer(DataNode datanode) throws IOException {
+    AbstractBlockChecksumComputer(DataNode datanode) throws IOException {
       this.datanode = datanode;
     }
 
-    abstract public void compute() throws IOException;
+    abstract void compute() throws IOException;
+
+    protected Sender createSender(IOStreamPair pair) {
+      DataOutputStream out = (DataOutputStream) pair.out;
+      return new Sender(out);
+    }
+
+    protected void close(IOStreamPair pair) {
+      if (pair != null) {
+        IOUtils.closeStream(pair.in);
+        IOUtils.closeStream(pair.out);
+      }
+    }
   }
 
   /**
@@ -71,6 +88,7 @@ public class BlockChecksumHelper {
    */
   static abstract class BlockChecksumComputer
       extends AbstractBlockChecksumComputer {
+
     final ExtendedBlock block;
     // client side now can specify a range of the block for checksum
     final long requestLength;
@@ -82,8 +100,8 @@ public class BlockChecksumHelper {
     BlockMetadataHeader header;
     DataChecksum checksum;
 
-    public BlockChecksumComputer(DataNode datanode,
-                                 ExtendedBlock block) throws IOException {
+    BlockChecksumComputer(DataNode datanode,
+                          ExtendedBlock block) throws IOException {
       super(datanode);
       this.block = block;
       this.requestLength = block.getNumBytes();
@@ -98,8 +116,6 @@ public class BlockChecksumHelper {
       this.checksumIn = new DataInputStream(new BufferedInputStream(metadataIn,
           ioFileBufferSize));
     }
-
-    abstract public void compute() throws IOException;
 
     protected void readHeader() throws IOException {
       //read metadata file
@@ -137,13 +153,13 @@ public class BlockChecksumHelper {
 
   static class ReplicatedBlockChecksumComputer extends BlockChecksumComputer {
 
-    public ReplicatedBlockChecksumComputer(DataNode datanode,
-                                           ExtendedBlock block) throws IOException {
+    ReplicatedBlockChecksumComputer(DataNode datanode,
+                                    ExtendedBlock block) throws IOException {
       super(datanode, block);
     }
 
     @Override
-    public void compute() throws IOException {
+    void compute() throws IOException {
       try {
         readHeader();
 
@@ -201,8 +217,8 @@ public class BlockChecksumHelper {
     final int offset;
     final int length;
 
-    public RawBlockChecksumComputer(DataNode datanode, ExtendedBlock block,
-        int offset, int length) throws IOException {
+    RawBlockChecksumComputer(DataNode datanode, ExtendedBlock block,
+                             int offset, int length) throws IOException {
       super(datanode, block);
       this.offset = offset;
       this.length = length;
@@ -211,7 +227,7 @@ public class BlockChecksumHelper {
     }
 
     @Override
-    public void compute() throws IOException {
+    void compute() throws IOException {
       try {
         readHeader();
 
@@ -278,8 +294,8 @@ public class BlockChecksumHelper {
 
     final DataOutputBuffer md5writer = new DataOutputBuffer();
 
-    public StripedBlockChecksumComputer(DataNode datanode,
-                      StripedBlockInfo stripedBlockInfo) throws IOException {
+    StripedBlockChecksumComputer(DataNode datanode,
+                                 StripedBlockInfo stripedBlockInfo) throws IOException {
       super(datanode);
       this.stripedBlockInfo = stripedBlockInfo;
       this.blockGroup = stripedBlockInfo.getBlock();
@@ -289,45 +305,91 @@ public class BlockChecksumHelper {
     }
 
     @Override
-    public void compute() throws IOException {
-      ExtendedBlock blockGroup = stripedBlockInfo.getBlock();
-
+    void compute() throws IOException {
       for (int idx = 0; idx < ecPolicy.getNumDataUnits(); idx++) {
         ExtendedBlock block = StripedBlockUtil.constructInternalBlock(blockGroup,
             ecPolicy.getCellSize(), ecPolicy.getNumDataUnits(), idx);
-        DatanodeInfo datanode = datanodes[idx];
+        DatanodeInfo targetDatanode = datanodes[idx];
         Token<BlockTokenIdentifier> blockToken = blockTokens[idx];
+        getBlockChecksumData(block, idx, blockToken, targetDatanode);
       }
 
       MD5Hash md5out = MD5Hash.digest(md5writer.getData());
       outBytes = md5out.getDigest();
     }
 
-    private boolean getBlockChecksumData(ExtendedBlock block,
-                                         DatanodeInfo datanodeID) throws IOException {
+    private void getBlockChecksumData(ExtendedBlock block, int blockIdx,
+                                         Token<BlockTokenIdentifier> blockToken,
+                                         DatanodeInfo targetDatanode) throws IOException {
       int timeout = 3000;
-
-      //try the datanode location of the block
-      boolean done = false;
-      DataOutputStream out = null;
-      DataInputStream in = null;
-
+      IOStreamPair pair = null;
       try {
         //connect to a datanode
-        IOStreamPair pair = datanode.connectToDN(datanodeID, timeout,
-            block, null);
+        pair = datanode.connectToDN(targetDatanode, timeout, block, blockToken);
 
         LOG.debug("write to {}: {}, block={}",
             datanode, Op.BLOCK_CHECKSUM, block);
 
+        // get block MD5
+        createSender(pair).blockChecksum(block, blockToken);
+
+        final BlockOpResponseProto reply =
+            BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(pair.in));
+
+        String logInfo = "for block " + block + " from datanode " + targetDatanode;
+        DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
+
+        OpBlockChecksumResponseProto checksumData = reply.getChecksumResponse();
+
+        //read byte-per-checksum
+        final int bpc = checksumData.getBytesPerCrc();
+        if (blockIdx == 0) { //first block
+          bytesPerCRC = bpc;
+        } else if (bpc != bytesPerCRC) {
+          throw new IOException("Byte-per-checksum not matched: bpc=" + bpc
+              + " but bytesPerCRC=" + bytesPerCRC);
+        }
+
+        //read crc-per-block
+        final long cpb = checksumData.getCrcPerBlock();
+        if (blockIdx == 0) {
+          crcPerBlock = cpb;
+        }
+
+        //read md5
+        final MD5Hash md5 = new MD5Hash(
+            checksumData.getMd5().toByteArray());
+        md5.write(md5writer);
+
+        // read crc-type
+        final DataChecksum.Type ct;
+        if (checksumData.hasCrcType()) {
+          ct = PBHelperClient.convert(checksumData.getCrcType());
+        } else {
+          LOG.debug("Retrieving checksum from an earlier-version DataNode: " +
+              "inferring checksum by reading first byte");
+          ct = DataChecksum.Type.DEFAULT;
+        }
+
+        if (blockIdx == 0) { // first block
+          crcType = ct;
+        } else if (crcType != DataChecksum.Type.MIXED && crcType != ct) {
+          // if crc types are mixed in a file
+          crcType = DataChecksum.Type.MIXED;
+        }
+
+        if (LOG.isDebugEnabled()) {
+          if (blockIdx == 0) {
+            LOG.debug("set bytesPerCRC=" + bytesPerCRC
+                + ", crcPerBlock=" + crcPerBlock);
+          }
+          LOG.debug("got reply from " + targetDatanode + ": md5=" + md5);
+        }
       } catch (IOException ie) {
         //LOG.warn("src=" + src + ", datanode=" + datanode, ie);
       } finally {
-        IOUtils.closeStream(in);
-        IOUtils.closeStream(out);
+        close(pair);
       }
-
-      return done;
     }
   }
 }
