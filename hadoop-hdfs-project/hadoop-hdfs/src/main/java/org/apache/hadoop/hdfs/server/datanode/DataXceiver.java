@@ -930,7 +930,7 @@ class DataXceiver extends Receiver implements Runnable {
     final DataOutputStream out = new DataOutputStream(
         getOutputStream());
     checkAccess(out, true, block, blockToken,
-        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
+        Op.RAW_BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
     BlockChecksumComputer maker =
         new RawBlockChecksumComputer(datanode, block, offset, length);
@@ -966,10 +966,9 @@ class DataXceiver extends Receiver implements Runnable {
    final Token<BlockTokenIdentifier> blockToken, int mode) throws IOException {
     updateCurrentThreadName("Getting checksum for block group" +
         stripedBlockInfo.getBlock());
-    final DataOutputStream out = new DataOutputStream(
-        getOutputStream());
+    final DataOutputStream out = new DataOutputStream(getOutputStream());
     checkAccess(out, true, stripedBlockInfo.getBlock(), blockToken,
-        Op.BLOCK_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
+        Op.BLOCK_GROUP_CHECKSUM, BlockTokenIdentifier.AccessMode.READ);
 
     AbstractBlockChecksumComputer maker =
         new StripedBlockChecksumComputer(datanode, stripedBlockInfo);

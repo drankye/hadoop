@@ -273,7 +273,7 @@ public class Sender implements DataTransferProtocol {
         .setOffset(offset).setLength(length)
         .build();
 
-    send(out, Op.BLOCK_CHECKSUM, proto);
+    send(out, Op.RAW_BLOCK_CHECKSUM, proto);
   }
 
   @Override
@@ -291,6 +291,6 @@ public class Sender implements DataTransferProtocol {
         .setMode(mode)
         .build();
 
-    send(out, Op.BLOCK_CHECKSUM, proto);
+    send(out, Op.BLOCK_GROUP_CHECKSUM, proto);
   }
 }

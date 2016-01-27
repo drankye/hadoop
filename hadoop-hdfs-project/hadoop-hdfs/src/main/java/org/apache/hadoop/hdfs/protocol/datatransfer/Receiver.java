@@ -114,10 +114,10 @@ public abstract class Receiver implements DataTransferProtocol {
     case BLOCK_CHECKSUM:
       opBlockChecksum(in);
       break;
-      case RAW_BLOCK_CHECKSUM:
+    case RAW_BLOCK_CHECKSUM:
         opRawBlockChecksum(in);
         break;
-    case STRIPED_BLOCK_CHECKSUM:
+    case BLOCK_GROUP_CHECKSUM:
       opStripedBlockChecksum(in);
       break;
     case TRANSFER_BLOCK:
