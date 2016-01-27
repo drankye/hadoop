@@ -157,8 +157,10 @@ message OpRawBlockChecksumProto {
 message OpBlockGroupChecksumProto {
   required BaseHeaderProto header = 1;
   required DatanodeInfosProto datanodes = 2;
-  required ErasureCodingPolicyProto ecPolicy = 3;
-  required uint32 mode = 4;
+  // each internal block has a block token
+  repeated hadoop.common.TokenProto blockTokens = 3;
+  required ErasureCodingPolicyProto ecPolicy = 4;
+  required uint32 mode = 5;
 }
 
 /**

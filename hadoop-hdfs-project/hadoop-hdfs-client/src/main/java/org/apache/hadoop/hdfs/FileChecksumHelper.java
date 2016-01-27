@@ -84,6 +84,13 @@ public class FileChecksumHelper {
       this.blockLocations = blockLocations;
       this.namenode = namenode;
       this.client = client;
+
+      this.remaining = length;
+      if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
+        this.remaining = Math.min(length, blockLocations.getFileLength());
+      }
+
+      this.locatedblocks = blockLocations.getLocatedBlocks();
     }
 
     abstract public MD5MD5CRC32FileChecksum compute() throws IOException;
@@ -111,6 +118,18 @@ public class FileChecksumHelper {
           return null;
       }
     }
+
+    protected Sender createSender(IOStreamPair pair) {
+      DataOutputStream out = (DataOutputStream) pair.out;
+      return new Sender(out);
+    }
+
+    protected void close(IOStreamPair pair) {
+      if (pair != null) {
+        IOUtils.closeStream(pair.in);
+        IOUtils.closeStream(pair.out);
+      }
+    }
   }
 
   static class ReplicatedFileChecksumComputer extends FileChecksumComputer {
@@ -124,30 +143,25 @@ public class FileChecksumHelper {
 
     @Override
     public MD5MD5CRC32FileChecksum compute() throws IOException {
-      locatedblocks = blockLocations.getLocatedBlocks();
-      long remaining = length;
-      if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
-        remaining = Math.min(length, blockLocations.getFileLength());
-      }
-
       // get block checksum for each block
-      for (int i = 0; i < locatedblocks.size() && remaining > 0; i++) {
+      for (int blockIdx = 0;
+           blockIdx < locatedblocks.size() && remaining > 0; blockIdx++) {
         if (refetchBlocks) {  // refetch to get fresh tokens
           blockLocations = client.getBlockLocations(src, length);
           locatedblocks = blockLocations.getLocatedBlocks();
           refetchBlocks = false;
         }
 
-        LocatedBlock locatedBlock = locatedblocks.get(i);
+        LocatedBlock locatedBlock = locatedblocks.get(blockIdx);
 
-        getBlockChecksumData(i, locatedBlock);
+        getBlockChecksumData(blockIdx, locatedBlock);
       }
 
       return computeFileChecksum();
     }
 
-    private void getBlockChecksumData(int i,
-                               LocatedBlock locatedBlock) throws IOException {
+    private void getBlockChecksumData(int blockIdx, LocatedBlock locatedBlock)
+        throws IOException {
       final ExtendedBlock block = locatedBlock.getBlock();
       if (remaining < block.getNumBytes()) {
         block.setNumBytes(remaining);
@@ -160,8 +174,8 @@ public class FileChecksumHelper {
 
       //try each datanode location of the block
       boolean done = false;
-      IOStreamPair pair = null;
       for (int j = 0; !done && j < datanodes.length; j++) {
+        IOStreamPair pair = null;
         try {
           //connect to a datanode
           pair = client.connectToDN(datanodes[j], timeout,
@@ -169,8 +183,9 @@ public class FileChecksumHelper {
 
           LOG.debug("write to {}: {}, block={}",
               datanodes[j], Op.BLOCK_CHECKSUM, block);
+
           // get block MD5
-          new Sender((DataOutputStream) pair.out).blockChecksum(block,
+          createSender(pair).blockChecksum(block,
               locatedBlock.getBlockToken());
 
           final BlockOpResponseProto reply =
@@ -185,7 +200,7 @@ public class FileChecksumHelper {
 
           //read byte-per-checksum
           final int bpc = checksumData.getBytesPerCrc();
-          if (i == 0) { //first block
+          if (blockIdx == 0) { //first block
             bytesPerCRC = bpc;
           } else if (bpc != bytesPerCRC) {
             throw new IOException("Byte-per-checksum not matched: bpc=" + bpc
@@ -194,7 +209,7 @@ public class FileChecksumHelper {
 
           //read crc-per-block
           final long cpb = checksumData.getCrcPerBlock();
-          if (locatedblocks.size() > 1 && i == 0) {
+          if (locatedblocks.size() > 1 && blockIdx == 0) {
             crcPerBlock = cpb;
           }
 
@@ -214,7 +229,7 @@ public class FileChecksumHelper {
             ct = client.inferChecksumTypeByReading(locatedBlock, datanodes[j]);
           }
 
-          if (i == 0) { // first block
+          if (blockIdx == 0) { // first block
             crcType = ct;
           } else if (crcType != DataChecksum.Type.MIXED
               && crcType != ct) {
@@ -225,21 +240,21 @@ public class FileChecksumHelper {
           done = true;
 
           if (LOG.isDebugEnabled()) {
-            if (i == 0) {
+            if (blockIdx == 0) {
               LOG.debug("set bytesPerCRC=" + bytesPerCRC
                   + ", crcPerBlock=" + crcPerBlock);
             }
             LOG.debug("got reply from " + datanodes[j] + ": md5=" + md5);
           }
         } catch (InvalidBlockTokenException ibte) {
-          if (i > lastRetriedIndex) {
+          if (blockIdx > lastRetriedIndex) {
             LOG.debug("Got access token error in response to OP_BLOCK_CHECKSUM "
                     + "for file {} for block {} from datanode {}. Will retry "
                     + "the block once.",
                 src, block, datanodes[j]);
-            lastRetriedIndex = i;
+            lastRetriedIndex = blockIdx;
             done = true; // actually it's not done; but we'll retry
-            i--; // repeat at i-th block
+            blockIdx--; // repeat at blockIdx-th block
             refetchBlocks = true;
             break;
           }
@@ -260,86 +275,73 @@ public class FileChecksumHelper {
   }
 
   static class StripedFileChecksumComputer extends FileChecksumComputer {
-    private ErasureCodingPolicy ecPolicy;
+    final private ErasureCodingPolicy ecPolicy;
+    final private int mode;
 
     public StripedFileChecksumComputer(String src, long length,
                                        LocatedBlocks blockLocations,
                                        ClientProtocol namenode,
                                        DFSClient client,
-                                       ErasureCodingPolicy ecPolicy)
-        throws IOException {
+                                       ErasureCodingPolicy ecPolicy,
+                                       int mode) throws IOException {
       super(src, length, blockLocations, namenode, client);
 
       this.ecPolicy = ecPolicy;
+      this.mode = mode;
     }
 
     @Override
     public MD5MD5CRC32FileChecksum compute() throws IOException {
-      locatedblocks = blockLocations.getLocatedBlocks();
-      long remaining = length;
-      if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
-        remaining = Math.min(length, blockLocations.getFileLength());
-      }
-
       // get block checksum for each block
-      for (int i = 0; i < locatedblocks.size() && remaining > 0; i++) {
+      for (int bgIdx = 0;
+           bgIdx < locatedblocks.size() && remaining > 0; bgIdx++) {
         if (refetchBlocks) {  // refetch to get fresh tokens
           blockLocations = client.getBlockLocations(src, length);
           locatedblocks = blockLocations.getLocatedBlocks();
           refetchBlocks = false;
         }
 
-        LocatedBlock locatedBlock = locatedblocks.get(i);
+        LocatedBlock locatedBlock = locatedblocks.get(bgIdx);
         LocatedStripedBlock blockGroup = (LocatedStripedBlock) locatedBlock;
-        getBlockGroupChecksumData(i, blockGroup);
+        getBlockGroupChecksumData(bgIdx, blockGroup);
       }
 
       return computeFileChecksum();
     }
 
-    private void getBlockGroupChecksumData(int i,
-                                           LocatedStripedBlock blockGroup) throws IOException {
-      LocatedBlock[] stripBlocks = StripedBlockUtil.parseStripedBlockGroup(
-          blockGroup, ecPolicy);
-
-      for (int idx = 0; idx < ecPolicy.getNumDataUnits(); idx++) {
-        getBlockChecksumData(i, stripBlocks[idx]);
-      }
-    }
-
-    private boolean getBlockChecksumData(int i,
-                                         LocatedBlock locatedBlock) throws IOException {
-      final ExtendedBlock block = locatedBlock.getBlock();
-      final DatanodeInfo datanode = locatedBlock.getLocations()[0];
-
+    /**
+     * TODO: retry and switch to aonther datanode in the group
+     * @param bgIdx
+     * @param blockGroup
+     * @throws IOException
+     */
+    private void getBlockGroupChecksumData(int bgIdx,
+                           LocatedStripedBlock blockGroup) throws IOException {
+      ExtendedBlock block = blockGroup.getBlock();
       int timeout = 3000 * 1 + client.getConf().getSocketTimeout();
-
-      //try the datanode location of the block
+      DatanodeInfo datanode = blockGroup.getLocations()[0];
+      Token<BlockTokenIdentifier> blockToken = blockGroup.getBlockToken();
+      StripedBlockInfo stripedBlockInfo = new StripedBlockInfo(block,
+          blockGroup.getLocations(), ecPolicy);
+      IOStreamPair pair = null;
       boolean done = false;
-      DataOutputStream out = null;
-      DataInputStream in = null;
-
       try {
         //connect to a datanode
-        IOStreamPair pair = client.connectToDN(datanode, timeout,
-            locatedBlock.getBlockToken());
-        out = new DataOutputStream(new BufferedOutputStream(pair.out,
-            client.smallBufferSize));
-        in = new DataInputStream(pair.in);
+        pair = client.connectToDN(datanode, timeout, blockToken);
 
-        LOG.debug("write to {}: {}, block={}",
-            datanode, Op.BLOCK_CHECKSUM, block);
+        LOG.debug("write to {}: {}, blockGroup={}",
+            datanode, Op.BLOCK_CHECKSUM, blockGroup);
+
         // get block MD5
-        new Sender(out).blockChecksum(block, locatedBlock.getBlockToken());
+        createSender(pair).blockGroupChecksum(stripedBlockInfo, blockToken, mode);
 
         final BlockOpResponseProto reply =
-            BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
+            BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(pair.in));
 
         String logInfo = "for block " + block + " from datanode " + datanode;
         DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
 
-        OpBlockChecksumResponseProto checksumData =
-            reply.getChecksumResponse();
+        OpBlockChecksumResponseProto checksumData = reply.getChecksumResponse();
 
         //read byte-per-checksum
         final int bpc = checksumData.getBytesPerCrc();
@@ -372,7 +374,7 @@ public class FileChecksumHelper {
         } else {
           LOG.debug("Retrieving checksum from an earlier-version DataNode: " +
               "inferring checksum by reading first byte");
-          ct = client.inferChecksumTypeByReading(locatedBlock, datanode);
+          ct = client.inferChecksumTypeByReading(blockGroup, datanode);
         }
 
         if (firstBlock) {
@@ -381,8 +383,6 @@ public class FileChecksumHelper {
           // if crc types are mixed in a file
           crcType = DataChecksum.Type.MIXED;
         }
-
-        done = true;
 
         if (firstBlock) {
           LOG.debug("set bytesPerCRC=" + bytesPerCRC
@@ -390,178 +390,19 @@ public class FileChecksumHelper {
         }
         LOG.debug("got reply from " + datanode + ": md5=" + md5);
       } catch (InvalidBlockTokenException ibte) {
-        if (i > lastRetriedIndex) {
+        if (bgIdx > lastRetriedIndex) {
           LOG.debug("Got access token error in response to OP_BLOCK_CHECKSUM "
               + "for file {} for block {} from datanode {}. Will retry "
               + "the block once.", src, block, datanode);
-          lastRetriedIndex = i;
+          lastRetriedIndex = bgIdx;
           done = true; // actually it's not done; but we'll retry
-          i--; // repeat at i-th block
+          bgIdx--; // repeat at i-th block
           refetchBlocks = true;
         }
       } catch (IOException ie) {
         LOG.warn("src=" + src + ", datanode=" + datanode, ie);
       } finally {
-        IOUtils.closeStream(in);
-        IOUtils.closeStream(out);
-      }
-
-      return done;
-    }
-  }
-
-  static class StripedFileChecksumComputer2 extends FileChecksumComputer {
-    private ErasureCodingPolicy ecPolicy;
-
-    public StripedFileChecksumComputer2(String src, long length,
-                                        LocatedBlocks blockLocations,
-                                        ClientProtocol namenode,
-                                        DFSClient client,
-                                        ErasureCodingPolicy ecPolicy)
-        throws IOException {
-      super(src, length, blockLocations, namenode, client);
-
-      this.ecPolicy = ecPolicy;
-    }
-
-    @Override
-    public MD5MD5CRC32FileChecksum compute() throws IOException {
-      locatedblocks = blockLocations.getLocatedBlocks();
-      long remaining = length;
-      if (src.contains(HdfsConstants.SEPARATOR_DOT_SNAPSHOT_DIR_SEPARATOR)) {
-        remaining = Math.min(length, blockLocations.getFileLength());
-      }
-
-      // get block checksum for each block
-      for (int i = 0; i < locatedblocks.size() && remaining > 0; i++) {
-        if (refetchBlocks) {  // refetch to get fresh tokens
-          blockLocations = client.getBlockLocations(src, length);
-          locatedblocks = blockLocations.getLocatedBlocks();
-          refetchBlocks = false;
-        }
-
-        LocatedBlock locatedBlock = locatedblocks.get(i);
-        LocatedStripedBlock blockGroup = (LocatedStripedBlock) locatedBlock;
-        getBlockGroupChecksumData(i, blockGroup);
-      }
-
-      return computeFileChecksum();
-    }
-
-    private void getBlockGroupChecksumData(int i,
-                                           LocatedStripedBlock blockGroup) throws IOException {
-      LocatedBlock[] stripBlocks = StripedBlockUtil.parseStripedBlockGroup(
-          blockGroup, ecPolicy);
-
-      int numBlocks = stripBlocks.length;
-      ExtendedBlock leadBlock = stripBlocks[0].getBlock();
-      Token<BlockTokenIdentifier> blockToken = stripBlocks[0].getBlockToken();
-      //TODO: random to choose the target Datanode
-      DatanodeInfo chosenDatanode = stripBlocks[0].getLocations()[0];
-      DatanodeInfo[] datanodes = new DatanodeInfo[numBlocks];
-      for (LocatedBlock lb : stripBlocks) {
-        datanodes[i] = lb.getLocations()[0];
-      }
-
-      StripedBlockInfo stripedBlockInfo = new StripedBlockInfo(
-          leadBlock, datanodes, ecPolicy);
-
-
-      int timeout = 3000 * numBlocks + client.getConf().getSocketTimeout();
-
-      //try the datanode location of the block
-      boolean done = false;
-      DataOutputStream out = null;
-      DataInputStream in = null;
-
-      try {
-        //connect to a datanode
-        IOStreamPair pair = client.connectToDN(chosenDatanode,
-            timeout, blockToken);
-        out = new DataOutputStream(new BufferedOutputStream(pair.out,
-            client.smallBufferSize));
-        in = new DataInputStream(pair.in);
-
-        LOG.debug("write to {}: {}, block={}",
-            chosenDatanode, Op.BLOCK_CHECKSUM, leadBlock);
-        // get block MD5
-        new Sender(out).blockGroupChecksum(stripedBlockInfo, blockToken, 1);
-
-        final BlockOpResponseProto reply =
-            BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(in));
-
-        String logInfo = "for block " + leadBlock +
-            " from datanode " + chosenDatanode;
-        DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
-
-        OpBlockChecksumResponseProto checksumData =
-            reply.getChecksumResponse();
-
-        //read byte-per-checksum
-        final int bpc = checksumData.getBytesPerCrc();
-        if (bytesPerCRC == -1) { //first block
-          bytesPerCRC = bpc;
-          firstBlock = true;
-        } else {
-          firstBlock = false;
-          if (bpc != bytesPerCRC) {
-            throw new IOException("Byte-per-checksum not matched: bpc=" + bpc
-                + " but bytesPerCRC=" + bytesPerCRC);
-          }
-        }
-
-        //read crc-per-block
-        final long cpb = checksumData.getCrcPerBlock();
-        if (firstBlock) { // first block
-          crcPerBlock = cpb;
-        }
-
-        //read md5
-        final MD5Hash md5 = new MD5Hash(
-            checksumData.getMd5().toByteArray());
-        md5.write(md5out);
-
-        // read crc-type
-        final DataChecksum.Type ct;
-        if (checksumData.hasCrcType()) {
-          ct = PBHelperClient.convert(checksumData
-              .getCrcType());
-        } else {
-          LOG.debug("Retrieving checksum from an earlier-version DataNode: " +
-              "inferring checksum by reading first byte");
-          throw new IOException("No checksum type found for block group " +
-              leadBlock);
-        }
-
-        if (firstBlock) {
-          crcType = ct;
-        } else if (crcType != DataChecksum.Type.MIXED && crcType != ct) {
-          // if crc types are mixed in a file
-          crcType = DataChecksum.Type.MIXED;
-        }
-
-        done = true;
-
-        if (firstBlock) {
-          LOG.debug("set bytesPerCRC=" + bytesPerCRC
-              + ", crcPerBlock=" + crcPerBlock);
-        }
-        LOG.debug("got reply from " + chosenDatanode + ": md5=" + md5);
-      } catch (InvalidBlockTokenException ibte) {
-        if (i > lastRetriedIndex) {
-          LOG.debug("Got access token error in response to OP_BLOCK_CHECKSUM "
-              + "for file {} for block {} from datanode {}. Will retry "
-              + "the block once.", src, leadBlock, chosenDatanode);
-          lastRetriedIndex = i;
-          done = true; // actually it's not done; but we'll retry
-          i--; // repeat at i-th block
-          refetchBlocks = true;
-        }
-      } catch (IOException ie) {
-        LOG.warn("src=" + src + ", datanode=" + chosenDatanode, ie);
-      } finally {
-        IOUtils.closeStream(in);
-        IOUtils.closeStream(out);
+        close(pair);
       }
     }
   }

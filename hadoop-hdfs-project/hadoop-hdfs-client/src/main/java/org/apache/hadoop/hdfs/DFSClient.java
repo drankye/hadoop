@@ -27,12 +27,9 @@ import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_LOCA
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_DEFAULT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_KEY;
 
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -150,6 +147,7 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.util.IOUtilsClient;
+import org.apache.hadoop.hdfs.FileChecksumHelper.*;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
@@ -1676,12 +1674,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LocatedBlocks blockLocations = getBlockLocations(src, length);
 
-    FileChecksumHelper.FileChecksumComputer maker;
+    FileChecksumComputer maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.StripedFileChecksumComputer2(src, length,
-            blockLocations, namenode, this, ecPolicy) :
-        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
+        new StripedFileChecksumComputer(src, length,
+            blockLocations, namenode, this, ecPolicy, 1) :
+        new ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
     return maker.compute();
@@ -1703,12 +1701,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LocatedBlocks blockLocations = getBlockLocations(src, length);
 
-    FileChecksumHelper.FileChecksumComputer maker;
+    FileChecksumComputer maker;
     ErasureCodingPolicy ecPolicy = blockLocations.getErasureCodingPolicy();
     maker = ecPolicy != null ?
-        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
-            blockLocations, namenode, this) :
-        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
+        new StripedFileChecksumComputer(src, length,
+            blockLocations, namenode, this, ecPolicy, 2) :
+        new ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
     return maker.compute();
