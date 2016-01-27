@@ -451,7 +451,7 @@ public class EditLogTailer {
           currentNN = nnLookup.next();
           try {
             NamenodeProtocolPB proxy = RPC.waitForProxy(NamenodeProtocolPB.class,
-                RPC.getProtocolVersion(NamenodeProtocolPB.class), currentNN.getIpcAddress(), conf);
+                RPC.getProtocolVersion(NamenodeProtocolPB.class), currentNN.getIpcAddress(), conf, 0, 0);
             cachedActiveProxy = new NamenodeProtocolTranslatorPB(proxy);
             break;
           } catch (IOException e) {
