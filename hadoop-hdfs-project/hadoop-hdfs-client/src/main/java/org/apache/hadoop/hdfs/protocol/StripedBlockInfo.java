@@ -22,6 +22,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
+import org.apache.hadoop.security.token.Token;
 
 /**
  * Striped block info that can be sent elsewhere to do block group level things,
@@ -30,26 +32,33 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class StripedBlockInfo {
-    private final ExtendedBlock block;
-    private final DatanodeInfo[] datanodes;
-    private final ErasureCodingPolicy ecPolicy;
+  private final ExtendedBlock block;
+  private final DatanodeInfo[] datanodes;
+  private final Token<BlockTokenIdentifier>[] blockTokens;
+  private final ErasureCodingPolicy ecPolicy;
 
-    public StripedBlockInfo(ExtendedBlock block, DatanodeInfo[] datanodes,
-        ErasureCodingPolicy ecPolicy) {
-      this.block = block;
-      this.datanodes = datanodes;
-      this.ecPolicy = ecPolicy;
-    }
+  public StripedBlockInfo(ExtendedBlock block, DatanodeInfo[] datanodes,
+                          Token<BlockTokenIdentifier>[] blockTokens,
+                          ErasureCodingPolicy ecPolicy) {
+    this.block = block;
+    this.datanodes = datanodes;
+    this.blockTokens = blockTokens;
+    this.ecPolicy = ecPolicy;
+  }
 
-    public ExtendedBlock getBlock() {
-      return block;
-    }
+  public ExtendedBlock getBlock() {
+    return block;
+  }
 
-    public DatanodeInfo[] getDatanodes() {
-      return datanodes;
-    }
+  public DatanodeInfo[] getDatanodes() {
+    return datanodes;
+  }
 
-    public ErasureCodingPolicy getErasureCodingPolicy() {
-      return ecPolicy;
-    }
+  public Token<BlockTokenIdentifier>[] getBlockTokens() {
+    return blockTokens;
+  }
+
+  public ErasureCodingPolicy getErasureCodingPolicy() {
+    return ecPolicy;
+  }
 }

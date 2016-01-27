@@ -323,8 +323,10 @@ public abstract class Receiver implements DataTransferProtocol {
     StripedBlockInfo stripedBlockInfo = new StripedBlockInfo(
         PBHelperClient.convert(proto.getHeader().getBlock()),
         PBHelperClient.convert(proto.getDatanodes()),
+        PBHelperClient.convertTokens(proto.getBlockTokensList()),
         PBHelperClient.convertErasureCodingPolicy(proto.getEcPolicy())
     );
+
     try {
       blockGroupChecksum(stripedBlockInfo,
           PBHelperClient.convert(proto.getHeader().getToken()), proto.getMode());

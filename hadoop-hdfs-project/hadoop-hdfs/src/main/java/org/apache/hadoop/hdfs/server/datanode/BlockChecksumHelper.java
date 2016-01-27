@@ -25,11 +25,13 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.StripedBlockInfo;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.Op;
+import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.MD5Hash;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.DataChecksum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,6 +274,7 @@ public class BlockChecksumHelper {
     final ExtendedBlock blockGroup;
     final ErasureCodingPolicy ecPolicy;
     final DatanodeInfo[] datanodes;
+    final Token<BlockTokenIdentifier>[] blockTokens;
 
     final DataOutputBuffer md5writer = new DataOutputBuffer();
 
@@ -282,6 +285,7 @@ public class BlockChecksumHelper {
       this.blockGroup = stripedBlockInfo.getBlock();
       this.ecPolicy = stripedBlockInfo.getErasureCodingPolicy();
       this.datanodes = stripedBlockInfo.getDatanodes();
+      this.blockTokens = stripedBlockInfo.getBlockTokens();
     }
 
     @Override
@@ -292,8 +296,7 @@ public class BlockChecksumHelper {
         ExtendedBlock block = StripedBlockUtil.constructInternalBlock(blockGroup,
             ecPolicy.getCellSize(), ecPolicy.getNumDataUnits(), idx);
         DatanodeInfo datanode = datanodes[idx];
-
-
+        Token<BlockTokenIdentifier> blockToken = blockTokens[idx];
       }
 
       MD5Hash md5out = MD5Hash.digest(md5writer.getData());
