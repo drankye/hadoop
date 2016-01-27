@@ -35,6 +35,7 @@ import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
@@ -76,9 +77,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_HA_NAMENODES_KEY_PREFIX;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_NAMESERVICES;
@@ -730,4 +733,32 @@ public class DFSUtilClient {
       }
     }
   }
+
+  /**
+   * A utility class as a container to put corrupted blocks, shared by client
+   * and datanode.
+   */
+  public static class CorruptedBlocks {
+    private Map<ExtendedBlock, Set<DatanodeInfo>> corruptionMap;
+
+    public CorruptedBlocks() {
+      this.corruptionMap = new HashMap<>();
+    }
+
+    public void addCorruptedBlock(ExtendedBlock blk, DatanodeInfo node) {
+      Set<DatanodeInfo> dnSet = corruptionMap.get(blk);
+      if (dnSet == null) {
+        dnSet = new HashSet<>();
+        corruptionMap.put(blk, dnSet);
+      }
+      if (!dnSet.contains(node)) {
+        dnSet.add(node);
+      }
+    }
+
+    public Map<ExtendedBlock, Set<DatanodeInfo>> getCorruptedBlocks() {
+      return corruptionMap;
+    }
+  }
+
 }
