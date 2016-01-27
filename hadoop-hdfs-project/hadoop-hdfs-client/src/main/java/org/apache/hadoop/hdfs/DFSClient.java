@@ -85,6 +85,7 @@ import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Options.ChecksumOpt;
 import org.apache.hadoop.fs.ParentNotDirectoryException;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.QuotaUsage;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.XAttr;
@@ -156,6 +157,7 @@ import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.io.retry.LossyRetryInvocationHandler;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.ipc.RpcNoSuchMethodException;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.AccessControlException;
@@ -1824,10 +1826,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
-  private long[] callGetStats() throws IOException {
+  private long getStateByIndex(int stateIndex) throws IOException {
     checkOpen();
     try (TraceScope ignored = tracer.newScope("getStats")) {
-      return namenode.getStats();
+      long[] states =  namenode.getStats();
+      return states.length > stateIndex ? states[stateIndex] : -1;
     }
   }
 
@@ -1835,8 +1838,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @see ClientProtocol#getStats()
    */
   public FsStatus getDiskStatus() throws IOException {
-    long rawNums[] = callGetStats();
-    return new FsStatus(rawNums[0], rawNums[1], rawNums[2]);
+    return new FsStatus(getStateByIndex(0),
+        getStateByIndex(1), getStateByIndex(2));
   }
 
   /**
@@ -1845,7 +1848,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @throws IOException
    */
   public long getMissingBlocksCount() throws IOException {
-    return callGetStats()[ClientProtocol.GET_STATS_MISSING_BLOCKS_IDX];
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_MISSING_BLOCKS_IDX);
   }
 
   /**
@@ -1854,8 +1858,17 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @throws IOException
    */
   public long getMissingReplOneBlocksCount() throws IOException {
-    return callGetStats()[ClientProtocol.
-        GET_STATS_MISSING_REPL_ONE_BLOCKS_IDX];
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_MISSING_REPL_ONE_BLOCKS_IDX);
+  }
+
+  /**
+   * Returns count of blocks pending on deletion.
+   * @throws IOException
+   */
+  public long getPendingDeletionBlocksCount() throws IOException {
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_PENDING_DELETION_BLOCKS_IDX);
   }
 
   /**
@@ -1863,7 +1876,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @throws IOException
    */
   public long getUnderReplicatedBlocksCount() throws IOException {
-    return callGetStats()[ClientProtocol.GET_STATS_UNDER_REPLICATED_IDX];
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_UNDER_REPLICATED_IDX);
   }
 
   /**
@@ -1871,7 +1885,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @throws IOException
    */
   public long getCorruptBlocksCount() throws IOException {
-    return callGetStats()[ClientProtocol.GET_STATS_CORRUPT_BLOCKS_IDX];
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_CORRUPT_BLOCKS_IDX);
   }
 
   /**
@@ -1881,7 +1896,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @throws IOException
    */
   public long getBytesInFutureBlocks() throws IOException {
-    return callGetStats()[ClientProtocol.GET_STATS_BYTES_IN_FUTURE_BLOCKS_IDX];
+    return getStateByIndex(ClientProtocol.
+        GET_STATS_BYTES_IN_FUTURE_BLOCKS_IDX);
   }
 
   /**
@@ -2307,6 +2323,31 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       throw re.unwrapRemoteException(AccessControlException.class,
           FileNotFoundException.class,
           UnresolvedPathException.class);
+    }
+  }
+
+  /**
+   * Get {@link QuotaUsage} rooted at the specified directory.
+   * @param src The string representation of the path
+   *
+   * @see ClientProtocol#getQuotaUsage(String)
+   */
+  QuotaUsage getQuotaUsage(String src) throws IOException {
+    checkOpen();
+    try (TraceScope ignored = newPathTraceScope("getQuotaUsage", src)) {
+      return namenode.getQuotaUsage(src);
+    } catch(RemoteException re) {
+      IOException ioe = re.unwrapRemoteException(AccessControlException.class,
+          FileNotFoundException.class,
+          UnresolvedPathException.class,
+          RpcNoSuchMethodException.class);
+      if (ioe instanceof RpcNoSuchMethodException) {
+        LOG.debug("The version of namenode doesn't support getQuotaUsage API." +
+            " Fall back to use getContentSummary API.");
+        return getContentSummary(src);
+      } else {
+        throw ioe;
+      }
     }
   }
 
