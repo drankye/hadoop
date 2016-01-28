@@ -1682,7 +1682,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         new ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
-    return maker.compute();
+    maker.compute();
+
+    return maker.fileChecksum;
   }
 
   /**
@@ -1709,7 +1711,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         new ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this);
 
-    return maker.compute();
+    maker.compute();
+
+    return maker.fileChecksum;
   }
 
   /**
