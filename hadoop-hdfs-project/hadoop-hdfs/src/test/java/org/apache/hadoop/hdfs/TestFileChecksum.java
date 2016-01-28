@@ -49,9 +49,12 @@ public class TestFileChecksum {
   private int cellSize = StripedFileTestUtil.BLOCK_STRIPED_CELL_SIZE;
   private int stripesPerBlock = 6;
   private int blockSize = cellSize * stripesPerBlock;
+  private int numBlockGroups = 10;
+  private int stripSize = cellSize * dataBlocks;
+  private int blockGroupSize = stripesPerBlock * stripSize;
+  private int fileSize = numBlockGroups * blockGroupSize;
+
   private String ecDir = "/striped";
-  // One block group
-  private int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
   private String stripedFile1 = ecDir + "/stripedFileChecksum1";
   private String stripedFile2 = ecDir + "/stripedFileChecksum2";
   private String replicatedFile = "/replicatedFileChecksum";
@@ -82,17 +85,58 @@ public class TestFileChecksum {
   }
 
   @Test
-  public void testStripedFileChecksum() throws Exception {
-    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 0);
-    FileChecksum stripedFileChecksum2 = getFileChecksum(stripedFile2, 0);
+  public void testStripedFileChecksum1() throws Exception {
+    int length = 0;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum2() throws Exception {
+    int length = stripSize - 1;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum3() throws Exception {
+    int length = stripSize;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum4() throws Exception {
+    int length = stripSize + cellSize * 2;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum5() throws Exception {
+    int length = blockGroupSize;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum6() throws Exception {
+    int length = blockGroupSize + blockSize;
+    testStripedFileChecksum(length);
+  }
+
+  @Test
+  public void testStripedFileChecksum7() throws Exception {
+    int length = -1; // whole file
+    testStripedFileChecksum(length);
+  }
+
+  void testStripedFileChecksum(int range) throws Exception {
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, range);
+    FileChecksum stripedFileChecksum2 = getFileChecksum(stripedFile2, range);
 
     Assert.assertTrue(stripedFileChecksum1.equals(stripedFileChecksum2));
   }
 
   @Test
   public void testStripedAdnReplicatedFileChecksum() throws Exception {
-    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 0);
-    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile, 0);
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 10);
+    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile, 10);
 
     Assert.assertFalse(stripedFileChecksum1.equals(replicatedFileChecksum));
   }
@@ -100,7 +144,14 @@ public class TestFileChecksum {
   private FileChecksum getFileChecksum(String filePath,
                                        int range) throws Exception {
     Path testPath = new Path(filePath);
-    FileChecksum fc = fs.getFileChecksum(testPath, range);
+    FileChecksum fc = null;
+
+    if (range >= 0) {
+      fc = fs.getFileChecksum(testPath, range);
+    } else {
+      fc = fs.getFileChecksum(testPath);
+    }
+    
     return fc;
   }
 
