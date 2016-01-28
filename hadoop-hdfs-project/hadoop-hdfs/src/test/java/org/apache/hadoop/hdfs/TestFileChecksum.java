@@ -23,6 +23,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileChecksum;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,6 +51,8 @@ public class TestFileChecksum {
   private MiniDFSCluster cluster;
   private DistributedFileSystem fs;
   private Configuration conf;
+  DFSClient client;
+
   private int cellSize = StripedFileTestUtil.BLOCK_STRIPED_CELL_SIZE;
   private int stripesPerBlock = 6;
   private int blockSize = cellSize * stripesPerBlock;
@@ -72,8 +79,12 @@ public class TestFileChecksum {
     cluster.getFileSystem().mkdir(ecPath, FsPermission.getDirDefault());
     cluster.getFileSystem().getClient().setErasureCodingPolicy(ecDir, null);
     fs = cluster.getFileSystem();
+    client = fs.getClient();
 
     prepareTestFiles();
+
+    getDataNodeToKill(stripedFile1);
+    getDataNodeToKill(replicatedFile);
   }
 
   @After
@@ -127,31 +138,56 @@ public class TestFileChecksum {
   }
 
   void testStripedFileChecksum(int range) throws Exception {
-    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, range);
-    FileChecksum stripedFileChecksum2 = getFileChecksum(stripedFile2, range);
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1,
+        range, false);
+    FileChecksum stripedFileChecksum2 = getFileChecksum(stripedFile2,
+        range, false);
 
     Assert.assertTrue(stripedFileChecksum1.equals(stripedFileChecksum2));
   }
 
   @Test
-  public void testStripedAdnReplicatedFileChecksum() throws Exception {
-    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 10);
-    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile, 10);
+  public void testStripedAndReplicatedFileChecksum() throws Exception {
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1,
+        10, false);
+    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile,
+        10, false);
 
     Assert.assertFalse(stripedFileChecksum1.equals(replicatedFileChecksum));
   }
 
-  private FileChecksum getFileChecksum(String filePath,
-                                       int range) throws Exception {
+  @Test
+  public void testStripedAndReplicatedWithFailure() throws Exception {
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1,
+        10, true);
+    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile,
+        10, true);
+
+    Assert.assertFalse(stripedFileChecksum1.equals(replicatedFileChecksum));
+  }
+
+  private FileChecksum getFileChecksum(String filePath, int range,
+                                       boolean killDn) throws Exception {
+    int dnIdxToDie = -1;
+    if (killDn) {
+      dnIdxToDie = getDataNodeToKill(filePath);
+      DataNode dnToDie = cluster.getDataNodes().get(dnIdxToDie);
+      shutdownDataNode(dnToDie);
+    }
+
     Path testPath = new Path(filePath);
-    FileChecksum fc = null;
+    FileChecksum fc;
 
     if (range >= 0) {
       fc = fs.getFileChecksum(testPath, range);
     } else {
       fc = fs.getFileChecksum(testPath);
     }
-    
+
+    if (dnIdxToDie != -1) {
+      cluster.restartDataNode(dnIdxToDie, true);
+    }
+
     return fc;
   }
 
@@ -166,5 +202,37 @@ public class TestFileChecksum {
       Path testPath = new Path(filePath);
       DFSTestUtil.writeFile(fs, testPath, fileData);
     }
+  }
+
+  void shutdownDataNode(DataNode dataNode) throws IOException {
+    /*
+     * Kill the datanode which contains one replica
+     * We need to make sure it dead in namenode: clear its update time and
+     * trigger NN to check heartbeat.
+     */
+    dataNode.shutdown();
+    cluster.setDataNodeDead(dataNode.getDatanodeId());
+  }
+
+  /**
+   * Determine the datanode that hosts the first block of the file. For simple
+   * this just returns the first datanode as it's firstly tried.
+   */
+  int getDataNodeToKill(String filePath) throws IOException {
+    LocatedBlocks locatedBlocks = client.getLocatedBlocks(filePath, 0);
+
+    LocatedBlock locatedBlock = locatedBlocks.get(0);
+    DatanodeInfo[] datanodes = locatedBlock.getLocations();
+    DatanodeInfo chosenDn = datanodes[0];
+
+    int idx = 0;
+    for (DataNode dn : cluster.getDataNodes()) {
+      if (dn.getInfoPort() == chosenDn.getInfoPort()) {
+        return idx;
+      }
+      idx++;
+    }
+
+    return -1;
   }
 }
