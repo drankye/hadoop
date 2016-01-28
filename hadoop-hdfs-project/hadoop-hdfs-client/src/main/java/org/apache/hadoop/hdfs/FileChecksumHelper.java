@@ -62,13 +62,13 @@ class FileChecksumHelper {
     final ClientProtocol namenode;
     final DataOutputBuffer md5out = new DataOutputBuffer();
 
-    List<LocatedBlock> locatedblocks;
+    List<LocatedBlock> locatedBlocks;
     long remaining = 0L;
 
     boolean firstBlock = true;
     int bytesPerCRC = -1;
     DataChecksum.Type crcType = null;
-    long crcPerBlock = -1;
+    long crcPerBlock = 0;
     boolean refetchBlocks = false;
     int lastRetriedIndex = -1;
 
@@ -87,7 +87,7 @@ class FileChecksumHelper {
         this.remaining = Math.min(length, blockLocations.getFileLength());
       }
 
-      this.locatedblocks = blockLocations.getLocatedBlocks();
+      this.locatedBlocks = blockLocations.getLocatedBlocks();
     }
 
     abstract MD5MD5CRC32FileChecksum compute() throws IOException;
@@ -106,7 +106,7 @@ class FileChecksumHelper {
           // If there is no block allocated for the file,
           // return one with the magic entry that matches what previous
           // hdfs versions return.
-          if (locatedblocks.isEmpty()) {
+          if (locatedBlocks.isEmpty()) {
             return new MD5MD5CRC32GzipFileChecksum(0, 0, fileMD5);
           }
 
@@ -142,14 +142,14 @@ class FileChecksumHelper {
     MD5MD5CRC32FileChecksum compute() throws IOException {
       // get block checksum for each block
       for (int blockIdx = 0;
-           blockIdx < locatedblocks.size() && remaining > 0; blockIdx++) {
+           blockIdx < locatedBlocks.size() && remaining >= 0; blockIdx++) {
         if (refetchBlocks) {  // refetch to get fresh tokens
           blockLocations = client.getBlockLocations(src, length);
-          locatedblocks = blockLocations.getLocatedBlocks();
+          locatedBlocks = blockLocations.getLocatedBlocks();
           refetchBlocks = false;
         }
 
-        LocatedBlock locatedBlock = locatedblocks.get(blockIdx);
+        LocatedBlock locatedBlock = locatedBlocks.get(blockIdx);
 
         getBlockChecksumData(blockIdx, locatedBlock);
       }
@@ -206,7 +206,7 @@ class FileChecksumHelper {
 
           //read crc-per-block
           final long cpb = checksumData.getCrcPerBlock();
-          if (locatedblocks.size() > 1 && blockIdx == 0) {
+          if (locatedBlocks.size() > 1 && blockIdx == 0) {
             crcPerBlock = cpb;
           }
 
@@ -291,14 +291,14 @@ class FileChecksumHelper {
     MD5MD5CRC32FileChecksum compute() throws IOException {
       // get block checksum for each block
       for (int bgIdx = 0;
-           bgIdx < locatedblocks.size() && remaining > 0; bgIdx++) {
+           bgIdx < locatedBlocks.size() && remaining >= 0; bgIdx++) {
         if (refetchBlocks) {  // refetch to get fresh tokens
           blockLocations = client.getBlockLocations(src, length);
-          locatedblocks = blockLocations.getLocatedBlocks();
+          locatedBlocks = blockLocations.getLocatedBlocks();
           refetchBlocks = false;
         }
 
-        LocatedBlock locatedBlock = locatedblocks.get(bgIdx);
+        LocatedBlock locatedBlock = locatedBlocks.get(bgIdx);
         LocatedStripedBlock blockGroup = (LocatedStripedBlock) locatedBlock;
         getBlockGroupChecksumData(bgIdx, blockGroup);
       }
@@ -355,7 +355,7 @@ class FileChecksumHelper {
 
         //read crc-per-block
         final long cpb = checksumData.getCrcPerBlock();
-        if (firstBlock) { // first block
+        if (locatedBlocks.size() > 1 && firstBlock) { // first block
           crcPerBlock = cpb;
         }
 

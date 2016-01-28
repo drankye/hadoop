@@ -36,9 +36,9 @@ import java.io.IOException;
  * layout. For simple, it assumes 6 data blocks in both files and the block size
  * are the same.
  */
-public class TestDFSStripedChecksum {
+public class TestFileChecksum {
   public static final Log LOG = LogFactory.getLog(
-      TestDFSStripedChecksum.class);
+      TestFileChecksum.class);
 
   private int dataBlocks = StripedFileTestUtil.NUM_DATA_BLOCKS;
   private int parityBlocks = StripedFileTestUtil.NUM_PARITY_BLOCKS;
@@ -46,10 +46,15 @@ public class TestDFSStripedChecksum {
   private MiniDFSCluster cluster;
   private DistributedFileSystem fs;
   private Configuration conf;
-  private final int cellSize = StripedFileTestUtil.BLOCK_STRIPED_CELL_SIZE;
-  private final int stripesPerBlock = 6;
-  private final int blockSize = cellSize * stripesPerBlock;
-  private final String ecDir = "/striped";
+  private int cellSize = StripedFileTestUtil.BLOCK_STRIPED_CELL_SIZE;
+  private int stripesPerBlock = 6;
+  private int blockSize = cellSize * stripesPerBlock;
+  private String ecDir = "/striped";
+  // One block group
+  private int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
+  private String stripedFile1 = ecDir + "/stripedFileChecksum1";
+  private String stripedFile2 = ecDir + "/stripedFileChecksum2";
+  private String replicatedFile = "/replicatedFileChecksum";
 
   @Before
   public void setup() throws IOException {
@@ -64,6 +69,8 @@ public class TestDFSStripedChecksum {
     cluster.getFileSystem().mkdir(ecPath, FsPermission.getDirDefault());
     cluster.getFileSystem().getClient().setErasureCodingPolicy(ecDir, null);
     fs = cluster.getFileSystem();
+
+    prepareTestFiles();
   }
 
   @After
@@ -76,41 +83,37 @@ public class TestDFSStripedChecksum {
 
   @Test
   public void testStripedFileChecksum() throws Exception {
-    // One block group
-    int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
-    byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
-
-    String file1 = ecDir + "/stripedFileChecksum1";
-    FileChecksum stripedFileChecksum1 = getFileChecksum(file1, fileData);
-
-    String file2 = ecDir + "/stripedFileChecksum2";
-    FileChecksum stripedFileChecksum2 = getFileChecksum(file2, fileData);
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 0);
+    FileChecksum stripedFileChecksum2 = getFileChecksum(stripedFile2, 0);
 
     Assert.assertTrue(stripedFileChecksum1.equals(stripedFileChecksum2));
   }
 
   @Test
   public void testStripedAdnReplicatedFileChecksum() throws Exception {
-    // One block group
-    int fileSize = 10 * stripesPerBlock * cellSize * dataBlocks;
-    byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
+    FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1, 0);
+    FileChecksum replicatedFileChecksum = getFileChecksum(replicatedFile, 0);
 
-    String file1 = ecDir + "/stripedFileChecksum1";
-    FileChecksum stripedFileChecksum1 = getFileChecksum(file1, fileData);
-
-    String file2 = "/replicatedFileChecksum";
-    FileChecksum stripedFileChecksum2 = getFileChecksum(file2, fileData);
-
-    Assert.assertFalse(stripedFileChecksum1.equals(stripedFileChecksum2));
+    Assert.assertFalse(stripedFileChecksum1.equals(replicatedFileChecksum));
   }
 
   private FileChecksum getFileChecksum(String filePath,
-                                       byte[] fileData) throws Exception {
+                                       int range) throws Exception {
     Path testPath = new Path(filePath);
-
-    DFSTestUtil.writeFile(fs, testPath, new String(fileData));
-
-    FileChecksum fc = fs.getFileChecksum(testPath);
+    FileChecksum fc = fs.getFileChecksum(testPath, range);
     return fc;
+  }
+
+  void prepareTestFiles() throws IOException {
+    byte[] fileData = StripedFileTestUtil.generateBytes(fileSize);
+
+    String[] filePaths = new String[] {
+        stripedFile1, stripedFile2, replicatedFile
+    };
+
+    for (String filePath : filePaths) {
+      Path testPath = new Path(filePath);
+      DFSTestUtil.writeFile(fs, testPath, fileData);
+    }
   }
 }
