@@ -156,6 +156,7 @@ public class TestFileChecksum {
     Assert.assertFalse(stripedFileChecksum1.equals(replicatedFileChecksum));
   }
 
+  //TODO: allow datanode failure
   //@Test
   public void testStripedAndReplicatedWithFailure() throws Exception {
     FileChecksum stripedFileChecksum1 = getFileChecksum(stripedFile1,

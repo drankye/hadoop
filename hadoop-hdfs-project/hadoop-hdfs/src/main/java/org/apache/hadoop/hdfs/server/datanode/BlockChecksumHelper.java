@@ -29,7 +29,6 @@ import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.OpBlockChecksumR
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.Op;
 import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos;
 import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.LengthInputStream;
@@ -73,13 +72,6 @@ class BlockChecksumHelper {
     protected Sender createSender(IOStreamPair pair) {
       DataOutputStream out = (DataOutputStream) pair.out;
       return new Sender(out);
-    }
-
-    protected void close(IOStreamPair pair) {
-      if (pair != null) {
-        IOUtils.closeStream(pair.in);
-        IOUtils.closeStream(pair.out);
-      }
     }
   }
 
@@ -311,21 +303,19 @@ class BlockChecksumHelper {
             ecPolicy.getCellSize(), ecPolicy.getNumDataUnits(), idx);
         DatanodeInfo targetDatanode = datanodes[idx];
         Token<BlockTokenIdentifier> blockToken = blockTokens[idx];
-        getBlockChecksumData(block, idx, blockToken, targetDatanode);
+        checksumBlock(block, idx, blockToken, targetDatanode);
       }
 
       MD5Hash md5out = MD5Hash.digest(md5writer.getData());
       outBytes = md5out.getDigest();
     }
 
-    private void getBlockChecksumData(ExtendedBlock block, int blockIdx,
-                                         Token<BlockTokenIdentifier> blockToken,
-                                         DatanodeInfo targetDatanode) throws IOException {
+    private void checksumBlock(ExtendedBlock block, int blockIdx,
+                               Token<BlockTokenIdentifier> blockToken,
+                               DatanodeInfo targetDatanode) throws IOException {
       int timeout = 3000;
-      IOStreamPair pair = null;
-      try {
-        //connect to a datanode
-        pair = datanode.connectToDN(targetDatanode, timeout, block, blockToken);
+      try (IOStreamPair pair = datanode.connectToDN(targetDatanode,
+          timeout, block, blockToken)) {
 
         LOG.debug("write to {}: {}, block={}",
             datanode, Op.BLOCK_CHECKSUM, block);
@@ -387,8 +377,6 @@ class BlockChecksumHelper {
         }
       } catch (IOException ie) {
         //LOG.warn("src=" + src + ", datanode=" + datanode, ie);
-      } finally {
-        close(pair);
       }
     }
   }
