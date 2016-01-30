@@ -68,7 +68,7 @@ class StripedReaders {
 
   StripedReaders(StripedReconstructor rtb,
                  BlockECRecoveryInfo recoveryInfo, DataNode datanode,
-                 Configuration conf) throws IOException {
+                 Configuration conf) {
     this.reconstrutor = rtb;
     this.datanode = datanode;
     this.conf = conf;
@@ -92,7 +92,9 @@ class StripedReaders {
         "No enough live striped blocks.");
     Preconditions.checkArgument(liveIndices.length == sources.length,
         "liveBlockIndices and source dns should match");
+  }
 
+  void init() throws IOException {
     // Store the array indices of source DNs we have read successfully.
     // In each iteration of read, the successList list may be updated if
     // some source DN is corrupted or slow. And use the updated successList

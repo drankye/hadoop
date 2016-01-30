@@ -172,6 +172,8 @@ class StripedReconstructor {
       zeroStripeIndices = new short[dataBlkNum - minRequiredSources];
     }
 
+    stripedReaders = new StripedReaders(this, recoveryInfo, datanode, conf);
+
     targets = recoveryInfo.getTargetDnInfos();
     targetStorageTypes = recoveryInfo.getTargetStorageTypes();
     targetIndices = new short[targets.length];
@@ -227,7 +229,7 @@ class StripedReconstructor {
   public void run() {
     datanode.incrementXmitsInProgress();
     try {
-      stripedReaders = new StripedReaders(this, recoveryInfo, datanode, conf);
+      stripedReaders.init();
       checksum = stripedReaders.checksum;
       initBufferSize();
 
