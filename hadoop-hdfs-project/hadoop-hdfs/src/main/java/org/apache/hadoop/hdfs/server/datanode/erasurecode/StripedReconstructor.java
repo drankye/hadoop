@@ -21,7 +21,6 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.DFSUtilClient.CorruptedBlocks;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
@@ -30,7 +29,6 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.protocol.BlockECRecoveryCommand.BlockECRecoveryInfo;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
-import org.apache.hadoop.hdfs.util.StripedBlockUtil.StripingChunkReadResult;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 import org.apache.hadoop.net.NetUtils;
@@ -40,17 +38,8 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.Future;
 
 /**
  * ReconstructAndTransferBlock recover one or more missed striped block in the
@@ -109,7 +98,7 @@ import java.util.concurrent.Future;
 class StripedReconstructor {
   private static final Logger LOG = DataNode.LOG;
 
-  private final ErasureCodingWorker worker;
+  protected final ErasureCodingWorker worker;
   private final DataNode datanode;
   private final Configuration conf;
 
@@ -126,19 +115,13 @@ class StripedReconstructor {
   protected final ExtendedBlock blockGroup;
   private final int minRequiredSources;
   // position in striped internal block
-  private long positionInBlock;
-
-  private int[] successList;
+  protected long positionInBlock;
 
   private boolean[] targetsStatus;
 
   private long maxTargetLength;
 
-  // sources
-  protected final byte[] liveIndices;
-  protected final DatanodeInfo[] sources;
-
-  private final List<StripedReader> stripedReaders;
+  private StripedReaders stripedReaders;
 
   // The buffers and indices for striped blocks whose length is 0
   private ByteBuffer[] zeroStripeBuffers;
@@ -163,14 +146,14 @@ class StripedReconstructor {
   protected int bytesPerChecksum;
   protected int checksumSize;
 
-  protected final CachingStrategy cachingStrategy;
+  private BlockECRecoveryInfo recoveryInfo;
 
-  private final Map<Future<Void>, Integer> futures = new HashMap<>();
-  private final CompletionService<Void> readService;
+  protected final CachingStrategy cachingStrategy;
 
   StripedReconstructor(ErasureCodingWorker worker,
                        BlockECRecoveryInfo recoveryInfo) {
     this.worker = worker;
+    this.recoveryInfo = recoveryInfo;
     this.datanode = worker.datanode;
     this.conf = worker.conf;
 
@@ -182,17 +165,6 @@ class StripedReconstructor {
     blockGroup = recoveryInfo.getExtendedBlock();
     final int cellsNum = (int)((blockGroup.getNumBytes() - 1) / cellSize + 1);
     minRequiredSources = Math.min(cellsNum, dataBlkNum);
-
-    liveIndices = recoveryInfo.getLiveBlockIndices();
-    sources = recoveryInfo.getSourceDnInfos();
-    stripedReaders = new ArrayList<>(sources.length);
-    readService =
-        new ExecutorCompletionService<>(worker.STRIPED_READ_THREAD_POOL);
-
-    Preconditions.checkArgument(liveIndices.length >= minRequiredSources,
-        "No enough live striped blocks.");
-    Preconditions.checkArgument(liveIndices.length == sources.length,
-        "liveBlockIndices and source dns should match");
 
     if (minRequiredSources < dataBlkNum) {
       zeroStripeBuffers =
@@ -219,12 +191,6 @@ class StripedReconstructor {
 
     getTargetIndices();
     cachingStrategy = CachingStrategy.newDefaultStrategy();
-
-    // Store the array indices of source DNs we have read successfully.
-    // In each iteration of read, the successList list may be updated if
-    // some source DN is corrupted or slow. And use the updated successList
-    // list of DNs for next iteration read.
-    successList = new int[minRequiredSources];
 
     // targetsStatus store whether some target is success, it will record
     // any failed target once, if some target failed (invalid DN or transfer
@@ -253,7 +219,7 @@ class StripedReconstructor {
         dataBlkNum, i);
   }
 
-  private long getBlockLen(ExtendedBlock blockGroup, int i) {
+  protected long getBlockLen(ExtendedBlock blockGroup, int i) {
     return StripedBlockUtil.getInternalBlockLength(blockGroup.getNumBytes(),
         cellSize, dataBlkNum, i);
   }
@@ -261,22 +227,9 @@ class StripedReconstructor {
   public void run() {
     datanode.incrementXmitsInProgress();
     try {
-      int nSuccess = 0;
-      for (int i = 0;
-           i < sources.length && nSuccess < minRequiredSources; i++) {
-        StripedReader reader = new StripedReader(this, datanode, conf, i, 0);
-        stripedReaders.add(reader);
-        if (reader.blockReader != null) {
-          initChecksumAndBufferSizeIfNeeded(reader);
-          successList[nSuccess++] = i;
-        }
-      }
-
-      if (nSuccess < minRequiredSources) {
-        String error = "Can't find minimum sources required by "
-            + "recovery, block id: " + blockGroup.getBlockId();
-        throw new IOException(error);
-      }
+      stripedReaders = new StripedReaders(this, recoveryInfo, datanode, conf);
+      checksum = stripedReaders.checksum;
+      initBufferSize();
 
       if (zeroStripeBuffers != null) {
         for (int i = 0; i < zeroStripeBuffers.length; i++) {
@@ -309,10 +262,8 @@ class StripedReconstructor {
       LOG.warn("Failed to recover striped block: " + blockGroup, e);
     } finally {
       datanode.decrementXmitsInProgress();
-      // close block readers
-      for (StripedReader StripedReader : stripedReaders) {
-        StripedReader.closeBlockReader();
-      }
+
+      stripedReaders.close();
 
       for (int i = 0; i < targets.length; i++) {
         stripedWriters[i].close();
@@ -326,14 +277,7 @@ class StripedReconstructor {
           bufferSize, maxTargetLength - positionInBlock);
       // step1: read from minimum source DNs required for reconstruction.
       // The returned success list is the source DNs we do real read from
-      CorruptedBlocks corruptedBlocks = new CorruptedBlocks();
-      try {
-        successList = readMinimumStripedData4Recovery(toRecover,
-            corruptedBlocks);
-      } finally {
-        // report corrupted blocks to NN
-        datanode.reportCorruptedBlocks(corruptedBlocks);
-      }
+      int[] successList = stripedReaders.readMinimum(toRecover);
 
       // step2: decode to reconstruct targets
       recoverTargets(successList, targetsStatus, toRecover);
@@ -349,24 +293,18 @@ class StripedReconstructor {
     }
   }
 
-  // init checksum from block reader
-  private void initChecksumAndBufferSizeIfNeeded(StripedReader stripedReader) {
-    if (checksum == null) {
-      checksum = stripedReader.blockReader.getDataChecksum();;
-      bytesPerChecksum = checksum.getBytesPerChecksum();
-      // The bufferSize is flat to divide bytesPerChecksum
-      int readBufferSize = worker.STRIPED_READ_BUFFER_SIZE;
-      bufferSize = readBufferSize < bytesPerChecksum ? bytesPerChecksum :
-          readBufferSize - readBufferSize % bytesPerChecksum;
-    } else {
-      assert stripedReader.blockReader.getDataChecksum().equals(checksum);
-    }
+  private void initBufferSize() {
+    bytesPerChecksum = checksum.getBytesPerChecksum();
+    // The bufferSize is flat to divide bytesPerChecksum
+    int readBufferSize = worker.STRIPED_READ_BUFFER_SIZE;
+    bufferSize = readBufferSize < bytesPerChecksum ? bytesPerChecksum :
+        readBufferSize - readBufferSize % bytesPerChecksum;
   }
 
   private void getTargetIndices() {
     BitSet bitset = new BitSet(dataBlkNum + parityBlkNum);
-    for (int i = 0; i < sources.length; i++) {
-      bitset.set(liveIndices[i]);
+    for (int i = 0; i < stripedReaders.sources.length; i++) {
+      bitset.set(stripedReaders.liveIndices[i]);
     }
     int m = 0;
     int k = 0;
@@ -381,97 +319,6 @@ class StripedReconstructor {
         }
       }
     }
-  }
-
-  /** the reading length should not exceed the length for recovery */
-  private int getReadLength(int index, int recoverLength) {
-    long blockLen = getBlockLen(blockGroup, index);
-    long remaining = blockLen - positionInBlock;
-    return (int) Math.min(remaining, recoverLength);
-  }
-
-  /**
-   * Read from minimum source DNs required for reconstruction in the iteration.
-   * First try the success list which we think they are the best DNs
-   * If source DN is corrupt or slow, try to read some other source DN,
-   * and will update the success list.
-   *
-   * Remember the updated success list and return it for following
-   * operations and next iteration read.
-   *
-   * @param recoverLength the length to recover.
-   * @return updated success list of source DNs we do real read
-   * @throws IOException
-   */
-  private int[] readMinimumStripedData4Recovery(int recoverLength,
-                                                CorruptedBlocks corruptedBlocks)
-      throws IOException {
-    Preconditions.checkArgument(recoverLength >= 0 &&
-        recoverLength <= bufferSize);
-    int nSuccess = 0;
-    int[] newSuccess = new int[minRequiredSources];
-    BitSet usedFlag = new BitSet(sources.length);
-    /*
-     * Read from minimum source DNs required, the success list contains
-     * source DNs which we think best.
-     */
-    for (int i = 0; i < minRequiredSources; i++) {
-      StripedReader reader = stripedReaders.get(successList[i]);
-      int toRead = getReadLength(liveIndices[successList[i]], recoverLength);
-      if (toRead > 0) {
-        Callable<Void> readCallable =
-            reader.readFromBlock(toRead, corruptedBlocks);
-        Future<Void> f = readService.submit(readCallable);
-        futures.put(f, successList[i]);
-      } else {
-        // If the read length is 0, we don't need to do real read
-        reader.getReadBuffer().position(0);
-        newSuccess[nSuccess++] = successList[i];
-      }
-      usedFlag.set(successList[i]);
-    }
-
-    while (!futures.isEmpty()) {
-      try {
-        StripingChunkReadResult result =
-            StripedBlockUtil.getNextCompletedStripedRead(
-                readService, futures, worker.STRIPED_READ_TIMEOUT_MILLIS);
-        int resultIndex = -1;
-        if (result.state == StripingChunkReadResult.SUCCESSFUL) {
-          resultIndex = result.index;
-        } else if (result.state == StripingChunkReadResult.FAILED) {
-          // If read failed for some source DN, we should not use it anymore
-          // and schedule read from another source DN.
-          StripedReader failedReader = stripedReaders.get(result.index);
-          failedReader.closeBlockReader();
-          resultIndex = scheduleNewRead(usedFlag, recoverLength, corruptedBlocks);
-        } else if (result.state == StripingChunkReadResult.TIMEOUT) {
-          // If timeout, we also schedule a new read.
-          resultIndex = scheduleNewRead(usedFlag, recoverLength, corruptedBlocks);
-        }
-        if (resultIndex >= 0) {
-          newSuccess[nSuccess++] = resultIndex;
-          if (nSuccess >= minRequiredSources) {
-            // cancel remaining reads if we read successfully from minimum
-            // number of source DNs required by reconstruction.
-            cancelReads(futures.keySet());
-            futures.clear();
-            break;
-          }
-        }
-      } catch (InterruptedException e) {
-        LOG.info("Read data interrupted.", e);
-        break;
-      }
-    }
-
-    if (nSuccess < minRequiredSources) {
-      String error = "Can't read data from minimum number of sources "
-          + "required by reconstruction, block id: " + blockGroup.getBlockId();
-      throw new IOException(error);
-    }
-
-    return newSuccess;
   }
 
   private void paddingBufferToLen(ByteBuffer buffer, int len) {
@@ -506,17 +353,17 @@ class StripedReconstructor {
     return Arrays.copyOf(result, m);
   }
 
-  private void recoverTargets(int[] success, boolean[] targetsStatus,
+  private void recoverTargets(int[] successList, boolean[] targetsStatus,
                               int toRecoverLen) {
     initDecoderIfNecessary();
     ByteBuffer[] inputs = new ByteBuffer[dataBlkNum + parityBlkNum];
-    for (int i = 0; i < success.length; i++) {
-      StripedReader reader = stripedReaders.get(success[i]);
+    for (int i = 0; i < successList.length; i++) {
+      StripedReader reader = stripedReaders.get(successList[i]);
       ByteBuffer buffer = reader.getReadBuffer();
       paddingBufferToLen(buffer, toRecoverLen);
       inputs[reader.index] = (ByteBuffer)buffer.flip();
     }
-    if (success.length < dataBlkNum) {
+    if (successList.length < dataBlkNum) {
       for (int i = 0; i < zeroStripeBuffers.length; i++) {
         ByteBuffer buffer = zeroStripeBuffers[i];
         paddingBufferToLen(buffer, toRecoverLen);
@@ -549,84 +396,6 @@ class StripedReconstructor {
   }
 
   /**
-   * Schedule a read from some new source DN if some DN is corrupted
-   * or slow, this is called from the read iteration.
-   * Initially we may only have <code>minRequiredSources</code> number of
-   * StripedBlockReader.
-   * If the position is at the end of target block, don't need to do
-   * real read, and return the array index of source DN, otherwise -1.
-   *
-   * @param used the used source DNs in this iteration.
-   * @return the array index of source DN if don't need to do real read.
-   */
-  private int scheduleNewRead(BitSet used, int recoverLength,
-                              CorruptedBlocks corruptedBlocks) {
-    StripedReader reader = null;
-    // step1: initially we may only have <code>minRequiredSources</code>
-    // number of StripedBlockReader, and there may be some source DNs we never
-    // read before, so will try to create StripedBlockReader for one new source DN
-    // and try to read from it. If found, go to step 3.
-    int m = stripedReaders.size();
-    int toRead = 0;
-    while (reader == null && m < sources.length) {
-      reader = new StripedReader(this, datanode, conf, m, positionInBlock);
-      stripedReaders.add(reader);
-      toRead = getReadLength(liveIndices[m], recoverLength);
-      if (toRead > 0) {
-        if (reader.blockReader == null) {
-          reader = null;
-          m++;
-        }
-      } else {
-        used.set(m);
-        return m;
-      }
-    }
-
-    // step2: if there is no new source DN we can use, try to find a source
-    // DN we ever read from but because some reason, e.g., slow, it
-    // is not in the success DN list at the begin of this iteration, so
-    // we have not tried it in this iteration. Now we have a chance to
-    // revisit it again.
-    for (int i = 0; reader == null && i < stripedReaders.size(); i++) {
-      if (!used.get(i)) {
-        StripedReader StripedReader = stripedReaders.get(i);
-        toRead = getReadLength(liveIndices[i], recoverLength);
-        if (toRead > 0) {
-          StripedReader.closeBlockReader();
-          StripedReader.resetBlockReader(positionInBlock);
-          if (StripedReader.blockReader != null) {
-            StripedReader.getReadBuffer().position(0);
-            m = i;
-            reader = StripedReader;
-          }
-        } else {
-          used.set(i);
-          StripedReader.getReadBuffer().position(0);
-          return i;
-        }
-      }
-    }
-
-    // step3: schedule if find a correct source DN and need to do real read.
-    if (reader != null) {
-      Callable<Void> readCallable = reader.readFromBlock(toRead, corruptedBlocks);
-      Future<Void> f = readService.submit(readCallable);
-      futures.put(f, m);
-      used.set(m);
-    }
-
-    return -1;
-  }
-
-  // cancel all reads.
-  private void cancelReads(Collection<Future<Void>> futures) {
-    for (Future<Void> future : futures) {
-      future.cancel(true);
-    }
-  }
-
-  /**
    * Send data to targets
    */
   private int transferData2Targets(boolean[] targetsStatus) {
@@ -651,11 +420,7 @@ class StripedReconstructor {
    * clear all buffers
    */
   private void clearBuffers() {
-    for (StripedReader StripedReader : stripedReaders) {
-      if (StripedReader.getReadBuffer() != null) {
-        StripedReader.getReadBuffer().clear();
-      }
-    }
+    stripedReaders.clearBuffers();
 
     if (zeroStripeBuffers != null) {
       for (ByteBuffer zeroStripeBuffer : zeroStripeBuffers) {

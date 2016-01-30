@@ -54,6 +54,7 @@ import java.util.concurrent.Callable;
 class StripedReader {
   private static final Logger LOG = DataNode.LOG;
 
+  private StripedReaders stripedReaders;
   private StripedReconstructor reconstrutor;
   private final DataNode datanode;
   private final Configuration conf;
@@ -66,18 +67,20 @@ class StripedReader {
 
   /**
    * Constructor
+   * @param stripedReaders
    * @param i the array index of sources
    * @param offsetInBlock offset for the internal block
    */
-  StripedReader(StripedReconstructor rtb, DataNode datanode,
+  StripedReader(StripedReaders stripedReaders, DataNode datanode,
                 Configuration conf,
                 int i, long offsetInBlock) {
-    this.reconstrutor = rtb;
+    this.stripedReaders = stripedReaders;
+    this.reconstrutor = stripedReaders.reconstrutor;
     this.datanode = datanode;
     this.conf = conf;
 
-    this.index = reconstrutor.liveIndices[i];
-    this.source = reconstrutor.sources[i];
+    this.index = stripedReaders.liveIndices[i];
+    this.source = stripedReaders.sources[i];
     this.block = reconstrutor.getBlock(reconstrutor.blockGroup, index);
 
     BlockReader blockReader = newBlockReader(block, offsetInBlock, source);
