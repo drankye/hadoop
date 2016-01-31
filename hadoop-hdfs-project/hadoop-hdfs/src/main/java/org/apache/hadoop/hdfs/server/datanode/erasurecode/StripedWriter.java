@@ -59,6 +59,7 @@ class StripedWriter {
   private static final Logger LOG = DataNode.LOG;
 
   private StripedReconstructor reconstrutor;
+  private StripedWriters stripedWriters;
   private final DataNode datanode;
   private final Configuration conf;
 
@@ -71,11 +72,13 @@ class StripedWriter {
 
   /**
    * Constructor
+   * @param stripedWriters
    * @param i the array index of targets
    */
-  StripedWriter(StripedReconstructor rtb, DataNode datanode,
+  StripedWriter(StripedWriters stripedWriters, DataNode datanode,
                 Configuration conf, short i) throws IOException {
-    this.reconstrutor = rtb;
+    this.stripedWriters = stripedWriters;
+    this.reconstrutor = stripedWriters.reconstructor;
     this.datanode = datanode;
     this.conf = conf;
     this.index = i;
