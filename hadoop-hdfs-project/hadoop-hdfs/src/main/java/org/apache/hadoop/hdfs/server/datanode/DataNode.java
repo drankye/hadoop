@@ -111,6 +111,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.DFSUtilClient;
+import org.apache.hadoop.hdfs.DFSUtilClient.CorruptedBlocks;
 import org.apache.hadoop.hdfs.HDFSPolicyProvider;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.client.BlockReportOptions;
@@ -1135,7 +1136,21 @@ public class DataNode extends ReconfigurableBase
     BPOfferService bpos = getBPOSForBlock(block);
     bpos.reportRemoteBadBlock(srcDataNode, block);
   }
-  
+
+  public void reportCorruptedBlocks(
+      CorruptedBlocks corruptedBlocks) throws IOException {
+    Map<ExtendedBlock, Set<DatanodeInfo>> corruptionMap =
+        corruptedBlocks.getCorruptedBlocks();
+    if (!corruptionMap.isEmpty()) {
+      for (Map.Entry<ExtendedBlock, Set<DatanodeInfo>> entry :
+          corruptionMap.entrySet()) {
+        for (DatanodeInfo dnInfo : entry.getValue()) {
+          reportRemoteBadBlock(dnInfo, entry.getKey());
+        }
+      }
+    }
+  }
+
   /**
    * Try to send an error report to the NNs associated with the given
    * block pool.

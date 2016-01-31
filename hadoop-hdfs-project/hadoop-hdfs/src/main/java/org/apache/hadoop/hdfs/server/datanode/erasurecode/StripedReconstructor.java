@@ -20,55 +20,33 @@ package org.apache.hadoop.hdfs.server.datanode.erasurecode;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.ChecksumException;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.BlockReader;
-import org.apache.hadoop.hdfs.DFSPacket;
-import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.DFSUtilClient.CorruptedBlocks;
-import org.apache.hadoop.hdfs.RemoteBlockReader2;
-import org.apache.hadoop.hdfs.net.Peer;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.datatransfer.BlockConstructionStage;
-import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
-import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataEncryptionKeyFactory;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.protocol.BlockECRecoveryCommand.BlockECRecoveryInfo;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil.StripingChunkReadResult;
-import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.erasurecode.CodecUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.RawErasureDecoder;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.DataChecksum;
 import org.slf4j.Logger;
 
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
@@ -128,7 +106,7 @@ import java.util.concurrent.Future;
  *    recovered result received by targets?
  */
 @InterfaceAudience.Private
-class ReconstructAndTransferBlock implements Runnable {
+class StripedReconstructor {
   private static final Logger LOG = DataNode.LOG;
 
   private final ErasureCodingWorker worker;
@@ -145,14 +123,20 @@ class ReconstructAndTransferBlock implements Runnable {
   // Striped read buffer size
   private int bufferSize;
 
-  private final ExtendedBlock blockGroup;
+  protected final ExtendedBlock blockGroup;
   private final int minRequiredSources;
   // position in striped internal block
   private long positionInBlock;
 
+  private int[] successList;
+
+  private boolean[] targetsStatus;
+
+  private long maxTargetLength;
+
   // sources
-  private final byte[] liveIndices;
-  private final DatanodeInfo[] sources;
+  protected final byte[] liveIndices;
+  protected final DatanodeInfo[] sources;
 
   private final List<StripedReader> stripedReaders;
 
@@ -161,34 +145,31 @@ class ReconstructAndTransferBlock implements Runnable {
   private short[] zeroStripeIndices;
 
   // targets
-  private final DatanodeInfo[] targets;
-  private final StorageType[] targetStorageTypes;
+  protected final DatanodeInfo[] targets;
+  protected final StorageType[] targetStorageTypes;
 
-  private final short[] targetIndices;
-  private final ByteBuffer[] targetBuffers;
+  protected final short[] targetIndices;
+  private StripedWriter[] stripedWriters;
 
-  private final Socket[] targetSockets;
-  private final DataOutputStream[] targetOutputStreams;
-  private final DataInputStream[] targetInputStreams;
 
-  private final long[] blockOffset4Targets;
-  private final long[] seqNo4Targets;
+  protected final long[] blockOffset4Targets;
+  protected final long[] seqNo4Targets;
 
   private final static int WRITE_PACKET_SIZE = 64 * 1024;
-  private DataChecksum checksum;
-  private int maxChunksPerPacket;
+  protected DataChecksum checksum;
+  protected int maxChunksPerPacket;
   private byte[] packetBuf;
-  private byte[] checksumBuf;
-  private int bytesPerChecksum;
-  private int checksumSize;
+  protected byte[] checksumBuf;
+  protected int bytesPerChecksum;
+  protected int checksumSize;
 
-  private final CachingStrategy cachingStrategy;
+  protected final CachingStrategy cachingStrategy;
 
   private final Map<Future<Void>, Integer> futures = new HashMap<>();
   private final CompletionService<Void> readService;
 
-  ReconstructAndTransferBlock(ErasureCodingWorker worker,
-                              BlockECRecoveryInfo recoveryInfo) {
+  StripedReconstructor(ErasureCodingWorker worker,
+                       BlockECRecoveryInfo recoveryInfo) {
     this.worker = worker;
     this.datanode = worker.datanode;
     this.conf = worker.conf;
@@ -222,14 +203,11 @@ class ReconstructAndTransferBlock implements Runnable {
     targets = recoveryInfo.getTargetDnInfos();
     targetStorageTypes = recoveryInfo.getTargetStorageTypes();
     targetIndices = new short[targets.length];
-    targetBuffers = new ByteBuffer[targets.length];
 
     Preconditions.checkArgument(targetIndices.length <= parityBlkNum,
         "Too much missed striped blocks.");
 
-    targetSockets = new Socket[targets.length];
-    targetOutputStreams = new DataOutputStream[targets.length];
-    targetInputStreams = new DataInputStream[targets.length];
+    stripedWriters = new StripedWriter[targets.length];
 
     blockOffset4Targets = new long[targets.length];
     seqNo4Targets = new long[targets.length];
@@ -241,13 +219,36 @@ class ReconstructAndTransferBlock implements Runnable {
 
     getTargetIndices();
     cachingStrategy = CachingStrategy.newDefaultStrategy();
+
+    // Store the array indices of source DNs we have read successfully.
+    // In each iteration of read, the successList list may be updated if
+    // some source DN is corrupted or slow. And use the updated successList
+    // list of DNs for next iteration read.
+    successList = new int[minRequiredSources];
+
+    // targetsStatus store whether some target is success, it will record
+    // any failed target once, if some target failed (invalid DN or transfer
+    // failed), will not transfer data to it any more.
+    targetsStatus = new boolean[targets.length];
+
+    positionInBlock = 0L;
+
+    maxTargetLength = 0L;
+    for (short targetIndex : targetIndices) {
+      maxTargetLength = Math.max(maxTargetLength,
+          getBlockLen(blockGroup, targetIndex));
+    }
   }
 
-  private ByteBuffer allocateBuffer(int length) {
+  protected ByteBuffer allocateBuffer(int length) {
     return ByteBuffer.allocate(length);
   }
 
-  private ExtendedBlock getBlock(ExtendedBlock blockGroup, int i) {
+  protected ByteBuffer allocateReadBuffer() {
+    return ByteBuffer.allocate(getBufferSize());
+  }
+
+  protected ExtendedBlock getBlock(ExtendedBlock blockGroup, int i) {
     return StripedBlockUtil.constructInternalBlock(blockGroup, cellSize,
         dataBlkNum, i);
   }
@@ -257,54 +258,21 @@ class ReconstructAndTransferBlock implements Runnable {
         cellSize, dataBlkNum, i);
   }
 
-  /**
-   * StripedReader is used to read from one source DN, it contains a block
-   * reader, buffer and striped block index.
-   * Only allocate StripedReader once for one source, and the StripedReader
-   * has the same array order with sources. Typically we only need to allocate
-   * minimum number (minRequiredSources) of StripedReader, and allocate
-   * new for new source DN if some existing DN invalid or slow.
-   * If some source DN is corrupt, set the corresponding blockReader to
-   * null and will never read from it again.
-   *
-   * @param i the array index of sources
-   * @param offsetInBlock offset for the internal block
-   * @return StripedReader
-   */
-  private StripedReader addStripedReader(int i, long offsetInBlock) {
-    final ExtendedBlock block = getBlock(blockGroup, liveIndices[i]);
-    StripedReader reader = new StripedReader(liveIndices[i], block, sources[i]);
-    stripedReaders.add(reader);
-
-    BlockReader blockReader = newBlockReader(block, offsetInBlock, sources[i]);
-    if (blockReader != null) {
-      initChecksumAndBufferSizeIfNeeded(blockReader);
-      reader.blockReader = blockReader;
-    }
-    reader.buffer = allocateBuffer(bufferSize);
-    return reader;
-  }
-
-  @Override
   public void run() {
     datanode.incrementXmitsInProgress();
     try {
-      // Store the array indices of source DNs we have read successfully.
-      // In each iteration of read, the success list may be updated if
-      // some source DN is corrupted or slow. And use the updated success
-      // list of DNs for next iteration read.
-      int[] success = new int[minRequiredSources];
-
-      int nsuccess = 0;
+      int nSuccess = 0;
       for (int i = 0;
-           i < sources.length && nsuccess < minRequiredSources; i++) {
-        StripedReader reader = addStripedReader(i, 0);
+           i < sources.length && nSuccess < minRequiredSources; i++) {
+        StripedReader reader = new StripedReader(this, datanode, conf, i, 0);
+        stripedReaders.add(reader);
         if (reader.blockReader != null) {
-          success[nsuccess++] = i;
+          initChecksumAndBufferSizeIfNeeded(reader);
+          successList[nSuccess++] = i;
         }
       }
 
-      if (nsuccess < minRequiredSources) {
+      if (nSuccess < minRequiredSources) {
         String error = "Can't find minimum sources required by "
             + "recovery, block id: " + blockGroup.getBlockId();
         throw new IOException(error);
@@ -314,10 +282,6 @@ class ReconstructAndTransferBlock implements Runnable {
         for (int i = 0; i < zeroStripeBuffers.length; i++) {
           zeroStripeBuffers[i] = allocateBuffer(bufferSize);
         }
-      }
-
-      for (int i = 0; i < targets.length; i++) {
-        targetBuffers[i] = allocateBuffer(bufferSize);
       }
 
       checksumSize = checksum.getChecksumSize();
@@ -330,46 +294,12 @@ class ReconstructAndTransferBlock implements Runnable {
       packetBuf = new byte[maxPacketSize];
       checksumBuf = new byte[checksumSize * (bufferSize / bytesPerChecksum)];
 
-      // targetsStatus store whether some target is success, it will record
-      // any failed target once, if some target failed (invalid DN or transfer
-      // failed), will not transfer data to it any more.
-      boolean[] targetsStatus = new boolean[targets.length];
       if (initTargetStreams(targetsStatus) == 0) {
         String error = "All targets are failed.";
         throw new IOException(error);
       }
 
-      long maxTargetLength = 0;
-      for (short targetIndex : targetIndices) {
-        maxTargetLength = Math.max(maxTargetLength,
-            getBlockLen(blockGroup, targetIndex));
-      }
-      while (positionInBlock < maxTargetLength) {
-        final int toRecover = (int) Math.min(
-            bufferSize, maxTargetLength - positionInBlock);
-        // step1: read from minimum source DNs required for reconstruction.
-        // The returned success list is the source DNs we do real read from
-        CorruptedBlocks corruptedBlocks = new CorruptedBlocks();
-        try {
-          success = readMinimumStripedData4Recovery(success, toRecover,
-              corruptedBlocks);
-        } finally {
-          // report corrupted blocks to NN
-          reportCorruptedBlocks(corruptedBlocks);
-        }
-
-        // step2: decode to reconstruct targets
-        recoverTargets(success, targetsStatus, toRecover);
-
-        // step3: transfer data
-        if (transferData2Targets(targetsStatus) == 0) {
-          String error = "Transfer failed for all targets.";
-          throw new IOException(error);
-        }
-
-        clearBuffers();
-        positionInBlock += toRecover;
-      }
+      reconstructAndTransfer();
 
       endTargetBlocks(targetsStatus);
 
@@ -380,28 +310,56 @@ class ReconstructAndTransferBlock implements Runnable {
     } finally {
       datanode.decrementXmitsInProgress();
       // close block readers
-      for (StripedReader stripedReader : stripedReaders) {
-        closeBlockReader(stripedReader.blockReader);
+      for (StripedReader StripedReader : stripedReaders) {
+        StripedReader.closeBlockReader();
       }
+
       for (int i = 0; i < targets.length; i++) {
-        IOUtils.closeStream(targetOutputStreams[i]);
-        IOUtils.closeStream(targetInputStreams[i]);
-        IOUtils.closeStream(targetSockets[i]);
+        stripedWriters[i].close();
       }
     }
   }
 
+  void reconstructAndTransfer() throws IOException {
+    while (positionInBlock < maxTargetLength) {
+      final int toRecover = (int) Math.min(
+          bufferSize, maxTargetLength - positionInBlock);
+      // step1: read from minimum source DNs required for reconstruction.
+      // The returned success list is the source DNs we do real read from
+      CorruptedBlocks corruptedBlocks = new CorruptedBlocks();
+      try {
+        successList = readMinimumStripedData4Recovery(toRecover,
+            corruptedBlocks);
+      } finally {
+        // report corrupted blocks to NN
+        datanode.reportCorruptedBlocks(corruptedBlocks);
+      }
+
+      // step2: decode to reconstruct targets
+      recoverTargets(successList, targetsStatus, toRecover);
+
+      // step3: transfer data
+      if (transferData2Targets(targetsStatus) == 0) {
+        String error = "Transfer failed for all targets.";
+        throw new IOException(error);
+      }
+
+      clearBuffers();
+      positionInBlock += toRecover;
+    }
+  }
+
   // init checksum from block reader
-  private void initChecksumAndBufferSizeIfNeeded(BlockReader blockReader) {
+  private void initChecksumAndBufferSizeIfNeeded(StripedReader stripedReader) {
     if (checksum == null) {
-      checksum = blockReader.getDataChecksum();
+      checksum = stripedReader.blockReader.getDataChecksum();;
       bytesPerChecksum = checksum.getBytesPerChecksum();
       // The bufferSize is flat to divide bytesPerChecksum
       int readBufferSize = worker.STRIPED_READ_BUFFER_SIZE;
       bufferSize = readBufferSize < bytesPerChecksum ? bytesPerChecksum :
           readBufferSize - readBufferSize % bytesPerChecksum;
     } else {
-      assert blockReader.getDataChecksum().equals(checksum);
+      assert stripedReader.blockReader.getDataChecksum().equals(checksum);
     }
   }
 
@@ -441,38 +399,36 @@ class ReconstructAndTransferBlock implements Runnable {
    * Remember the updated success list and return it for following
    * operations and next iteration read.
    *
-   * @param success the initial success list of source DNs we think best
    * @param recoverLength the length to recover.
    * @return updated success list of source DNs we do real read
    * @throws IOException
    */
-  private int[] readMinimumStripedData4Recovery(final int[] success,
-                                                int recoverLength, CorruptedBlocks corruptedBlocks)
+  private int[] readMinimumStripedData4Recovery(int recoverLength,
+                                                CorruptedBlocks corruptedBlocks)
       throws IOException {
     Preconditions.checkArgument(recoverLength >= 0 &&
         recoverLength <= bufferSize);
-    int nsuccess = 0;
+    int nSuccess = 0;
     int[] newSuccess = new int[minRequiredSources];
-    BitSet used = new BitSet(sources.length);
-      /*
-       * Read from minimum source DNs required, the success list contains
-       * source DNs which we think best.
-       */
+    BitSet usedFlag = new BitSet(sources.length);
+    /*
+     * Read from minimum source DNs required, the success list contains
+     * source DNs which we think best.
+     */
     for (int i = 0; i < minRequiredSources; i++) {
-      StripedReader reader = stripedReaders.get(success[i]);
-      final int toRead = getReadLength(liveIndices[success[i]],
-          recoverLength);
+      StripedReader reader = stripedReaders.get(successList[i]);
+      int toRead = getReadLength(liveIndices[successList[i]], recoverLength);
       if (toRead > 0) {
-        Callable<Void> readCallable = readFromBlock(reader, reader.buffer,
-            toRead, corruptedBlocks);
+        Callable<Void> readCallable =
+            reader.readFromBlock(toRead, corruptedBlocks);
         Future<Void> f = readService.submit(readCallable);
-        futures.put(f, success[i]);
+        futures.put(f, successList[i]);
       } else {
         // If the read length is 0, we don't need to do real read
-        reader.buffer.position(0);
-        newSuccess[nsuccess++] = success[i];
+        reader.getReadBuffer().position(0);
+        newSuccess[nSuccess++] = successList[i];
       }
-      used.set(success[i]);
+      usedFlag.set(successList[i]);
     }
 
     while (!futures.isEmpty()) {
@@ -487,16 +443,15 @@ class ReconstructAndTransferBlock implements Runnable {
           // If read failed for some source DN, we should not use it anymore
           // and schedule read from another source DN.
           StripedReader failedReader = stripedReaders.get(result.index);
-          closeBlockReader(failedReader.blockReader);
-          failedReader.blockReader = null;
-          resultIndex = scheduleNewRead(used, recoverLength, corruptedBlocks);
+          failedReader.closeBlockReader();
+          resultIndex = scheduleNewRead(usedFlag, recoverLength, corruptedBlocks);
         } else if (result.state == StripingChunkReadResult.TIMEOUT) {
           // If timeout, we also schedule a new read.
-          resultIndex = scheduleNewRead(used, recoverLength, corruptedBlocks);
+          resultIndex = scheduleNewRead(usedFlag, recoverLength, corruptedBlocks);
         }
         if (resultIndex >= 0) {
-          newSuccess[nsuccess++] = resultIndex;
-          if (nsuccess >= minRequiredSources) {
+          newSuccess[nSuccess++] = resultIndex;
+          if (nSuccess >= minRequiredSources) {
             // cancel remaining reads if we read successfully from minimum
             // number of source DNs required by reconstruction.
             cancelReads(futures.keySet());
@@ -510,7 +465,7 @@ class ReconstructAndTransferBlock implements Runnable {
       }
     }
 
-    if (nsuccess < minRequiredSources) {
+    if (nSuccess < minRequiredSources) {
       String error = "Can't read data from minimum number of sources "
           + "required by reconstruction, block id: " + blockGroup.getBlockId();
       throw new IOException(error);
@@ -557,7 +512,7 @@ class ReconstructAndTransferBlock implements Runnable {
     ByteBuffer[] inputs = new ByteBuffer[dataBlkNum + parityBlkNum];
     for (int i = 0; i < success.length; i++) {
       StripedReader reader = stripedReaders.get(success[i]);
-      ByteBuffer buffer = reader.buffer;
+      ByteBuffer buffer = reader.getReadBuffer();
       paddingBufferToLen(buffer, toRecoverLen);
       inputs[reader.index] = (ByteBuffer)buffer.flip();
     }
@@ -572,10 +527,10 @@ class ReconstructAndTransferBlock implements Runnable {
     int[] erasedIndices = getErasedIndices(targetsStatus);
     ByteBuffer[] outputs = new ByteBuffer[erasedIndices.length];
     int m = 0;
-    for (int i = 0; i < targetBuffers.length; i++) {
+    for (int i = 0; i < stripedWriters.length; i++) {
       if (targetsStatus[i]) {
-        targetBuffers[i].limit(toRecoverLen);
-        outputs[m++] = targetBuffers[i];
+        stripedWriters[i].getTargetBuffer().limit(toRecoverLen);
+        outputs[m++] = stripedWriters[i].getTargetBuffer();
       }
     }
     decoder.decode(inputs, erasedIndices, outputs);
@@ -585,9 +540,9 @@ class ReconstructAndTransferBlock implements Runnable {
         long blockLen = getBlockLen(blockGroup, targetIndices[i]);
         long remaining = blockLen - positionInBlock;
         if (remaining <= 0) {
-          targetBuffers[i].limit(0);
+          stripedWriters[i].getTargetBuffer().limit(0);
         } else if (remaining < toRecoverLen) {
-          targetBuffers[i].limit((int)remaining);
+          stripedWriters[i].getTargetBuffer().limit((int)remaining);
         }
       }
     }
@@ -597,7 +552,7 @@ class ReconstructAndTransferBlock implements Runnable {
    * Schedule a read from some new source DN if some DN is corrupted
    * or slow, this is called from the read iteration.
    * Initially we may only have <code>minRequiredSources</code> number of
-   * StripedReader.
+   * StripedBlockReader.
    * If the position is at the end of target block, don't need to do
    * real read, and return the array index of source DN, otherwise -1.
    *
@@ -608,13 +563,14 @@ class ReconstructAndTransferBlock implements Runnable {
                               CorruptedBlocks corruptedBlocks) {
     StripedReader reader = null;
     // step1: initially we may only have <code>minRequiredSources</code>
-    // number of StripedReader, and there may be some source DNs we never
-    // read before, so will try to create StripedReader for one new source DN
+    // number of StripedBlockReader, and there may be some source DNs we never
+    // read before, so will try to create StripedBlockReader for one new source DN
     // and try to read from it. If found, go to step 3.
     int m = stripedReaders.size();
     int toRead = 0;
     while (reader == null && m < sources.length) {
-      reader = addStripedReader(m, positionInBlock);
+      reader = new StripedReader(this, datanode, conf, m, positionInBlock);
+      stripedReaders.add(reader);
       toRead = getReadLength(liveIndices[m], recoverLength);
       if (toRead > 0) {
         if (reader.blockReader == null) {
@@ -634,21 +590,19 @@ class ReconstructAndTransferBlock implements Runnable {
     // revisit it again.
     for (int i = 0; reader == null && i < stripedReaders.size(); i++) {
       if (!used.get(i)) {
-        StripedReader r = stripedReaders.get(i);
+        StripedReader StripedReader = stripedReaders.get(i);
         toRead = getReadLength(liveIndices[i], recoverLength);
         if (toRead > 0) {
-          closeBlockReader(r.blockReader);
-          r.blockReader = newBlockReader(
-              getBlock(blockGroup, liveIndices[i]), positionInBlock,
-              sources[i]);
-          if (r.blockReader != null) {
-            r.buffer.position(0);
+          StripedReader.closeBlockReader();
+          StripedReader.resetBlockReader(positionInBlock);
+          if (StripedReader.blockReader != null) {
+            StripedReader.getReadBuffer().position(0);
             m = i;
-            reader = r;
+            reader = StripedReader;
           }
         } else {
           used.set(i);
-          r.buffer.position(0);
+          StripedReader.getReadBuffer().position(0);
           return i;
         }
       }
@@ -656,8 +610,7 @@ class ReconstructAndTransferBlock implements Runnable {
 
     // step3: schedule if find a correct source DN and need to do real read.
     if (reader != null) {
-      Callable<Void> readCallable = readFromBlock(reader, reader.buffer,
-          toRead, corruptedBlocks);
+      Callable<Void> readCallable = reader.readFromBlock(toRead, corruptedBlocks);
       Future<Void> f = readService.submit(readCallable);
       futures.put(f, m);
       used.set(m);
@@ -673,181 +626,34 @@ class ReconstructAndTransferBlock implements Runnable {
     }
   }
 
-  private Callable<Void> readFromBlock(final StripedReader reader,
-                                       final ByteBuffer buf, final int length,
-                                       final CorruptedBlocks corruptedBlocks) {
-    return new Callable<Void>() {
-
-      @Override
-      public Void call() throws Exception {
-        try {
-          buf.limit(length);
-          actualReadFromBlock(reader.blockReader, buf);
-          return null;
-        } catch (ChecksumException e) {
-          LOG.warn("Found Checksum error for " + reader.block + " from "
-              + reader.source + " at " + e.getPos());
-          corruptedBlocks.addCorruptedBlock(reader.block, reader.source);
-          throw e;
-        } catch (IOException e) {
-          LOG.info(e.getMessage());
-          throw e;
-        }
-      }
-
-    };
-  }
-
-  private void reportCorruptedBlocks(
-      CorruptedBlocks corruptedBlocks) throws IOException {
-    Map<ExtendedBlock, Set<DatanodeInfo>> corruptionMap =
-        corruptedBlocks.getCorruptedBlocks();
-    if (!corruptionMap.isEmpty()) {
-      for (Map.Entry<ExtendedBlock, Set<DatanodeInfo>> entry :
-          corruptionMap.entrySet()) {
-        for (DatanodeInfo dnInfo : entry.getValue()) {
-          datanode.reportRemoteBadBlock(dnInfo, entry.getKey());
-        }
-      }
-    }
-  }
-
-  /**
-   * Read bytes from block
-   */
-  private void actualReadFromBlock(BlockReader reader, ByteBuffer buf)
-      throws IOException {
-    int len = buf.remaining();
-    int n = 0;
-    while (n < len) {
-      int nread = reader.read(buf);
-      if (nread <= 0) {
-        break;
-      }
-      n += nread;
-    }
-  }
-
-  // close block reader
-  private void closeBlockReader(BlockReader blockReader) {
-    try {
-      if (blockReader != null) {
-        blockReader.close();
-      }
-    } catch (IOException e) {
-      // ignore
-    }
-  }
-
-  private InetSocketAddress getSocketAddress4Transfer(DatanodeInfo dnInfo) {
-    return NetUtils.createSocketAddr(dnInfo.getXferAddr(
-        datanode.getDnConf().getConnectToDnViaHostname()));
-  }
-
-  private BlockReader newBlockReader(final ExtendedBlock block,
-                                     long offsetInBlock, DatanodeInfo dnInfo) {
-    if (offsetInBlock >= block.getNumBytes()) {
-      return null;
-    }
-    try {
-      InetSocketAddress dnAddr = getSocketAddress4Transfer(dnInfo);
-      Token<BlockTokenIdentifier> blockToken = datanode.getBlockAccessToken(
-          block, EnumSet.of(BlockTokenIdentifier.AccessMode.READ));
-        /*
-         * This can be further improved if the replica is local, then we can
-         * read directly from DN and need to check the replica is FINALIZED
-         * state, notice we should not use short-circuit local read which
-         * requires config for domain-socket in UNIX or legacy config in Windows.
-         *
-         * TODO: add proper tracer
-         */
-      return RemoteBlockReader2.newBlockReader(
-          "dummy", block, blockToken, offsetInBlock,
-          block.getNumBytes() - offsetInBlock, true,
-          "", newConnectedPeer(block, dnAddr, blockToken, dnInfo), dnInfo,
-          null, cachingStrategy, datanode.getTracer());
-    } catch (IOException e) {
-      return null;
-    }
-  }
-
-  private Peer newConnectedPeer(ExtendedBlock b, InetSocketAddress addr,
-                                Token<BlockTokenIdentifier> blockToken, DatanodeID datanodeId)
-      throws IOException {
-    Peer peer = null;
-    boolean success = false;
-    Socket sock = null;
-    final int socketTimeout = datanode.getDnConf().getSocketTimeout();
-    try {
-      sock = NetUtils.getDefaultSocketFactory(conf).createSocket();
-      NetUtils.connect(sock, addr, socketTimeout);
-      peer = DFSUtilClient.peerFromSocketAndKey(datanode.getSaslClient(),
-          sock, datanode.getDataEncryptionKeyFactoryForBlock(b),
-          blockToken, datanodeId);
-      peer.setReadTimeout(socketTimeout);
-      success = true;
-      return peer;
-    } finally {
-      if (!success) {
-        IOUtils.cleanup(null, peer);
-        IOUtils.closeSocket(sock);
-      }
-    }
-  }
-
   /**
    * Send data to targets
    */
   private int transferData2Targets(boolean[] targetsStatus) {
-    int nsuccess = 0;
+    int nSuccess = 0;
     for (int i = 0; i < targets.length; i++) {
       if (targetsStatus[i]) {
         boolean success = false;
         try {
-          ByteBuffer buffer = targetBuffers[i];
-
-          if (buffer.remaining() == 0) {
-            continue;
-          }
-
-          checksum.calculateChunkedSums(
-              buffer.array(), 0, buffer.remaining(), checksumBuf, 0);
-
-          int ckOff = 0;
-          while (buffer.remaining() > 0) {
-            DFSPacket packet = new DFSPacket(packetBuf, maxChunksPerPacket,
-                blockOffset4Targets[i], seqNo4Targets[i]++, checksumSize, false);
-            int maxBytesToPacket = maxChunksPerPacket * bytesPerChecksum;
-            int toWrite = buffer.remaining() > maxBytesToPacket ?
-                maxBytesToPacket : buffer.remaining();
-            int ckLen = ((toWrite - 1) / bytesPerChecksum + 1) * checksumSize;
-            packet.writeChecksum(checksumBuf, ckOff, ckLen);
-            ckOff += ckLen;
-            packet.writeData(buffer, toWrite);
-
-            // Send packet
-            packet.writeTo(targetOutputStreams[i]);
-
-            blockOffset4Targets[i] += toWrite;
-            nsuccess++;
-            success = true;
-          }
+          stripedWriters[i].transferData2Target(packetBuf);
+          nSuccess++;
+          success = true;
         } catch (IOException e) {
           LOG.warn(e.getMessage());
         }
         targetsStatus[i] = success;
       }
     }
-    return nsuccess;
+    return nSuccess;
   }
 
   /**
    * clear all buffers
    */
   private void clearBuffers() {
-    for (StripedReader stripedReader : stripedReaders) {
-      if (stripedReader.buffer != null) {
-        stripedReader.buffer.clear();
+    for (StripedReader StripedReader : stripedReaders) {
+      if (StripedReader.getReadBuffer() != null) {
+        StripedReader.getReadBuffer().clear();
       }
     }
 
@@ -857,7 +663,8 @@ class ReconstructAndTransferBlock implements Runnable {
       }
     }
 
-    for (ByteBuffer targetBuffer : targetBuffers) {
+    for (StripedWriter writer : stripedWriters) {
+      ByteBuffer targetBuffer = writer.getTargetBuffer();
       if (targetBuffer != null) {
         targetBuffer.clear();
       }
@@ -869,10 +676,7 @@ class ReconstructAndTransferBlock implements Runnable {
     for (int i = 0; i < targets.length; i++) {
       if (targetsStatus[i]) {
         try {
-          DFSPacket packet = new DFSPacket(packetBuf, 0,
-              blockOffset4Targets[i], seqNo4Targets[i]++, checksumSize, true);
-          packet.writeTo(targetOutputStreams[i]);
-          targetOutputStreams[i].flush();
+          stripedWriters[i].endTargetBlock(packetBuf);
         } catch (IOException e) {
           LOG.warn(e.getMessage());
         }
@@ -885,77 +689,25 @@ class ReconstructAndTransferBlock implements Runnable {
    * and send create block request.
    */
   private int initTargetStreams(boolean[] targetsStatus) {
-    int nsuccess = 0;
-    for (int i = 0; i < targets.length; i++) {
-      Socket socket = null;
-      DataOutputStream out = null;
-      DataInputStream in = null;
-      boolean success = false;
+    int nSuccess = 0;
+    for (short i = 0; i < targets.length; i++) {
       try {
-        InetSocketAddress targetAddr =
-            getSocketAddress4Transfer(targets[i]);
-        socket = datanode.newSocket();
-        NetUtils.connect(socket, targetAddr,
-            datanode.getDnConf().getSocketTimeout());
-        socket.setSoTimeout(datanode.getDnConf().getSocketTimeout());
-
-        ExtendedBlock block = getBlock(blockGroup, targetIndices[i]);
-        Token<BlockTokenIdentifier> blockToken =
-            datanode.getBlockAccessToken(block,
-                EnumSet.of(BlockTokenIdentifier.AccessMode.WRITE));
-
-        long writeTimeout = datanode.getDnConf().getSocketWriteTimeout();
-        OutputStream unbufOut = NetUtils.getOutputStream(socket, writeTimeout);
-        InputStream unbufIn = NetUtils.getInputStream(socket);
-        DataEncryptionKeyFactory keyFactory =
-            datanode.getDataEncryptionKeyFactoryForBlock(block);
-        IOStreamPair saslStreams = datanode.getSaslClient().socketSend(
-            socket, unbufOut, unbufIn, keyFactory, blockToken, targets[i]);
-
-        unbufOut = saslStreams.out;
-        unbufIn = saslStreams.in;
-
-        out = new DataOutputStream(new BufferedOutputStream(unbufOut,
-            DFSUtilClient.getSmallBufferSize(conf)));
-        in = new DataInputStream(unbufIn);
-
-        DatanodeInfo source = new DatanodeInfo(datanode.getDatanodeId());
-        new Sender(out).writeBlock(block, targetStorageTypes[i],
-            blockToken, "", new DatanodeInfo[]{targets[i]},
-            new StorageType[]{targetStorageTypes[i]}, source,
-            BlockConstructionStage.PIPELINE_SETUP_CREATE, 0, 0, 0, 0,
-            checksum, cachingStrategy, false, false, null);
-
-        targetSockets[i] = socket;
-        targetOutputStreams[i] = out;
-        targetInputStreams[i] = in;
-        nsuccess++;
-        success = true;
+        stripedWriters[i] = new StripedWriter(this, datanode, conf, i);
+        nSuccess++;
+        targetsStatus[i] = true;
       } catch (Throwable e) {
         LOG.warn(e.getMessage());
-      } finally {
-        if (!success) {
-          IOUtils.closeStream(out);
-          IOUtils.closeStream(in);
-          IOUtils.closeStream(socket);
-        }
       }
-      targetsStatus[i] = success;
     }
-    return nsuccess;
+    return nSuccess;
   }
 
-  static class StripedReader {
-    private final short index; // internal block index
-    private BlockReader blockReader;
-    private ByteBuffer buffer;
-    private final ExtendedBlock block;
-    private final DatanodeInfo source;
+  protected InetSocketAddress getSocketAddress4Transfer(DatanodeInfo dnInfo) {
+    return NetUtils.createSocketAddr(dnInfo.getXferAddr(
+        datanode.getDnConf().getConnectToDnViaHostname()));
+  }
 
-    StripedReader(short index, ExtendedBlock block, DatanodeInfo source) {
-      this.index = index;
-      this.block = block;
-      this.source = source;
-    }
+  protected int getBufferSize() {
+    return bufferSize;
   }
 }

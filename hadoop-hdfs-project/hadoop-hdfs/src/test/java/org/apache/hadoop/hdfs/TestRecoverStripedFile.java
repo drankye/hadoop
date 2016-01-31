@@ -61,8 +61,7 @@ public class TestRecoverStripedFile {
   private static final int parityBlkNum = StripedFileTestUtil.NUM_PARITY_BLOCKS;
   private static final int cellSize = StripedFileTestUtil.BLOCK_STRIPED_CELL_SIZE;
   private static final int blockSize = cellSize * 3;
-  private static final int groupSize = dataBlkNum + parityBlkNum;
-  private static final int dnNum = groupSize + parityBlkNum;
+  private static final int dnNum = dataBlkNum + parityBlkNum + parityBlkNum;
 
   static {
     GenericTestUtils.setLogLevel(DFSClient.LOG, Level.ALL);
@@ -188,16 +187,16 @@ public class TestRecoverStripedFile {
         RecoveryType.Any, 2);
   }
   
-  @Test(timeout = 120000)
+  @Test
   public void testRecoverAnyBlocks1() throws Exception {
     int fileLen = 10 * blockSize + blockSize/10;
     assertFileBlocksRecovery("/testRecoverAnyBlocks1", fileLen,
         RecoveryType.Any, 3);
   }
 
-  private int[] generateDeadDnIndices(RecoveryType type, int deadNum,
-      byte[] indices) {
-    List<Integer> deadList = new ArrayList<>(deadNum);
+  private Integer[] generateDeadIndices(RecoveryType type, int deadNum,
+                                    byte[] indices) {
+    ArrayList<Integer> deadList = new ArrayList<>(deadNum);
     while (deadList.size() < deadNum) {
       int dead = random.nextInt(indices.length);
       boolean isOfType = true;
@@ -210,14 +209,11 @@ public class TestRecoverStripedFile {
         deadList.add(dead);
       }
     }
-    int[] d = new int[deadNum];
-    for (int i = 0; i < deadNum; i++) {
-      d[i] = deadList.get(i);
-    }
-    return d;
+
+    return deadList.toArray(new Integer[deadList.size()]);
   }
 
-  private void shutdownDataNodes(DataNode dn) throws IOException {
+  private void shutdownDataNode(DataNode dn) throws IOException {
     /*
      * Kill the datanode which contains one replica
      * We need to make sure it dead in namenode: clear its update time and
@@ -230,22 +226,22 @@ public class TestRecoverStripedFile {
   private int generateErrors(Map<ExtendedBlock, DataNode> corruptTargets,
       RecoveryType type)
     throws IOException {
-    int stoppedDN = 0;
+    int stoppedDNs = 0;
     for (Map.Entry<ExtendedBlock, DataNode> target : corruptTargets.entrySet()) {
-      if (stoppedDN == 0 || type != RecoveryType.DataOnly
+      if (stoppedDNs == 0 || type != RecoveryType.DataOnly
           || random.nextBoolean()) {
         // stop at least one DN to trigger recovery
         LOG.info("Note: stop DataNode " + target.getValue().getDisplayName()
             + " with internal block " + target.getKey());
-        shutdownDataNodes(target.getValue());
-        stoppedDN++;
+        shutdownDataNode(target.getValue());
+        stoppedDNs++;
       } else { // corrupt the data on the DN
         LOG.info("Note: corrupt data on " + target.getValue().getDisplayName()
             + " with internal block " + target.getKey());
         cluster.corruptReplica(target.getValue(), target.getKey());
       }
     }
-    return stoppedDN;
+    return stoppedDNs;
   }
 
   /**
@@ -273,39 +269,39 @@ public class TestRecoverStripedFile {
     LocatedStripedBlock lastBlock = 
         (LocatedStripedBlock)locatedBlocks.getLastLocatedBlock();
     
-    DatanodeInfo[] storageInfos = lastBlock.getLocations();
+    DatanodeInfo[] blockGroupDNs = lastBlock.getLocations();
     byte[] indices = lastBlock.getBlockIndices();
     
-    BitSet bitset = new BitSet(dnNum);
-    for (DatanodeInfo storageInfo : storageInfos) {
-      bitset.set(dnMap.get(storageInfo));
+    BitSet usedDNflags = new BitSet(dnNum);
+    for (DatanodeInfo dn : blockGroupDNs) {
+      usedDNflags.set(dnMap.get(dn));
     }
 
-    int[] dead = generateDeadDnIndices(type, toRecoverBlockNum, indices);
+    Integer[] deadIndices = generateDeadIndices(type, toRecoverBlockNum, indices);
     LOG.info("Note: indices == " + Arrays.toString(indices)
-        + ". Generate errors on datanodes: " + Arrays.toString(dead));
+        + ". Generate errors on block indices: " + Arrays.toString(deadIndices));
     
-    DatanodeInfo[] dataDNs = new DatanodeInfo[toRecoverBlockNum];
+    DatanodeInfo[] deadDNs = new DatanodeInfo[toRecoverBlockNum];
     int[] deadDnIndices = new int[toRecoverBlockNum];
     ExtendedBlock[] blocks = new ExtendedBlock[toRecoverBlockNum];
     File[] replicas = new File[toRecoverBlockNum];
     File[] metadatas = new File[toRecoverBlockNum];
     byte[][] replicaContents = new byte[toRecoverBlockNum][];
-    Map<ExtendedBlock, DataNode> errorMap = new HashMap<>(dead.length);
+    Map<ExtendedBlock, DataNode> errorMap = new HashMap<>(deadIndices.length);
     for (int i = 0; i < toRecoverBlockNum; i++) {
-      dataDNs[i] = storageInfos[dead[i]];
-      deadDnIndices[i] = dnMap.get(dataDNs[i]);
+      deadDNs[i] = blockGroupDNs[deadIndices[i]];
+      deadDnIndices[i] = dnMap.get(deadDNs[i]);
 
       // Check the block replica file on deadDn before it dead.
       blocks[i] = StripedBlockUtil.constructInternalBlock(
-          lastBlock.getBlock(), cellSize, dataBlkNum, indices[dead[i]]);
+          lastBlock.getBlock(), cellSize, dataBlkNum, indices[deadIndices[i]]);
       errorMap.put(blocks[i], cluster.getDataNodes().get(deadDnIndices[i]));
       replicas[i] = cluster.getBlockFile(deadDnIndices[i], blocks[i]);
       metadatas[i] = cluster.getBlockMetadataFile(deadDnIndices[i], blocks[i]);
       // the block replica on the datanode should be the same as expected
       assertEquals(replicas[i].length(), 
           StripedBlockUtil.getInternalBlockLength(
-          lastBlock.getBlockSize(), cellSize, dataBlkNum, indices[dead[i]]));
+          lastBlock.getBlockSize(), cellSize, dataBlkNum, indices[deadIndices[i]]));
       assertTrue(metadatas[i].getName().
           endsWith(blocks[i].getGenerationStamp() + ".meta"));
       LOG.info("replica " + i + " locates in file: " + replicas[i]);
@@ -313,26 +309,26 @@ public class TestRecoverStripedFile {
     }
     
     int cellsNum = (fileLen - 1) / cellSize + 1;
-    int groupSize = Math.min(cellsNum, dataBlkNum) + parityBlkNum;
+    int groupBlocksNum = Math.min(cellsNum, dataBlkNum) + parityBlkNum;
 
     // shutdown datanodes or generate corruption
-    int stoppedDN = generateErrors(errorMap, type);
+    int stoppedDNs = generateErrors(errorMap, type);
 
     // Check the locatedBlocks of the file again
     locatedBlocks = getLocatedBlocks(file);
     lastBlock = (LocatedStripedBlock)locatedBlocks.getLastLocatedBlock();
-    storageInfos = lastBlock.getLocations();
-    assertEquals(storageInfos.length, groupSize - stoppedDN);
+    blockGroupDNs = lastBlock.getLocations();
+    assertEquals(blockGroupDNs.length, groupBlocksNum - stoppedDNs);
 
-    int[] targetDNs = new int[dnNum - groupSize];
+    int[] targetDNs = new int[dnNum - groupBlocksNum];
     int n = 0;
     for (int i = 0; i < dnNum; i++) {
-      if (!bitset.get(i)) { // not contain replica of the block.
+      if (!usedDNflags.get(i)) { // not contain replica of the block.
         targetDNs[n++] = i;
       }
     }
     
-    waitForRecoveryFinished(file, groupSize);
+    waitForRecoveryFinished(file, groupBlocksNum);
 
     targetDNs = sortTargetsByReplicas(blocks, targetDNs);
 
@@ -374,15 +370,15 @@ public class TestRecoverStripedFile {
     return result;
   }
 
-  private LocatedBlocks waitForRecoveryFinished(Path file, int groupSize) 
+  private LocatedBlocks waitForRecoveryFinished(Path file, int groupBlocksNum)
       throws Exception {
     final int ATTEMPTS = 60;
     for (int i = 0; i < ATTEMPTS; i++) {
       LocatedBlocks locatedBlocks = getLocatedBlocks(file);
       LocatedStripedBlock lastBlock = 
           (LocatedStripedBlock)locatedBlocks.getLastLocatedBlock();
-      DatanodeInfo[] storageInfos = lastBlock.getLocations();
-      if (storageInfos.length >= groupSize) {
+      DatanodeInfo[] blockDNs = lastBlock.getLocations();
+      if (blockDNs.length >= groupBlocksNum) {
         return locatedBlocks;
       }
       Thread.sleep(1000);
