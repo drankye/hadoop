@@ -86,6 +86,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import javax.annotation.Nonnull;
 
+import static org.apache.hadoop.hdfs.util.IOUtilsClient.updateReadStatistics;
+
 /****************************************************************
  * DFSInputStream provides bytes from a named file.  It handles
  * negotiation of the namenode and various datanodes as necessary.
@@ -141,94 +143,6 @@ public class DFSInputStream extends FSInputStream
       extendedReadBuffers = new IdentityHashStore<>(0);
     }
     return extendedReadBuffers;
-  }
-
-  public static class ReadStatistics {
-    public ReadStatistics() {
-      clear();
-    }
-
-    public ReadStatistics(ReadStatistics rhs) {
-      this.totalBytesRead = rhs.getTotalBytesRead();
-      this.totalLocalBytesRead = rhs.getTotalLocalBytesRead();
-      this.totalShortCircuitBytesRead = rhs.getTotalShortCircuitBytesRead();
-      this.totalZeroCopyBytesRead = rhs.getTotalZeroCopyBytesRead();
-    }
-
-    /**
-     * @return The total bytes read.  This will always be at least as
-     * high as the other numbers, since it includes all of them.
-     */
-    public long getTotalBytesRead() {
-      return totalBytesRead;
-    }
-
-    /**
-     * @return The total local bytes read.  This will always be at least
-     * as high as totalShortCircuitBytesRead, since all short-circuit
-     * reads are also local.
-     */
-    public long getTotalLocalBytesRead() {
-      return totalLocalBytesRead;
-    }
-
-    /**
-     * @return The total short-circuit local bytes read.
-     */
-    public long getTotalShortCircuitBytesRead() {
-      return totalShortCircuitBytesRead;
-    }
-
-    /**
-     * @return The total number of zero-copy bytes read.
-     */
-    public long getTotalZeroCopyBytesRead() {
-      return totalZeroCopyBytesRead;
-    }
-
-    /**
-     * @return The total number of bytes read which were not local.
-     */
-    public long getRemoteBytesRead() {
-      return totalBytesRead - totalLocalBytesRead;
-    }
-
-    void addRemoteBytes(long amt) {
-      this.totalBytesRead += amt;
-    }
-
-    void addLocalBytes(long amt) {
-      this.totalBytesRead += amt;
-      this.totalLocalBytesRead += amt;
-    }
-
-    void addShortCircuitBytes(long amt) {
-      this.totalBytesRead += amt;
-      this.totalLocalBytesRead += amt;
-      this.totalShortCircuitBytesRead += amt;
-    }
-
-    void addZeroCopyBytes(long amt) {
-      this.totalBytesRead += amt;
-      this.totalLocalBytesRead += amt;
-      this.totalShortCircuitBytesRead += amt;
-      this.totalZeroCopyBytesRead += amt;
-    }
-
-    void clear() {
-      this.totalBytesRead = 0;
-      this.totalLocalBytesRead = 0;
-      this.totalShortCircuitBytesRead = 0;
-      this.totalZeroCopyBytesRead = 0;
-    }
-
-    private long totalBytesRead;
-
-    private long totalLocalBytesRead;
-
-    private long totalShortCircuitBytesRead;
-
-    private long totalZeroCopyBytesRead;
   }
 
   /**
@@ -751,112 +665,11 @@ public class DFSInputStream extends FSInputStream
     return ( ret <= 0 ) ? -1 : (oneByteBuf[0] & 0xff);
   }
 
-  /**
-   * Wraps different possible read implementations so that readBuffer can be
-   * strategy-agnostic.
-   */
-  interface ReaderStrategy {
-    int doRead(BlockReader blockReader, int off, int len)
-        throws IOException;
-
-    /**
-     * Copy data from the src ByteBuffer into the read buffer.
-     * @param src The src buffer where the data is copied from
-     * @param offset Useful only when the ReadStrategy is based on a byte array.
-     *               Indicate the offset of the byte array for copy.
-     * @param length Useful only when the ReadStrategy is based on a byte array.
-     *               Indicate the length of the data to copy.
-     */
-    int copyFrom(ByteBuffer src, int offset, int length);
-  }
-
-  protected void updateReadStatistics(ReadStatistics readStatistics,
-        int nRead, BlockReader blockReader) {
-    if (nRead <= 0) return;
-    synchronized(infoLock) {
-      if (blockReader.isShortCircuit()) {
-        readStatistics.addShortCircuitBytes(nRead);
-      } else if (blockReader.isLocal()) {
-        readStatistics.addLocalBytes(nRead);
-      } else {
-        readStatistics.addRemoteBytes(nRead);
-      }
-    }
-  }
-
-  /**
-   * Used to read bytes into a byte[]
-   */
-  private class ByteArrayStrategy implements ReaderStrategy {
-    final byte[] buf;
-
-    public ByteArrayStrategy(byte[] buf) {
-      this.buf = buf;
-    }
-
-    @Override
-    public int doRead(BlockReader blockReader, int off, int len)
-        throws IOException {
-      int nRead = blockReader.read(buf, off, len);
-      updateReadStatistics(readStatistics, nRead, blockReader);
-      return nRead;
-    }
-
-    @Override
-    public int copyFrom(ByteBuffer src, int offset, int length) {
-      ByteBuffer writeSlice = src.duplicate();
-      writeSlice.get(buf, offset, length);
-      return length;
-    }
-  }
-
-  /**
-   * Used to read bytes into a user-supplied ByteBuffer
-   */
-  protected class ByteBufferStrategy implements ReaderStrategy {
-    final ByteBuffer buf;
-    ByteBufferStrategy(ByteBuffer buf) {
-      this.buf = buf;
-    }
-
-    @Override
-    public int doRead(BlockReader blockReader, int off, int len)
-        throws IOException {
-      int oldpos = buf.position();
-      int oldlimit = buf.limit();
-      boolean success = false;
-      try {
-        int ret = blockReader.read(buf);
-        success = true;
-        updateReadStatistics(readStatistics, ret, blockReader);
-        if (ret == 0) {
-          DFSClient.LOG.warn("zero");
-        }
-        return ret;
-      } finally {
-        if (!success) {
-          // Reset to original state so that retries work correctly.
-          buf.position(oldpos);
-          buf.limit(oldlimit);
-        }
-      }
-    }
-
-    @Override
-    public int copyFrom(ByteBuffer src, int offset, int length) {
-      ByteBuffer writeSlice = src.duplicate();
-      int remaining = Math.min(buf.remaining(), writeSlice.remaining());
-      writeSlice.limit(writeSlice.position() + remaining);
-      buf.put(writeSlice);
-      return remaining;
-    }
-  }
-
   /* This is a used by regular read() and handles ChecksumExceptions.
    * name readBuffer() is chosen to imply similarity to readBuffer() in
    * ChecksumFileSystem
    */
-  private synchronized int readBuffer(ReaderStrategy reader, int off, int len,
+  private synchronized int readBuffer(ReaderStrategy reader, int len,
       Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
       throws IOException {
     IOException ioe;
@@ -872,7 +685,7 @@ public class DFSInputStream extends FSInputStream
     while (true) {
       // retry as many times as seekToNewSource allows.
       try {
-        return reader.doRead(blockReader, off, len);
+        return reader.readFromBlock(blockReader, len);
       } catch ( ChecksumException ce ) {
         DFSClient.LOG.warn("Found Checksum error for "
             + getCurrentBlock() + " from " + currentNode
@@ -908,61 +721,65 @@ public class DFSInputStream extends FSInputStream
     }
   }
 
-  protected synchronized int readWithStrategy(ReaderStrategy strategy, int off,
-      int len) throws IOException {
+  protected synchronized int readWithStrategy(
+      ReaderStrategy strategy) throws IOException {
     dfsClient.checkOpen();
     if (closed.get()) {
       throw new IOException("Stream closed");
     }
     Map<ExtendedBlock,Set<DatanodeInfo>> corruptedBlockMap = new HashMap<>();
     failures = 0;
-    if (pos < getFileLength()) {
-      int retries = 2;
-      while (retries > 0) {
-        try {
-          // currentNode can be left as null if previous read had a checksum
-          // error on the same block. See HDFS-3067
-          if (pos > blockEnd || currentNode == null) {
-            currentNode = blockSeekTo(pos);
-          }
-          int realLen = (int) Math.min(len, (blockEnd - pos + 1L));
-          synchronized(infoLock) {
-            if (locatedBlocks.isLastBlockComplete()) {
-              realLen = (int) Math.min(realLen,
-                  locatedBlocks.getFileLength() - pos);
-            }
-          }
-          int result = readBuffer(strategy, off, realLen, corruptedBlockMap);
+    if (pos >= getFileLength()) {
+      return -1;
+    }
 
-          if (result >= 0) {
-            pos += result;
-          } else {
-            // got a EOS from reader though we expect more data on it.
-            throw new IOException("Unexpected EOS from the reader");
-          }
-          if (dfsClient.stats != null) {
-            dfsClient.stats.incrementBytesRead(result);
-          }
-          return result;
-        } catch (ChecksumException ce) {
-          throw ce;
-        } catch (IOException e) {
-          if (retries == 1) {
-            DFSClient.LOG.warn("DFS Read", e);
-          }
-          blockEnd = -1;
-          if (currentNode != null) { addToDeadNodes(currentNode); }
-          if (--retries == 0) {
-            throw e;
-          }
-        } finally {
-          // Check if need to report block replicas corruption either read
-          // was successful or ChecksumException occured.
-          reportCheckSumFailure(corruptedBlockMap,
-              currentLocatedBlock.getLocations().length, false);
+    int retries = 2;
+    while (retries > 0) {
+      try {
+        // currentNode can be left as null if previous read had a checksum
+        // error on the same block. See HDFS-3067
+        if (pos > blockEnd || currentNode == null) {
+          currentNode = blockSeekTo(pos);
         }
+        int realLen = (int) Math.min(strategy.getTargetLength(),
+            (blockEnd - pos + 1L));
+        synchronized(infoLock) {
+          if (locatedBlocks.isLastBlockComplete()) {
+            realLen = (int) Math.min(realLen,
+                locatedBlocks.getFileLength() - pos);
+          }
+        }
+        int result = readBuffer(strategy, realLen, corruptedBlockMap);
+
+        if (result >= 0) {
+          pos += result;
+        } else {
+          // got a EOS from reader though we expect more data on it.
+          throw new IOException("Unexpected EOS from the reader");
+        }
+        if (dfsClient.stats != null) {
+          dfsClient.stats.incrementBytesRead(result);
+        }
+        return result;
+      } catch (ChecksumException ce) {
+        throw ce;
+      } catch (IOException e) {
+        if (retries == 1) {
+          DFSClient.LOG.warn("DFS Read", e);
+        }
+        blockEnd = -1;
+        if (currentNode != null) { addToDeadNodes(currentNode); }
+        if (--retries == 0) {
+          throw e;
+        }
+      } finally {
+        // Check if need to report block replicas corruption either read
+        // was successful or ChecksumException occured.
+        reportCheckSumFailure(corruptedBlockMap,
+            currentLocatedBlock.getLocations().length, false);
       }
     }
+
     return -1;
   }
 
@@ -972,11 +789,12 @@ public class DFSInputStream extends FSInputStream
   @Override
   public synchronized int read(@Nonnull final byte buf[], int off, int len)
       throws IOException {
-    ReaderStrategy byteArrayReader = new ByteArrayStrategy(buf);
+    ReaderStrategy byteArrayReader = new ByteArrayStrategy(buf, off, len,
+        readStatistics);
     try (TraceScope scope =
              dfsClient.newReaderTraceScope("DFSInputStream#byteArrayRead",
                  src, getPos(), len)) {
-      int retLen = readWithStrategy(byteArrayReader, off, len);
+      int retLen = readWithStrategy(byteArrayReader);
       if (retLen < len) {
         dfsClient.addRetLenToReaderScope(scope, retLen);
       }
@@ -986,12 +804,13 @@ public class DFSInputStream extends FSInputStream
 
   @Override
   public synchronized int read(final ByteBuffer buf) throws IOException {
-    ReaderStrategy byteBufferReader = new ByteBufferStrategy(buf);
+    ReaderStrategy byteBufferReader =
+        new ByteBufferStrategy(buf, readStatistics);
     int reqLen = buf.remaining();
     try (TraceScope scope =
              dfsClient.newReaderTraceScope("DFSInputStream#byteBufferRead",
                  src, getPos(), reqLen)){
-      int retLen = readWithStrategy(byteBufferReader, 0, reqLen);
+      int retLen = readWithStrategy(byteBufferReader);
       if (retLen < reqLen) {
         dfsClient.addRetLenToReaderScope(scope, retLen);
       }
