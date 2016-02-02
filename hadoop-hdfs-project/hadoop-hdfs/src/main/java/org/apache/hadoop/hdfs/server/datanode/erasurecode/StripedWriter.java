@@ -88,7 +88,7 @@ class StripedWriter {
     this.targetBuffer = reconstrutor.allocateBuffer(reconstrutor.getBufferSize());
 
     this.block = reconstrutor.getBlock(reconstrutor.blockGroup,
-        reconstrutor.targetIndices[i]);
+        stripedWriters.getTargetIndices()[i]);
 
     createTargetStream(i);
   }
@@ -138,7 +138,7 @@ class StripedWriter {
           blockToken, "", new DatanodeInfo[]{stripedWriters.targets[i]},
           new StorageType[]{stripedWriters.targetStorageTypes[i]}, source,
           BlockConstructionStage.PIPELINE_SETUP_CREATE, 0, 0, 0, 0,
-          reconstrutor.checksum, reconstrutor.cachingStrategy, false, false, null);
+          reconstrutor.getChecksum(), reconstrutor.cachingStrategy, false, false, null);
 
       targetSocket = socket;
       targetOutputStream = out;
@@ -162,7 +162,7 @@ class StripedWriter {
       return;
     }
 
-    reconstrutor.checksum.calculateChunkedSums(
+    reconstrutor.getChecksum().calculateChunkedSums(
         targetBuffer.array(), 0, targetBuffer.remaining(), stripedWriters.checksumBuf, 0);
 
     int ckOff = 0;

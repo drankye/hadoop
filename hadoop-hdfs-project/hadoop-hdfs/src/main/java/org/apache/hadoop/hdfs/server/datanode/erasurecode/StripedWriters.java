@@ -28,10 +28,12 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.protocol.BlockECRecoveryCommand.BlockECRecoveryInfo;
+import org.apache.hadoop.util.DataChecksum;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.BitSet;
 
 @InterfaceAudience.Private
 class StripedWriters {
@@ -47,17 +49,14 @@ class StripedWriters {
   private final int cellSize;
 
   protected final ExtendedBlock blockGroup;
-  private final int minRequiredSources;
 
   protected boolean[] targetsStatus;
 
-  private long maxTargetLength;
-
   // targets
   protected final DatanodeInfo[] targets;
+  private final short[] targetIndices;
   protected final StorageType[] targetStorageTypes;
-
-  protected final short[] targetIndices;
+  private long maxTargetLength;
 
   private StripedWriter[] writers;
 
@@ -82,16 +81,22 @@ class StripedWriters {
 
     blockGroup = recoveryInfo.getExtendedBlock();
     final int cellsNum = (int)((blockGroup.getNumBytes() - 1) / cellSize + 1);
-    minRequiredSources = Math.min(cellsNum, dataBlkNum);
 
     targets = recoveryInfo.getTargetDnInfos();
     targetStorageTypes = recoveryInfo.getTargetStorageTypes();
-    targetIndices = new short[targets.length];
-
-    Preconditions.checkArgument(targetIndices.length <= parityBlkNum,
-        "Too much missed striped blocks.");
 
     writers = new StripedWriter[targets.length];
+
+    targetIndices = new short[targets.length];
+    Preconditions.checkArgument(targetIndices.length <= parityBlkNum,
+        "Too much missed striped blocks.");
+    initTargetIndices();
+
+    maxTargetLength = 0L;
+    for (short targetIndex : targetIndices) {
+      maxTargetLength = Math.max(maxTargetLength,
+          reconstructor.getBlockLen(blockGroup, targetIndex));
+    }
 
     cachingStrategy = CachingStrategy.newDefaultStrategy();
 
@@ -99,17 +104,12 @@ class StripedWriters {
     // any failed target once, if some target failed (invalid DN or transfer
     // failed), will not transfer data to it any more.
     targetsStatus = new boolean[targets.length];
-
-    maxTargetLength = 0L;
-    for (short targetIndex : targetIndices) {
-      maxTargetLength = Math.max(maxTargetLength,
-          reconstructor.getBlockLen(blockGroup, targetIndex));
-    }
   }
 
   void init() throws IOException {
-    checksumSize = reconstructor.checksum.getChecksumSize();
-    bytesPerChecksum = reconstructor.checksum.getBytesPerChecksum();
+    DataChecksum checksum = reconstructor.getChecksum();
+    checksumSize = checksum.getChecksumSize();
+    bytesPerChecksum = checksum.getBytesPerChecksum();
     int chunkSize = bytesPerChecksum + checksumSize;
     maxChunksPerPacket = Math.max(
         (WRITE_PACKET_SIZE - PacketHeader.PKT_MAX_HEADER_LEN) / chunkSize, 1);
@@ -125,6 +125,22 @@ class StripedWriters {
     }
   }
 
+  private void initTargetIndices() {
+    BitSet bitset = reconstructor.getLiveBitSet();
+
+    int m = 0;
+    int k = 0;
+    for (int i = 0; i < dataBlkNum + parityBlkNum; i++) {
+      if (!bitset.get(i)) {
+        if (reconstructor.getBlockLen(blockGroup, i) > 0) {
+          if (m < targets.length) {
+            targetIndices[m++] = (short)i;
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Send data to targets
    */
@@ -134,7 +150,7 @@ class StripedWriters {
       if (targetsStatus[i]) {
         boolean success = false;
         try {
-          get(i).transferData2Target(packetBuf);
+          getWriter(i).transferData2Target(packetBuf);
           nSuccess++;
           success = true;
         } catch (IOException e) {
@@ -189,17 +205,78 @@ class StripedWriters {
     return nSuccess;
   }
 
+  int getTargets() {
+    return targets.length;
+  }
+
+  int getRealTargets() {
+    int m = 0;
+    for (int i = 0; i < targets.length; i++) {
+      if (targetsStatus[i]) {
+        m++;
+      }
+    }
+    return m;
+  }
+
+  int[] getRealTargetIndices() {
+    int realTargets = getRealTargets();
+    int[] results = new int[realTargets];
+    int m = 0;
+    for (int i = 0; i < targets.length; i++) {
+      if (targetsStatus[i]) {
+        results[m++] = targetIndices[i];
+      }
+    }
+    return results;
+  }
+
+  ByteBuffer[] getRealTargetBuffers(int toRecoverLen) {
+    int numGood = getRealTargets();
+    ByteBuffer[] outputs = new ByteBuffer[numGood];
+    int m = 0;
+    for (int i = 0; i < targets.length; i++) {
+      if (targetsStatus[i]) {
+        getWriter(i).getTargetBuffer().limit(toRecoverLen);
+        outputs[m++] = getWriter(i).getTargetBuffer();
+      }
+    }
+    return outputs;
+  }
+
+  void updateRealTargetBuffers(int toRecoverLen) {;
+    for (int i = 0; i < targets.length; i++) {
+      if (targetsStatus[i]) {
+        long blockLen = reconstructor.getBlockLen(blockGroup, targetIndices[i]);
+        long remaining = blockLen - reconstructor.getPositionInBlock();
+        if (remaining <= 0) {
+          getWriter(i).getTargetBuffer().limit(0);
+        } else if (remaining < toRecoverLen) {
+          getWriter(i).getTargetBuffer().limit((int)remaining);
+        }
+      }
+    }
+  }
+
+  StripedWriter getWriter(int index) {
+    return writers[index];
+  }
+
+  short[] getTargetIndices() {
+    return targetIndices;
+  }
+
+  int getNumWriters() {
+    return writers.length;
+  }
+
+  long getMaxTargetLength() {
+    return maxTargetLength;
+  }
+
   void close() {
     for (int i = 0; i < targets.length; i++) {
       writers[i].close();
     }
-  }
-
-  StripedWriter get(int i) {
-    return writers[i];
-  }
-
-  public int getNum() {
-    return writers.length;
   }
 }

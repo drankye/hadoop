@@ -41,29 +41,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 @InterfaceAudience.Private
 public final class ErasureCodingWorker {
   private static final Logger LOG = DataNode.LOG;
-  
+
   protected final DataNode datanode;
   protected final Configuration conf;
 
   private ThreadPoolExecutor STRIPED_BLK_RECOVERY_THREAD_POOL;
   protected ThreadPoolExecutor STRIPED_READ_THREAD_POOL;
-  protected final int STRIPED_READ_TIMEOUT_MILLIS;
-  protected final int STRIPED_READ_BUFFER_SIZE;
 
   public ErasureCodingWorker(Configuration conf, DataNode datanode) {
     this.datanode = datanode;
     this.conf = conf;
 
-    STRIPED_READ_TIMEOUT_MILLIS = conf.getInt(
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_TIMEOUT_MILLIS_KEY,
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_TIMEOUT_MILLIS_DEFAULT);
     initializeStripedReadThreadPool(conf.getInt(
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THREADS_KEY, 
+        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THREADS_KEY,
         DFSConfigKeys.DFS_DATANODE_STRIPED_READ_THREADS_DEFAULT));
-    STRIPED_READ_BUFFER_SIZE = conf.getInt(
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_BUFFER_SIZE_KEY,
-        DFSConfigKeys.DFS_DATANODE_STRIPED_READ_BUFFER_SIZE_DEFAULT);
-
     initializeStripedBlkRecoveryThreadPool(conf.getInt(
         DFSConfigKeys.DFS_DATANODE_STRIPED_BLK_RECOVERY_THREADS_KEY,
         DFSConfigKeys.DFS_DATANODE_STRIPED_BLK_RECOVERY_THREADS_DEFAULT));
@@ -75,15 +66,15 @@ public final class ErasureCodingWorker {
     STRIPED_READ_THREAD_POOL = new ThreadPoolExecutor(1, num, 60,
         TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
         new Daemon.DaemonFactory() {
-      private final AtomicInteger threadIndex = new AtomicInteger(0);
+          private final AtomicInteger threadIndex = new AtomicInteger(0);
 
-      @Override
-      public Thread newThread(Runnable r) {
-        Thread t = super.newThread(r);
-        t.setName("stripedRead-" + threadIndex.getAndIncrement());
-        return t;
-      }
-    }, new ThreadPoolExecutor.CallerRunsPolicy() {
+          @Override
+          public Thread newThread(Runnable r) {
+            Thread t = super.newThread(r);
+            t.setName("stripedRead-" + threadIndex.getAndIncrement());
+            return t;
+          }
+        }, new ThreadPoolExecutor.CallerRunsPolicy() {
       @Override
       public void rejectedExecution(Runnable runnable, ThreadPoolExecutor e) {
         LOG.info("Execution for striped reading rejected, "
@@ -114,7 +105,7 @@ public final class ErasureCodingWorker {
 
   /**
    * Handles the Erasure Coding recovery work commands.
-   * 
+   *
    * @param ecTasks
    *          BlockECRecoveryInfo
    */

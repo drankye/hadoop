@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.server.datanode.erasurecode;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
@@ -36,7 +35,6 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.BitSet;
 
 /**
@@ -107,26 +105,15 @@ class StripedReconstructor {
 
   private RawErasureDecoder decoder;
 
-  // Striped read buffer size
-  private int bufferSize;
-
   protected final ExtendedBlock blockGroup;
-  private final int minRequiredSources;
+  private final BitSet liveBitSet;
+
   // position in striped internal block
   protected long positionInBlock;
 
-  private long maxTargetLength;
-
   protected StripedReaders stripedReaders;
 
-  // The buffers and indices for striped blocks whose length is 0
-  private ByteBuffer[] zeroStripeBuffers;
-  private short[] zeroStripeIndices;
-
-  protected final short[] targetIndices;
   private StripedWriters stripedWriters;
-
-  protected DataChecksum checksum;
 
   private BlockECRecoveryInfo recoveryInfo;
 
@@ -145,41 +132,26 @@ class StripedReconstructor {
     cellSize = ecPolicy.getCellSize();
 
     blockGroup = recoveryInfo.getExtendedBlock();
-    final int cellsNum = (int)((blockGroup.getNumBytes() - 1) / cellSize + 1);
-    minRequiredSources = Math.min(cellsNum, dataBlkNum);
-
-    if (minRequiredSources < dataBlkNum) {
-      zeroStripeBuffers =
-          new ByteBuffer[dataBlkNum - minRequiredSources];
-      zeroStripeIndices = new short[dataBlkNum - minRequiredSources];
+    byte[] liveIndices = recoveryInfo.getLiveBlockIndices();
+    liveBitSet = new BitSet(dataBlkNum + parityBlkNum);
+    for (int i = 0; i < liveIndices.length; i++) {
+      liveBitSet.set(liveIndices[i]);
     }
 
     stripedReaders = new StripedReaders(this, recoveryInfo, datanode, conf);
     stripedWriters = new StripedWriters(this, recoveryInfo);
 
-    targetIndices = new short[stripedWriters.targets.length];
-
-    Preconditions.checkArgument(targetIndices.length <= parityBlkNum,
-        "Too much missed striped blocks.");
-
-    getTargetIndices();
     cachingStrategy = CachingStrategy.newDefaultStrategy();
 
     positionInBlock = 0L;
+  }
 
-    maxTargetLength = 0L;
-    for (short targetIndex : targetIndices) {
-      maxTargetLength = Math.max(maxTargetLength,
-          getBlockLen(blockGroup, targetIndex));
-    }
+  protected BitSet getLiveBitSet() {
+    return liveBitSet;
   }
 
   protected ByteBuffer allocateBuffer(int length) {
     return ByteBuffer.allocate(length);
-  }
-
-  protected ByteBuffer allocateReadBuffer() {
-    return ByteBuffer.allocate(getBufferSize());
   }
 
   protected ExtendedBlock getBlock(ExtendedBlock blockGroup, int i) {
@@ -196,14 +168,6 @@ class StripedReconstructor {
     datanode.incrementXmitsInProgress();
     try {
       stripedReaders.init();
-      checksum = stripedReaders.checksum;
-      initBufferSize();
-
-      if (zeroStripeBuffers != null) {
-        for (int i = 0; i < zeroStripeBuffers.length; i++) {
-          zeroStripeBuffers[i] = allocateBuffer(bufferSize);
-        }
-      }
 
       stripedWriters.init();
 
@@ -225,15 +189,15 @@ class StripedReconstructor {
   }
 
   void reconstructAndTransfer() throws IOException {
-    while (positionInBlock < maxTargetLength) {
-      final int toRecover = (int) Math.min(
-          bufferSize, maxTargetLength - positionInBlock);
+    while (positionInBlock < stripedWriters.getMaxTargetLength()) {
+      long remaining = stripedWriters.getMaxTargetLength() - positionInBlock;
+      final int toRecoverLen = (int) Math.min(stripedReaders.getBufferSize(), remaining);
       // step1: read from minimum source DNs required for reconstruction.
       // The returned success list is the source DNs we do real read from
-      int[] successList = stripedReaders.readMinimum(toRecover);
+      stripedReaders.readMinimum(toRecoverLen);
 
       // step2: decode to reconstruct targets
-      recoverTargets(successList, toRecover);
+      recoverTargets(toRecoverLen);
 
       // step3: transfer data
       if (stripedWriters.transferData2Targets() == 0) {
@@ -241,46 +205,9 @@ class StripedReconstructor {
         throw new IOException(error);
       }
 
+      positionInBlock += toRecoverLen;
+
       clearBuffers();
-      positionInBlock += toRecover;
-    }
-  }
-
-  private void initBufferSize() {
-    int bytesPerChecksum = checksum.getBytesPerChecksum();
-    // The bufferSize is flat to divide bytesPerChecksum
-    int readBufferSize = worker.STRIPED_READ_BUFFER_SIZE;
-    bufferSize = readBufferSize < bytesPerChecksum ? bytesPerChecksum :
-        readBufferSize - readBufferSize % bytesPerChecksum;
-  }
-
-  private void getTargetIndices() {
-    BitSet bitset = new BitSet(dataBlkNum + parityBlkNum);
-    for (int i = 0; i < stripedReaders.sources.length; i++) {
-      bitset.set(stripedReaders.liveIndices[i]);
-    }
-    int m = 0;
-    int k = 0;
-    for (int i = 0; i < dataBlkNum + parityBlkNum; i++) {
-      if (!bitset.get(i)) {
-        if (getBlockLen(blockGroup, i) > 0) {
-          if (m < stripedWriters.targets.length) {
-            targetIndices[m++] = (short)i;
-          }
-        } else {
-          zeroStripeIndices[k++] = (short)i;
-        }
-      }
-    }
-  }
-
-  private void paddingBufferToLen(ByteBuffer buffer, int len) {
-    if (len > buffer.limit()) {
-      buffer.limit(len);
-    }
-    int toPadding = len - buffer.position();
-    for (int i = 0; i < toPadding; i++) {
-      buffer.put((byte) 0);
     }
   }
 
@@ -295,59 +222,21 @@ class StripedReconstructor {
     return CodecUtil.createRSRawDecoder(conf, numDataUnits, numParityUnits);
   }
 
-  private int[] getErasedIndices(boolean[] targetsStatus) {
-    int[] result = new int[stripedWriters.targets.length];
-    int m = 0;
-    for (int i = 0; i < stripedWriters.targets.length; i++) {
-      if (targetsStatus[i]) {
-        result[m++] = targetIndices[i];
-      }
-    }
-    return Arrays.copyOf(result, m);
-  }
-
-  private void recoverTargets(int[] successList, int toRecoverLen) {
+  private void recoverTargets(int toRecoverLen) {
     initDecoderIfNecessary();
-    ByteBuffer[] inputs = new ByteBuffer[dataBlkNum + parityBlkNum];
-    for (int i = 0; i < successList.length; i++) {
-      StripedReader reader = stripedReaders.get(successList[i]);
-      ByteBuffer buffer = reader.getReadBuffer();
-      paddingBufferToLen(buffer, toRecoverLen);
-      inputs[reader.index] = (ByteBuffer)buffer.flip();
-    }
-    if (successList.length < dataBlkNum) {
-      for (int i = 0; i < zeroStripeBuffers.length; i++) {
-        ByteBuffer buffer = zeroStripeBuffers[i];
-        paddingBufferToLen(buffer, toRecoverLen);
-        int index = zeroStripeIndices[i];
-        inputs[index] = (ByteBuffer)buffer.flip();
-      }
-    }
 
-    boolean[] targetsStatus = stripedWriters.targetsStatus;
+    ByteBuffer[] inputs = stripedReaders.getInputBuffers(toRecoverLen);
 
-    int[] erasedIndices = getErasedIndices(targetsStatus);
-    ByteBuffer[] outputs = new ByteBuffer[erasedIndices.length];
-    int m = 0;
-    for (int i = 0; i < stripedWriters.getNum(); i++) {
-      if (targetsStatus[i]) {
-        stripedWriters.get(i).getTargetBuffer().limit(toRecoverLen);
-        outputs[m++] = stripedWriters.get(i).getTargetBuffer();
-      }
-    }
+    int[] erasedIndices = stripedWriters.getRealTargetIndices();
+    ByteBuffer[] outputs = stripedWriters.getRealTargetBuffers(toRecoverLen);
+
     decoder.decode(inputs, erasedIndices, outputs);
 
-    for (int i = 0; i < stripedWriters.targets.length; i++) {
-      if (targetsStatus[i]) {
-        long blockLen = getBlockLen(blockGroup, targetIndices[i]);
-        long remaining = blockLen - positionInBlock;
-        if (remaining <= 0) {
-          stripedWriters.get(i).getTargetBuffer().limit(0);
-        } else if (remaining < toRecoverLen) {
-          stripedWriters.get(i).getTargetBuffer().limit((int)remaining);
-        }
-      }
-    }
+    stripedWriters.updateRealTargetBuffers(toRecoverLen);
+  }
+
+  long getPositionInBlock() {
+    return positionInBlock;
   }
 
   /**
@@ -355,12 +244,6 @@ class StripedReconstructor {
    */
   private void clearBuffers() {
     stripedReaders.clearBuffers();
-
-    if (zeroStripeBuffers != null) {
-      for (ByteBuffer zeroStripeBuffer : zeroStripeBuffers) {
-        zeroStripeBuffer.clear();
-      }
-    }
 
     stripedWriters.clearBuffers();
   }
@@ -371,6 +254,10 @@ class StripedReconstructor {
   }
 
   protected int getBufferSize() {
-    return bufferSize;
+    return stripedReaders.getBufferSize();
+  }
+
+  protected DataChecksum getChecksum() {
+    return stripedReaders.getChecksum();
   }
 }

@@ -75,7 +75,7 @@ class StripedReader {
                 Configuration conf,
                 int i, long offsetInBlock) {
     this.stripedReaders = stripedReaders;
-    this.reconstrutor = stripedReaders.reconstrutor;
+    this.reconstrutor = stripedReaders.reconstructor;
     this.datanode = datanode;
     this.conf = conf;
 
@@ -91,7 +91,7 @@ class StripedReader {
 
   ByteBuffer getReadBuffer() {
     if (buffer == null) {
-      this.buffer = reconstrutor.allocateReadBuffer();
+      this.buffer = stripedReaders.allocateReadBuffer();
     }
     return buffer;
   }
