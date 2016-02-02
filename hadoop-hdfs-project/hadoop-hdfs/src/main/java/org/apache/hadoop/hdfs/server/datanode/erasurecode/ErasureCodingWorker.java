@@ -120,9 +120,9 @@ public final class ErasureCodingWorker {
    */
   public void processErasureCodingTasks(Collection<BlockECRecoveryInfo> ecTasks) {
     for (BlockECRecoveryInfo recoveryInfo : ecTasks) {
-      final StripedReconstructor reconstructor =
-          new StripedReconstructor(this, recoveryInfo);
       try {
+        final StripedReconstructor reconstructor =
+            new StripedReconstructor(this, recoveryInfo);
         STRIPED_BLK_RECOVERY_THREAD_POOL
             .submit(new Runnable() {
               @Override

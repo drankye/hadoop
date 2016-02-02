@@ -61,9 +61,6 @@ class StripedWriters {
 
   private StripedWriter[] writers;
 
-  protected final long[] blockOffset4Targets;
-  protected final long[] seqNo4Targets;
-
   private final static int WRITE_PACKET_SIZE = 64 * 1024;
   protected int maxChunksPerPacket;
   private byte[] packetBuf;
@@ -96,14 +93,6 @@ class StripedWriters {
 
     writers = new StripedWriter[targets.length];
 
-    blockOffset4Targets = new long[targets.length];
-    seqNo4Targets = new long[targets.length];
-
-    for (int i = 0; i < targets.length; i++) {
-      blockOffset4Targets[i] = 0;
-      seqNo4Targets[i] = 0;
-    }
-
     cachingStrategy = CachingStrategy.newDefaultStrategy();
 
     // targetsStatus store whether some target is success, it will record
@@ -120,6 +109,7 @@ class StripedWriters {
 
   void init() throws IOException {
     checksumSize = reconstructor.checksum.getChecksumSize();
+    bytesPerChecksum = reconstructor.checksum.getBytesPerChecksum();
     int chunkSize = bytesPerChecksum + checksumSize;
     maxChunksPerPacket = Math.max(
         (WRITE_PACKET_SIZE - PacketHeader.PKT_MAX_HEADER_LEN) / chunkSize, 1);
@@ -133,6 +123,27 @@ class StripedWriters {
       String error = "All targets are failed.";
       throw new IOException(error);
     }
+  }
+
+  /**
+   * Send data to targets
+   */
+  int transferData2Targets() {
+    int nSuccess = 0;
+    for (int i = 0; i < targets.length; i++) {
+      if (targetsStatus[i]) {
+        boolean success = false;
+        try {
+          get(i).transferData2Target(packetBuf);
+          nSuccess++;
+          success = true;
+        } catch (IOException e) {
+          LOG.warn(e.getMessage());
+        }
+        targetsStatus[i] = success;
+      }
+    }
+    return nSuccess;
   }
 
   /**

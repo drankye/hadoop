@@ -69,6 +69,8 @@ class StripedWriter {
   private DataOutputStream targetOutputStream;
   private DataInputStream targetInputStream;
   protected ByteBuffer targetBuffer;
+  protected long blockOffset4Target = 0;
+  protected long seqNo4Target = 0;
 
   /**
    * Constructor
@@ -106,7 +108,7 @@ class StripedWriter {
     boolean success = false;
     try {
       InetSocketAddress targetAddr =
-          reconstrutor.getSocketAddress4Transfer(reconstrutor.targets[i]);
+          reconstrutor.getSocketAddress4Transfer(stripedWriters.targets[i]);
       socket = datanode.newSocket();
       NetUtils.connect(socket, targetAddr,
           datanode.getDnConf().getSocketTimeout());
@@ -122,7 +124,7 @@ class StripedWriter {
       DataEncryptionKeyFactory keyFactory =
           datanode.getDataEncryptionKeyFactoryForBlock(block);
       IOStreamPair saslStreams = datanode.getSaslClient().socketSend(
-          socket, unbufOut, unbufIn, keyFactory, blockToken, reconstrutor.targets[i]);
+          socket, unbufOut, unbufIn, keyFactory, blockToken, stripedWriters.targets[i]);
 
       unbufOut = saslStreams.out;
       unbufIn = saslStreams.in;
@@ -132,9 +134,9 @@ class StripedWriter {
       in = new DataInputStream(unbufIn);
 
       DatanodeInfo source = new DatanodeInfo(datanode.getDatanodeId());
-      new Sender(out).writeBlock(block, reconstrutor.targetStorageTypes[i],
-          blockToken, "", new DatanodeInfo[]{reconstrutor.targets[i]},
-          new StorageType[]{reconstrutor.targetStorageTypes[i]}, source,
+      new Sender(out).writeBlock(block, stripedWriters.targetStorageTypes[i],
+          blockToken, "", new DatanodeInfo[]{stripedWriters.targets[i]},
+          new StorageType[]{stripedWriters.targetStorageTypes[i]}, source,
           BlockConstructionStage.PIPELINE_SETUP_CREATE, 0, 0, 0, 0,
           reconstrutor.checksum, reconstrutor.cachingStrategy, false, false, null);
 
@@ -161,33 +163,33 @@ class StripedWriter {
     }
 
     reconstrutor.checksum.calculateChunkedSums(
-        targetBuffer.array(), 0, targetBuffer.remaining(), reconstrutor.checksumBuf, 0);
+        targetBuffer.array(), 0, targetBuffer.remaining(), stripedWriters.checksumBuf, 0);
 
     int ckOff = 0;
     while (targetBuffer.remaining() > 0) {
-      DFSPacket packet = new DFSPacket(packetBuf, reconstrutor.maxChunksPerPacket,
-          reconstrutor.blockOffset4Targets[index], reconstrutor.seqNo4Targets[index]++,
-          reconstrutor.checksumSize, false);
-      int maxBytesToPacket = reconstrutor.maxChunksPerPacket * reconstrutor.bytesPerChecksum;
+      DFSPacket packet = new DFSPacket(packetBuf, stripedWriters.maxChunksPerPacket,
+          blockOffset4Target, seqNo4Target++,
+          stripedWriters.checksumSize, false);
+      int maxBytesToPacket = stripedWriters.maxChunksPerPacket * stripedWriters.bytesPerChecksum;
       int toWrite = targetBuffer.remaining() > maxBytesToPacket ?
           maxBytesToPacket : targetBuffer.remaining();
-      int ckLen = ((toWrite - 1) / reconstrutor.bytesPerChecksum + 1) * reconstrutor.checksumSize;
-      packet.writeChecksum(reconstrutor.checksumBuf, ckOff, ckLen);
+      int ckLen = ((toWrite - 1) / stripedWriters.bytesPerChecksum + 1) * stripedWriters.checksumSize;
+      packet.writeChecksum(stripedWriters.checksumBuf, ckOff, ckLen);
       ckOff += ckLen;
       packet.writeData(targetBuffer, toWrite);
 
       // Send packet
       packet.writeTo(targetOutputStream);
 
-      reconstrutor.blockOffset4Targets[index] += toWrite;
+      blockOffset4Target += toWrite;
     }
   }
 
   // send an empty packet to mark the end of the block
   void endTargetBlock(byte[] packetBuf) throws IOException {
     DFSPacket packet = new DFSPacket(packetBuf, 0,
-        reconstrutor.blockOffset4Targets[index], reconstrutor.seqNo4Targets[index]++,
-        reconstrutor.checksumSize, true);
+        blockOffset4Target, seqNo4Target++,
+        stripedWriters.checksumSize, true);
     packet.writeTo(targetOutputStream);
     targetOutputStream.flush();
   }

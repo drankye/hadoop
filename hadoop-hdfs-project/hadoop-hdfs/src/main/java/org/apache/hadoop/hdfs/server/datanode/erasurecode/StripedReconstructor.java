@@ -126,13 +126,7 @@ class StripedReconstructor {
   protected final short[] targetIndices;
   private StripedWriters stripedWriters;
 
-  private final static int WRITE_PACKET_SIZE = 64 * 1024;
   protected DataChecksum checksum;
-  protected int maxChunksPerPacket;
-  private byte[] packetBuf;
-  protected byte[] checksumBuf;
-  protected int bytesPerChecksum;
-  protected int checksumSize;
 
   private BlockECRecoveryInfo recoveryInfo;
 
@@ -205,18 +199,13 @@ class StripedReconstructor {
       checksum = stripedReaders.checksum;
       initBufferSize();
 
-      stripedWriters.init();
-
       if (zeroStripeBuffers != null) {
         for (int i = 0; i < zeroStripeBuffers.length; i++) {
           zeroStripeBuffers[i] = allocateBuffer(bufferSize);
         }
       }
 
-      if (stripedWriters.initTargetStreams() == 0) {
-        String error = "All targets are failed.";
-        throw new IOException(error);
-      }
+      stripedWriters.init();
 
       reconstructAndTransfer();
 
@@ -247,7 +236,7 @@ class StripedReconstructor {
       recoverTargets(successList, toRecover);
 
       // step3: transfer data
-      if (transferData2Targets() == 0) {
+      if (stripedWriters.transferData2Targets() == 0) {
         String error = "Transfer failed for all targets.";
         throw new IOException(error);
       }
@@ -258,7 +247,7 @@ class StripedReconstructor {
   }
 
   private void initBufferSize() {
-    bytesPerChecksum = checksum.getBytesPerChecksum();
+    int bytesPerChecksum = checksum.getBytesPerChecksum();
     // The bufferSize is flat to divide bytesPerChecksum
     int readBufferSize = worker.STRIPED_READ_BUFFER_SIZE;
     bufferSize = readBufferSize < bytesPerChecksum ? bytesPerChecksum :
@@ -359,28 +348,6 @@ class StripedReconstructor {
         }
       }
     }
-  }
-
-  /**
-   * Send data to targets
-   */
-  private int transferData2Targets() {
-    boolean[] targetsStatus = stripedWriters.targetsStatus;
-    int nSuccess = 0;
-    for (int i = 0; i < stripedWriters.targets.length; i++) {
-      if (targetsStatus[i]) {
-        boolean success = false;
-        try {
-          stripedWriters.get(i).transferData2Target(packetBuf);
-          nSuccess++;
-          success = true;
-        } catch (IOException e) {
-          LOG.warn(e.getMessage());
-        }
-        targetsStatus[i] = success;
-      }
-    }
-    return nSuccess;
   }
 
   /**

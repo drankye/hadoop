@@ -91,7 +91,7 @@ class StripedReaders {
     Preconditions.checkArgument(liveIndices.length >= minRequiredSources,
         "No enough live striped blocks.");
     Preconditions.checkArgument(liveIndices.length == sources.length,
-        "liveBlockIndices and source dns should match");
+        "liveBlockIndices and source datanodes should match");
   }
 
   void init() throws IOException {
