@@ -55,33 +55,25 @@ class StripedReader {
   private static final Logger LOG = DataNode.LOG;
 
   private StripedReaders stripedReaders;
-  private StripedReconstructor reconstrutor;
   private final DataNode datanode;
   private final Configuration conf;
 
-  protected final short index; // internal block index
-  protected final ExtendedBlock block;
-  protected final DatanodeInfo source;
-  protected BlockReader blockReader;
+  private final short index; // internal block index
+  private final ExtendedBlock block;
+  private final DatanodeInfo source;
+  private BlockReader blockReader;
   private ByteBuffer buffer;
 
-  /**
-   * Constructor
-   * @param stripedReaders
-   * @param i the array index of sources
-   * @param offsetInBlock offset for the internal block
-   */
   StripedReader(StripedReaders stripedReaders, DataNode datanode,
-                Configuration conf,
-                int i, long offsetInBlock) {
+                Configuration conf, short index, ExtendedBlock block,
+                DatanodeInfo source, long offsetInBlock) {
     this.stripedReaders = stripedReaders;
-    this.reconstrutor = stripedReaders.reconstructor;
     this.datanode = datanode;
     this.conf = conf;
 
-    this.index = stripedReaders.liveIndices[i];
-    this.source = stripedReaders.sources[i];
-    this.block = reconstrutor.getBlock(reconstrutor.blockGroup, index);
+    this.index = index;
+    this.source = source;
+    this.block = block;
 
     BlockReader blockReader = newBlockReader(block, offsetInBlock, source);
     if (blockReader != null) {
@@ -106,7 +98,7 @@ class StripedReader {
       return null;
     }
     try {
-      InetSocketAddress dnAddr = reconstrutor.getSocketAddress4Transfer(dnInfo);
+      InetSocketAddress dnAddr = stripedReaders.getSocketAddress4Transfer(dnInfo);
       Token<BlockTokenIdentifier> blockToken = datanode.getBlockAccessToken(
           block, EnumSet.of(BlockTokenIdentifier.AccessMode.READ));
         /*
@@ -121,7 +113,7 @@ class StripedReader {
           "dummy", block, blockToken, offsetInBlock,
           block.getNumBytes() - offsetInBlock, true,
           "", newConnectedPeer(block, dnAddr, blockToken, dnInfo), dnInfo,
-          null, reconstrutor.cachingStrategy, datanode.getTracer());
+          null, stripedReaders.getCachingStrategy(), datanode.getTracer());
     } catch (IOException e) {
       return null;
     }
@@ -199,5 +191,13 @@ class StripedReader {
     } catch (IOException e) {
       // ignore
     }
+  }
+
+  short getIndex() {
+    return index;
+  }
+
+  BlockReader getBlockReader() {
+    return blockReader;
   }
 }

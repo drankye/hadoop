@@ -23,7 +23,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
@@ -32,55 +31,48 @@ import org.apache.hadoop.util.DataChecksum;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 
 @InterfaceAudience.Private
 class StripedWriters {
   private static final Logger LOG = DataNode.LOG;
+  private final static int WRITE_PACKET_SIZE = 64 * 1024;
 
-  protected final StripedReconstructor reconstructor;
+  private final StripedReconstructor reconstructor;
   private final DataNode datanode;
   private final Configuration conf;
 
-  private final ErasureCodingPolicy ecPolicy;
   private final int dataBlkNum;
   private final int parityBlkNum;
-  private final int cellSize;
 
-  protected final ExtendedBlock blockGroup;
-
-  protected boolean[] targetsStatus;
+  private boolean[] targetsStatus;
 
   // targets
-  protected final DatanodeInfo[] targets;
+  private final DatanodeInfo[] targets;
   private final short[] targetIndices;
-  protected final StorageType[] targetStorageTypes;
+  private final StorageType[] targetStorageTypes;
   private long maxTargetLength;
 
   private StripedWriter[] writers;
 
-  private final static int WRITE_PACKET_SIZE = 64 * 1024;
-  protected int maxChunksPerPacket;
+  private int maxChunksPerPacket;
   private byte[] packetBuf;
-  protected byte[] checksumBuf;
-  protected int bytesPerChecksum;
-  protected int checksumSize;
+  private byte[] checksumBuf;
+  private int bytesPerChecksum;
+  private int checksumSize;
 
-  protected final CachingStrategy cachingStrategy;
-
-  StripedWriters(StripedReconstructor reconstructor, BlockECRecoveryInfo recoveryInfo) {
+  StripedWriters(StripedReconstructor reconstructor,
+                 DataNode datanode,
+                 Configuration conf, BlockECRecoveryInfo recoveryInfo) {
     this.reconstructor = reconstructor;
-    this.datanode = reconstructor.datanode;
-    this.conf = reconstructor.worker.conf;
+    this.datanode = datanode;
+    this.conf = conf;
 
-    ecPolicy = recoveryInfo.getErasureCodingPolicy();
+    ErasureCodingPolicy ecPolicy = recoveryInfo.getErasureCodingPolicy();
     dataBlkNum = ecPolicy.getNumDataUnits();
     parityBlkNum = ecPolicy.getNumParityUnits();
-    cellSize = ecPolicy.getCellSize();
-
-    blockGroup = recoveryInfo.getExtendedBlock();
-    final int cellsNum = (int)((blockGroup.getNumBytes() - 1) / cellSize + 1);
 
     targets = recoveryInfo.getTargetDnInfos();
     targetStorageTypes = recoveryInfo.getTargetStorageTypes();
@@ -95,10 +87,8 @@ class StripedWriters {
     maxTargetLength = 0L;
     for (short targetIndex : targetIndices) {
       maxTargetLength = Math.max(maxTargetLength,
-          reconstructor.getBlockLen(blockGroup, targetIndex));
+          reconstructor.getBlockLen(targetIndex));
     }
-
-    cachingStrategy = CachingStrategy.newDefaultStrategy();
 
     // targetsStatus store whether some target is success, it will record
     // any failed target once, if some target failed (invalid DN or transfer
@@ -117,7 +107,8 @@ class StripedWriters {
         + PacketHeader.PKT_MAX_HEADER_LEN;
 
     packetBuf = new byte[maxPacketSize];
-    checksumBuf = new byte[checksumSize * (reconstructor.getBufferSize() / bytesPerChecksum)];
+    int tmpLen = checksumSize * (reconstructor.getBufferSize() / bytesPerChecksum);
+    checksumBuf = new byte[tmpLen];
 
     if (initTargetStreams() == 0) {
       String error = "All targets are failed.";
@@ -132,7 +123,7 @@ class StripedWriters {
     int k = 0;
     for (int i = 0; i < dataBlkNum + parityBlkNum; i++) {
       if (!bitset.get(i)) {
-        if (reconstructor.getBlockLen(blockGroup, i) > 0) {
+        if (reconstructor.getBlockLen(i) > 0) {
           if (m < targets.length) {
             targetIndices[m++] = (short)i;
           }
@@ -150,7 +141,7 @@ class StripedWriters {
       if (targetsStatus[i]) {
         boolean success = false;
         try {
-          getWriter(i).transferData2Target(packetBuf);
+          writers[i].transferData2Target(packetBuf);
           nSuccess++;
           success = true;
         } catch (IOException e) {
@@ -160,18 +151,6 @@ class StripedWriters {
       }
     }
     return nSuccess;
-  }
-
-  /**
-   * clear all buffers
-   */
-  protected void clearBuffers() {
-    for (StripedWriter writer : writers) {
-      ByteBuffer targetBuffer = writer.getTargetBuffer();
-      if (targetBuffer != null) {
-        targetBuffer.clear();
-      }
-    }
   }
 
   // send an empty packet to mark the end of the block
@@ -195,7 +174,7 @@ class StripedWriters {
     int nSuccess = 0;
     for (short i = 0; i < targets.length; i++) {
       try {
-        writers[i] = new StripedWriter(this, datanode, conf, i);
+        writers[i] = createWriter(i);
         nSuccess++;
         targetsStatus[i] = true;
       } catch (Throwable e) {
@@ -203,6 +182,16 @@ class StripedWriters {
       }
     }
     return nSuccess;
+  }
+
+  StripedWriter createWriter(short index) throws IOException {
+    return new StripedWriter(this, datanode, conf,
+        reconstructor.getBlock(targetIndices[index]), targets[index],
+        targetStorageTypes[index]);
+  }
+
+  ByteBuffer allocateWriteBuffer() {
+    return reconstructor.allocateBuffer(reconstructor.getBufferSize());
   }
 
   int getTargets() {
@@ -237,8 +226,8 @@ class StripedWriters {
     int m = 0;
     for (int i = 0; i < targets.length; i++) {
       if (targetsStatus[i]) {
-        getWriter(i).getTargetBuffer().limit(toRecoverLen);
-        outputs[m++] = getWriter(i).getTargetBuffer();
+        writers[i].getTargetBuffer().limit(toRecoverLen);
+        outputs[m++] = writers[i].getTargetBuffer();
       }
     }
     return outputs;
@@ -247,31 +236,59 @@ class StripedWriters {
   void updateRealTargetBuffers(int toRecoverLen) {;
     for (int i = 0; i < targets.length; i++) {
       if (targetsStatus[i]) {
-        long blockLen = reconstructor.getBlockLen(blockGroup, targetIndices[i]);
+        long blockLen = reconstructor.getBlockLen(targetIndices[i]);
         long remaining = blockLen - reconstructor.getPositionInBlock();
         if (remaining <= 0) {
-          getWriter(i).getTargetBuffer().limit(0);
+          writers[i].getTargetBuffer().limit(0);
         } else if (remaining < toRecoverLen) {
-          getWriter(i).getTargetBuffer().limit((int)remaining);
+          writers[i].getTargetBuffer().limit((int)remaining);
         }
       }
     }
   }
 
-  StripedWriter getWriter(int index) {
-    return writers[index];
-  }
-
-  short[] getTargetIndices() {
-    return targetIndices;
-  }
-
-  int getNumWriters() {
-    return writers.length;
-  }
-
   long getMaxTargetLength() {
     return maxTargetLength;
+  }
+
+  byte[] getChecksumBuf() {
+    return checksumBuf;
+  }
+
+  int getBytesPerChecksum() {
+    return bytesPerChecksum;
+  }
+
+  int getChecksumSize() {
+    return checksumSize;
+  }
+
+  DataChecksum getChecksum() {
+    return reconstructor.getChecksum();
+  }
+
+  int getMaxChunksPerPacket() {
+    return maxChunksPerPacket;
+  }
+
+  CachingStrategy getCachingStrategy() {
+    return reconstructor.getCachingStrategy();
+  }
+
+  InetSocketAddress getSocketAddress4Transfer(DatanodeInfo target) {
+    return reconstructor.getSocketAddress4Transfer(target);
+  }
+
+  /**
+   * clear all buffers
+   */
+  void clearBuffers() {
+    for (StripedWriter writer : writers) {
+      ByteBuffer targetBuffer = writer.getTargetBuffer();
+      if (targetBuffer != null) {
+        targetBuffer.clear();
+      }
+    }
   }
 
   void close() {

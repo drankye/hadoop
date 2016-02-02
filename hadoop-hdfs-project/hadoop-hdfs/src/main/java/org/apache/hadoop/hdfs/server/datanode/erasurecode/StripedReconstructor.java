@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 
 /**
  * ReconstructAndTransferBlock recover one or more missed striped block in the
@@ -94,52 +96,45 @@ import java.util.BitSet;
 class StripedReconstructor {
   private static final Logger LOG = DataNode.LOG;
 
-  protected final ErasureCodingWorker worker;
-  protected final DataNode datanode;
+  private final ErasureCodingWorker worker;
+  private final DataNode datanode;
   private final Configuration conf;
 
   private final ErasureCodingPolicy ecPolicy;
-  private final int dataBlkNum;
-  private final int parityBlkNum;
-  private final int cellSize;
+
 
   private RawErasureDecoder decoder;
 
-  protected final ExtendedBlock blockGroup;
+  private final ExtendedBlock blockGroup;
   private final BitSet liveBitSet;
 
   // position in striped internal block
-  protected long positionInBlock;
+  private long positionInBlock;
 
-  protected StripedReaders stripedReaders;
+  private StripedReaders stripedReaders;
 
   private StripedWriters stripedWriters;
 
-  private BlockECRecoveryInfo recoveryInfo;
-
-  protected final CachingStrategy cachingStrategy;
+  private final CachingStrategy cachingStrategy;
 
   StripedReconstructor(ErasureCodingWorker worker,
                        BlockECRecoveryInfo recoveryInfo) {
     this.worker = worker;
-    this.recoveryInfo = recoveryInfo;
     this.datanode = worker.datanode;
     this.conf = worker.conf;
 
     ecPolicy = recoveryInfo.getErasureCodingPolicy();
-    dataBlkNum = ecPolicy.getNumDataUnits();
-    parityBlkNum = ecPolicy.getNumParityUnits();
-    cellSize = ecPolicy.getCellSize();
 
     blockGroup = recoveryInfo.getExtendedBlock();
     byte[] liveIndices = recoveryInfo.getLiveBlockIndices();
-    liveBitSet = new BitSet(dataBlkNum + parityBlkNum);
+    liveBitSet = new BitSet(ecPolicy.getNumDataUnits() +
+        ecPolicy.getNumParityUnits());
     for (int i = 0; i < liveIndices.length; i++) {
       liveBitSet.set(liveIndices[i]);
     }
 
-    stripedReaders = new StripedReaders(this, recoveryInfo, datanode, conf);
-    stripedWriters = new StripedWriters(this, recoveryInfo);
+    stripedReaders = new StripedReaders(this, datanode, conf, recoveryInfo);
+    stripedWriters = new StripedWriters(this, datanode, conf, recoveryInfo);
 
     cachingStrategy = CachingStrategy.newDefaultStrategy();
 
@@ -154,14 +149,13 @@ class StripedReconstructor {
     return ByteBuffer.allocate(length);
   }
 
-  protected ExtendedBlock getBlock(ExtendedBlock blockGroup, int i) {
-    return StripedBlockUtil.constructInternalBlock(blockGroup, cellSize,
-        dataBlkNum, i);
+  protected ExtendedBlock getBlock(int i) {
+    return StripedBlockUtil.constructInternalBlock(blockGroup, ecPolicy, i);
   }
 
-  protected long getBlockLen(ExtendedBlock blockGroup, int i) {
+  protected long getBlockLen(int i) {
     return StripedBlockUtil.getInternalBlockLength(blockGroup.getNumBytes(),
-        cellSize, dataBlkNum, i);
+        ecPolicy, i);
   }
 
   public void run() {
@@ -214,12 +208,9 @@ class StripedReconstructor {
   // Initialize decoder
   private void initDecoderIfNecessary() {
     if (decoder == null) {
-      decoder = newDecoder(dataBlkNum, parityBlkNum);
+      decoder = CodecUtil.createRSRawDecoder(conf, ecPolicy.getNumDataUnits(),
+          ecPolicy.getNumParityUnits());
     }
-  }
-
-  private RawErasureDecoder newDecoder(int numDataUnits, int numParityUnits) {
-    return CodecUtil.createRSRawDecoder(conf, numDataUnits, numParityUnits);
   }
 
   private void recoverTargets(int toRecoverLen) {
@@ -248,16 +239,28 @@ class StripedReconstructor {
     stripedWriters.clearBuffers();
   }
 
-  protected InetSocketAddress getSocketAddress4Transfer(DatanodeInfo dnInfo) {
+  InetSocketAddress getSocketAddress4Transfer(DatanodeInfo dnInfo) {
     return NetUtils.createSocketAddr(dnInfo.getXferAddr(
         datanode.getDnConf().getConnectToDnViaHostname()));
   }
 
-  protected int getBufferSize() {
+  int getBufferSize() {
     return stripedReaders.getBufferSize();
   }
 
-  protected DataChecksum getChecksum() {
+  DataChecksum getChecksum() {
     return stripedReaders.getChecksum();
+  }
+
+  CachingStrategy getCachingStrategy() {
+    return cachingStrategy;
+  }
+
+  CompletionService<Void> createReadService() {
+    return new ExecutorCompletionService<>(worker.STRIPED_READ_THREAD_POOL);
+  }
+
+  ExtendedBlock getBlockGroup() {
+    return blockGroup;
   }
 }
