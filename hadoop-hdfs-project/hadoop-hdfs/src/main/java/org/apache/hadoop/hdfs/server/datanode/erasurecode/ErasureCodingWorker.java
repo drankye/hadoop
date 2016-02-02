@@ -115,12 +115,7 @@ public final class ErasureCodingWorker {
         final StripedReconstructor reconstructor =
             new StripedReconstructor(this, recoveryInfo);
         STRIPED_BLK_RECOVERY_THREAD_POOL
-            .submit(new Runnable() {
-              @Override
-              public void run() {
-                reconstructor.run();
-              }
-            });
+            .submit(reconstructor);
       } catch (Throwable e) {
         LOG.warn("Failed to recover striped block "
             + recoveryInfo.getExtendedBlock().getLocalBlock(), e);

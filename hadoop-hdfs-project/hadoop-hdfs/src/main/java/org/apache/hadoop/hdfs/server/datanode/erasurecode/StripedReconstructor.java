@@ -93,7 +93,7 @@ import java.util.concurrent.ExecutorCompletionService;
  *    recovered result received by targets?
  */
 @InterfaceAudience.Private
-class StripedReconstructor {
+class StripedReconstructor implements Runnable {
   private static final Logger LOG = DataNode.LOG;
 
   private final ErasureCodingWorker worker;
@@ -158,6 +158,7 @@ class StripedReconstructor {
         ecPolicy, i);
   }
 
+  @Override
   public void run() {
     datanode.incrementXmitsInProgress();
     try {
