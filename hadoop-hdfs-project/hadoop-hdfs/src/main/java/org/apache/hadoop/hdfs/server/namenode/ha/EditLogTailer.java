@@ -50,6 +50,7 @@ import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.ipc.StandbyException;
+import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.SecurityUtil;
 
 import static org.apache.hadoop.util.Time.monotonicNow;
@@ -57,6 +58,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.security.UserGroupInformation;
 
 
 /**
@@ -450,9 +452,14 @@ public class EditLogTailer {
 
           currentNN = nnLookup.next();
           try {
+            int rpcTimeout = conf.getInt(
+                DFSConfigKeys.DFS_HA_LOGROLL_RPC_TIMEOUT_KEY,
+                DFSConfigKeys.DFS_HA_LOGROLL_RPC_TIMEOUT_DEFAULT);
             NamenodeProtocolPB proxy = RPC.getProxy(NamenodeProtocolPB.class,
                 RPC.getProtocolVersion(NamenodeProtocolPB.class),
-                currentNN.getIpcAddress(), conf);
+                currentNN.getIpcAddress(),
+                UserGroupInformation.getCurrentUser(), conf,
+                NetUtils.getDefaultSocketFactory(conf), rpcTimeout);
             cachedActiveProxy = new NamenodeProtocolTranslatorPB(proxy);
             break;
           } catch (IOException e) {

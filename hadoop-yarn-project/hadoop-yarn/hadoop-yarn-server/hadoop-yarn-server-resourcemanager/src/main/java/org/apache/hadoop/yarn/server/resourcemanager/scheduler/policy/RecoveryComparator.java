@@ -16,23 +16,18 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hdfs.server.blockmanagement;
+package org.apache.hadoop.yarn.server.resourcemanager.scheduler.policy;
 
-import java.io.IOException;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
+import java.util.Comparator;
 
 /**
- * This exception is thrown when the name node runs out of V1 generation
- * stamps.
- *
+ * A Comparator which orders SchedulableEntities by isRecovering flag.
  */
-@InterfaceAudience.Private
-@InterfaceStability.Evolving
-public class OutOfV1GenerationStampsException extends IOException {
-  private static final long serialVersionUID = 1L;
-
-  public OutOfV1GenerationStampsException() {
-    super("Out of V1 (legacy) generation stamps\n");
+public class RecoveryComparator implements Comparator<SchedulableEntity> {
+  @Override
+  public int compare(SchedulableEntity se1, SchedulableEntity se2) {
+    int val1 = se1.isRecovering() ? 1 : 0;
+    int val2 = se2.isRecovering() ? 1 : 0;
+    return val2 - val1;
   }
 }
