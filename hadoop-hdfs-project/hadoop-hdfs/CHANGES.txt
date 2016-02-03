@@ -217,6 +217,9 @@ Trunk (Unreleased)
     HDFS-9582. TestLeaseRecoveryStriped file missing Apache License header 
     and not well formatted. (umamahesh)
 
+    HDFS-9494. Parallel optimization of DFSStripedOutputStream#flushAllInternals.
+    (Gao Rui via jing9)
+
   OPTIMIZATIONS
 
   BUG FIXES
@@ -2661,6 +2664,14 @@ Release 2.8.0 - UNRELEASED
     HDFS-9566. Remove expensive 'BlocksMap#getStorages(Block b, final
     DatanodeStorage.State state)' method (Daryn Sharp via vinayakumarb)
 
+    HDFS-9708. FSNamesystem.initAuditLoggers() doesn't trim classnames
+    (Mingliang Liu via stevel)
+
+    HDFS-9210. Fix some misuse of %n in VolumeScanner#printStats.
+    (Xiaoyu Yao)
+
+    HDFS-9701. DN may deadlock when hot-swapping under load. (Xiao Chen via lei)
+
 Release 2.7.3 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -2721,6 +2732,9 @@ Release 2.7.3 - UNRELEASED
 
     HDFS-9690. ClientProtocol.addBlock is not idempotent after HDFS-8071.
     (szetszwo)
+
+    HDFS-9406. FSImage may get corrupted after deleting snapshot.
+    (Contributed by Jing Zhao, Stanislav Antic, Vinayakumar B, Yongjun Zhang)
 
 Release 2.7.2 - 2016-01-25
 
