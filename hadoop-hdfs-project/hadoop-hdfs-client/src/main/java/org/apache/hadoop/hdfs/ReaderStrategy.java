@@ -36,7 +36,7 @@ interface ReaderStrategy {
   int readFromBlock(BlockReader blockReader) throws IOException;
 
   /**
-   * Read from a block using the blockReader.
+   * Read from a block using the blockReader with desired length to read.
    * @param blockReader
    * @param length number of bytes desired to read, not ensured
    * @return number of bytes read
@@ -52,14 +52,14 @@ interface ReaderStrategy {
   int readFromBuffer(ByteBuffer src);
 
   /**
-   * Read or copy length of data bytes from a src buffer.
+   * Read or copy length of data bytes from a src buffer with desired length.
    * @param src
    * @return number of bytes copied
    */
   int readFromBuffer(ByteBuffer src, int length);
 
   /**
-   * @return the target read buffer.
+   * @return the target read buffer that reads data into.
    */
   ByteBuffer getReadBuffer();
 
@@ -136,7 +136,9 @@ class ByteArrayStrategy implements ReaderStrategy {
 
 /**
  * Used to read bytes into a user-supplied ByteBuffer. Note it's not thread-safe
- * and the behavior is not defined if concurrently operated.
+ * and the behavior is not defined if concurrently operated. When read operation
+ * is performed, the position of the underlying byte buffer will move forward as
+ * stated in ByteBufferReadable#read(ByteBuffer buf) method.
  */
 class ByteBufferStrategy implements ReaderStrategy {
   private final ReadStatistics readStatistics;

@@ -355,7 +355,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         }
         length += ret;
       }
-	  strategy.getReadBuffer().flip();
+
       return length;
     } catch (ChecksumException ce) {
       DFSClient.LOG.warn("Found Checksum error for "
@@ -420,45 +420,44 @@ public class DFSStripedInputStream extends DFSInputStream {
       throw new IOException("Stream closed");
     }
 
-    if (pos >= getFileLength()) {
-      return -1;
-    }
-
+    int len = strategy.getTargetLength();
     Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
         new ConcurrentHashMap<>();
-    try {
-      if (pos > blockEnd) {
-        blockSeekTo(pos);
-      }
-      int realLen = (int) Math.min(strategy.getTargetLength(),
-          (blockEnd - pos + 1L));
-      synchronized (infoLock) {
-        if (locatedBlocks.isLastBlockComplete()) {
-          realLen = (int) Math.min(realLen,
-              locatedBlocks.getFileLength() - pos);
+    if (pos < getFileLength()) {
+      try {
+        if (pos > blockEnd) {
+          blockSeekTo(pos);
         }
-      }
+        int realLen = (int) Math.min(len, (blockEnd - pos + 1L));
+        synchronized (infoLock) {
+          if (locatedBlocks.isLastBlockComplete()) {
+            realLen = (int) Math.min(realLen,
+                locatedBlocks.getFileLength() - pos);
+          }
+        }
 
-      /** Number of bytes already read into buffer */
-      int result = 0;
-      while (result < realLen) {
-        if (!curStripeRange.include(getOffsetInBlockGroup())) {
-          readOneStripe(corruptedBlockMap);
+        /** Number of bytes already read into buffer */
+        int result = 0;
+        while (result < realLen) {
+          if (!curStripeRange.include(getOffsetInBlockGroup())) {
+            readOneStripe(corruptedBlockMap);
+          }
+          int ret = copyToTargetBuf(strategy, realLen - result);
+          result += ret;
+          pos += ret;
         }
-        int ret = copyToTargetBuf(strategy, realLen - result);
-        result += ret;
-        pos += ret;
+        if (dfsClient.stats != null) {
+          dfsClient.stats.incrementBytesRead(result);
+        }
+        return result;
+      } finally {
+        // Check if need to report block replicas corruption either read
+        // was successful or ChecksumException occured.
+        reportCheckSumFailure(corruptedBlockMap,
+            currentLocatedBlock.getLocations().length, true);
       }
-      if (dfsClient.stats != null) {
-        dfsClient.stats.incrementBytesRead(result);
-      }
-      return result;
-    } finally {
-      // Check if need to report block replicas corruption either read
-      // was successful or ChecksumException occured.
-      reportCheckSumFailure(corruptedBlockMap,
-          currentLocatedBlock.getLocations().length, true);
     }
+    return -1;
   }
 
   /**
