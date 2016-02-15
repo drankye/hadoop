@@ -56,9 +56,6 @@ import com.google.protobuf.ServiceException;
  * and protobuf service definition from src/test/test_rpc_service.proto
  */
 public class TestProtoBufRpc extends TestRpcBase {
-  public final static int PORT = 0;
-  private static InetSocketAddress addr;
-  private static Configuration conf;
   private static RPC.Server server;
   private final static int SLEEP_DURATION = 1000;
 
@@ -94,7 +91,7 @@ public class TestProtoBufRpc extends TestRpcBase {
   }
 
   @Before
-  public  void setUp() throws IOException { // Setup server for both protocols
+  public void setUp() throws IOException { // Setup server for both protocols
     conf = new Configuration();
     conf.setInt(CommonConfigurationKeys.IPC_MAXIMUM_DATA_LENGTH, 1024);
     conf.setBoolean(CommonConfigurationKeys.IPC_SERVER_LOG_SLOW_RPC, true);
@@ -110,12 +107,12 @@ public class TestProtoBufRpc extends TestRpcBase {
     server = new RPC.Builder(conf).setProtocol(TestRpcService.class)
         .setInstance(service).setBindAddress(ADDRESS).setPort(PORT).build();
     addr = NetUtils.getConnectAddress(server);
-    
+
     // now the second protocol
     PBServer2Impl server2Impl = new PBServer2Impl();
     BlockingService service2 = TestProtobufRpc2Proto
         .newReflectiveBlockingService(server2Impl);
-    
+
     server.addProtocol(RPC.RpcKind.RPC_PROTOCOL_BUFFER, TestRpcService2.class,
         service2);
     server.start();
@@ -125,10 +122,6 @@ public class TestProtoBufRpc extends TestRpcBase {
   @After
   public void tearDown() throws Exception {
     server.stop();
-  }
-
-  private static TestRpcService getClient() throws IOException {
-    return RPC.getProxy(TestRpcService.class, 0, addr, conf);
   }
 
   private static TestRpcService2 getClient2() throws IOException {
