@@ -22,7 +22,7 @@ import org.apache.hadoop.net.Node;
 import java.util.List;
 import java.util.Set;
 
-class ErasureCodingWork extends BlockRecoveryWork {
+class ErasureCodingWork extends BlockReconstructionWork {
   private final byte[] liveBlockIndicies;
 
   public ErasureCodingWork(BlockInfo block,
@@ -35,7 +35,8 @@ class ErasureCodingWork extends BlockRecoveryWork {
     super(block, bc, srcNodes, containingNodes,
         liveReplicaStorages, additionalReplRequired, priority);
     this.liveBlockIndicies = liveBlockIndicies;
-    BlockManager.LOG.debug("Creating an ErasureCodingWork to recover " + block);
+    BlockManager.LOG.debug("Creating an ErasureCodingWork to {} reconstruct ",
+        block);
   }
 
   byte[] getLiveBlockIndicies() {

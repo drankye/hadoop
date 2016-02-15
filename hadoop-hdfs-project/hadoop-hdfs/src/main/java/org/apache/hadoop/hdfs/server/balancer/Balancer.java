@@ -586,6 +586,8 @@ public class Balancer {
       // Should not run the balancer during an unfinalized upgrade, since moved
       // blocks are not deleted on the source datanode.
       if (!runDuringUpgrade && nnc.isUpgrading()) {
+        System.err.println("Balancer exiting as upgrade is not finalized, "
+            + "please finalize the HDFS upgrade before running the balancer.");
         return newResult(ExitStatus.UNFINALIZED_UPGRADE, bytesLeftToMove, -1);
       }
 
@@ -674,13 +676,12 @@ public class Balancer {
               // must be an error statue, return.
               return r.exitStatus.getExitCode();
             }
-
-            if (!done) {
-              Thread.sleep(sleeptime);
-            }
           } else {
             LOG.info("Skipping blockpool " + nnc.getBlockpoolID());
           }
+        }
+        if (!done) {
+          Thread.sleep(sleeptime);
         }
       }
     } finally {

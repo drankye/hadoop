@@ -115,6 +115,22 @@ Release 2.9.0 - UNRELEASED
 
     YARN-4647. Make RegisterNodeManagerRequestPBImpl thread-safe. (kasha)
 
+    YARN-4649. Add additional logging to some NM state store operations.
+    (Sidharta Seethana via vvasudev)
+
+    YARN-4625. Make ApplicationSubmissionContext and
+    ApplicationSubmissionContextInfo more consistent.
+    (Xuan Gong via vvasudev)
+
+    YARN-4307. Display blacklisted nodes for AM container in the RM web UI.
+    (Naganarasimha G R via vvasudev)
+
+    YARN-4628. Display application priority in yarn top.
+    (Bibin A Chundatt via vvasudev)
+
+    YARN-4655. Log uncaught exceptions/errors in various thread pools in YARN.
+    (Sidharta Seethana via vvasudev)
+
   OPTIMIZATIONS
 
   BUG FIXES
@@ -172,14 +188,23 @@ Release 2.9.0 - UNRELEASED
     YARN-4633. Fix random test failure in TestRMRestart#testRMRestartAfterPreemption
     (Bibin A Chundatt via rohithsharmaks)
 
-    YARN-4519. Potential deadlock of CapacityScheduler between decrease container
-    and assign containers. (Meng Ding via jianhe)
-
     YARN-4543. Fix random test failure in TestNodeStatusUpdater.testStopReentrant
     (Akihiro Suda via rohithsharmaks)
 
     YARN-4615. Fix random test failure in TestAbstractYarnScheduler#testResource
     RequestRecoveryToTheRightAppAttempt. (Sunil G via rohithsharmaks)
+
+    YARN-4594. container-executor fails to remove directory tree when chmod
+    required (Colin Patrick McCabe via jlowe)
+
+    YARN-4669. Fix logging statements in resource manager's Application class.
+    (Seethana Sidharta via vvasudev)
+
+    YARN-4629. Distributed shell breaks under strong security.
+    (Daniel Templeton via stevel)
+
+    YARN-4684. TestYarnCLI#testGetContainers failing in CN locale.
+    (Bibin A Chundatt via vvasudev)
 
 Release 2.8.0 - UNRELEASED
 
@@ -772,6 +797,30 @@ Release 2.8.0 - UNRELEASED
 
     YARN-4371. "yarn application -kill" should take multiple application ids
     (Sunil G via jlowe)
+
+    YARN-4340. Add "list" API to reservation system. (Sean Po via wangda)
+
+    YARN-4100. Add Documentation for Distributed and Delegated-Centralized
+    Node Labels feature. (Naganarasimha G R via devaraj)
+
+    YARN-4662. Document some newly added metrics. (Jian He via xgong)
+
+    YARN-4360. Improve GreedyReservationAgent to support "early" allocations,
+    and performance improvements (curino via asuresh)
+
+    YARN-4420. Add REST API for List Reservations. (Sean Po via curino)
+
+    YARN-4519. Potential deadlock of CapacityScheduler between decrease container
+    and assign containers. (Meng Ding via jianhe)
+
+    YARN-4138. Roll back container resource allocation after resource
+    increase token expires. (Meng Ding via jianhe)
+
+    YARN-2575. Create separate ACLs for Reservation create/update/delete/list
+    ops (Sean Po via asuresh)
+
+    YARN-4682. AMRM client to log when AMRM token updated.
+    (Prabhu Joseph via stevel)
 
   OPTIMIZATIONS
 
@@ -1368,6 +1417,9 @@ Release 2.8.0 - UNRELEASED
     policy instead of using same as active applications ordering policy.
     (Rohith Sharma K S via jianhe)
 
+    YARN-4667. RM Admin CLI for refreshNodesResources throws NPE when nothing
+    is configured. (Naganarasimha G R via devaraj)
+
 Release 2.7.3 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -1446,6 +1498,12 @@ Release 2.7.3 - UNRELEASED
 
     YARN-4428. Redirect RM page to AHS page when AHS turned on and RM page is
     not available (Chang Li via jlowe)
+
+    YARN-3102. Decommisioned Nodes not listed in Web UI (Kuhu Shukla via
+    jlowe)
+
+    YARN-3602. TestResourceLocalizationService.testPublicResourceInitializesLocalDir
+    fails Intermittently due to IOException from cleanup. (zhihai xu via xgong)
 
 Release 2.7.2 - 2016-01-25
 
@@ -2283,7 +2341,19 @@ Release 2.7.0 - 2015-04-20
     YARN-3466. Fix RM nodes web page to sort by node HTTP-address, #containers 
     and node-label column (Jason Lowe via wangda)
 
-Release 2.6.4 - UNRELEASED
+Release 2.6.5 - UNRELEASED
+
+  INCOMPATIBLE CHANGES
+
+  NEW FEATURES
+
+  IMPROVEMENTS
+
+  OPTIMIZATIONS
+
+  BUG FIXES
+
+Release 2.6.4 - 2016-02-11
 
   INCOMPATIBLE CHANGES
 

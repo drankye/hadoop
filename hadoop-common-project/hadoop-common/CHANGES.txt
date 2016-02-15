@@ -644,6 +644,12 @@ Trunk (Unreleased)
       HADOOP-12685. Input buffer position after encode/decode not consistent
       between different kinds of buffers. (Rui Li via zhz)
 
+      HADOOP-12757. Findbug compilation fails for 'Kafka Library support'.
+      (aajisaka)
+
+      HADOOP-12041. Implement another Reed-Solomon coder in pure Java.
+      (Kai Zheng via zhz)
+
 Release 2.9.0 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -678,6 +684,9 @@ Release 2.9.0 - UNRELEASED
 
     HADOOP-12662. The build should fail if a -Dbundle option fails (Kai Zheng
     via cmccabe)
+
+    HADOOP-12749. Create a threadpoolexecutor that overrides afterExecute to
+    log uncaught exceptions/errors. (Sidharta Seethana via vvasudev)
 
   BUG FIXES
 
@@ -750,6 +759,9 @@ Release 2.8.0 - UNRELEASED
     (Larry McCay via cnauroth)
 
     HADOOP-12635. Adding Append API support for WASB. (Dushyanth via cnauroth)
+
+    HADOOP-12426. Add Entry point for Kerberos health check
+    (Steve Loughran via cnauroth)
 
   IMPROVEMENTS
 
@@ -1088,6 +1100,29 @@ Release 2.8.0 - UNRELEASED
 
     HADOOP-12696. Add tests for S3Filesystem Contract (Matt Paduano via raviprak)
 
+    HADOOP-12755. Fix typo in defaultFS warning message. (wang)
+
+    HADOOP-12292. Make use of DeleteObjects optional.
+    (Thomas Demoor via stevel)
+
+    HADOOP-12759. RollingFileSystemSink should eagerly rotate directories.
+    (Daniel Templeton via wang)
+
+    HADOOP-12752. Improve diagnostics/use of envvar/sysprop credential
+    propagation (Steve Loughran via cnauroth)
+
+    HADOOP-12764. Increase default value of KMX maxHttpHeaderSize and make it
+    configurable. (zhz)
+
+    HADOOP-12788. OpensslAesCtrCryptoCodec should log which random number generator is used.
+    (Wei-Chiu Chuang via umamahesh)
+
+    HADOOP-12699. TestKMS#testKMSProvider intermittently fails during
+    'test rollover draining'. (Xiao Chen via wang)
+
+    HADOOP-12776. Remove getaclstatus call for non-acl commands in getfacl.
+    (Brahma Reddy Battula via vinayakumarb)
+
   OPTIMIZATIONS
 
     HADOOP-11785. Reduce the number of listStatus operation in distcp
@@ -1128,6 +1163,9 @@ Release 2.8.0 - UNRELEASED
 
     HADOOP-12450. UserGroupInformation should not log at WARN level if no groups
     are found. (Elliott Clark via stevel)
+
+    HADOOP-12758. Extend CSRF Filter with UserAgent Checks
+    (Larry McCay via cnauroth)
 
   BUG FIXES
 
@@ -1656,6 +1694,19 @@ Release 2.8.0 - UNRELEASED
     HADOOP-12735. core-default.xml misspells
     hadoop.workaround.non.threadsafe.getpwuid (Ray Chiang via cmccabe)
 
+    HADOOP-12771. Fix typo in JvmPauseMonitor#getNumGcWarnThreadholdExceeded.
+    (Xiaobing Zhou via xyao)
+
+    HADOOP-12766. The default value of
+    "hadoop.workaround.non.threadsafe.getpwuid" is different between
+    core-default.xml and NativeIO.java (Akira AJISAKA via cmccabe)
+
+    HADOOP-12795. KMS does not log detailed stack trace for unexpected errors.
+    (cnauroth)
+
+    HADOOP-12780. During atomic rename handle crash when one directory has been
+    renamed but not file under it. (Madhumita Chakraborty via cnauroth)
+
 Release 2.7.3 - UNRELEASED
 
   INCOMPATIBLE CHANGES
@@ -1700,6 +1751,14 @@ Release 2.7.3 - UNRELEASED
 
     HADOOP-12706. TestLocalFsFCStatistics#testStatisticsThreadLocalDataCleanUp
     times out occasionally (Sangjin Lee and Colin Patrick McCabe via jlowe)
+
+    HADOOP-12761. incremental maven build is not really incremental (sjlee)
+
+    HADOOP-12772. NetworkTopologyWithNodeGroup.getNodeGroup() can loop
+    infinitely for invalid 'loc' values (Kuhu Shukla via kihwal)
+
+    HADOOP-12792. TestUserGroupInformation#testGetServerSideGroups fails in
+    chroot (Eric Badger via jlowe)
 
 Release 2.7.2 - 2016-01-25
 
@@ -2480,7 +2539,25 @@ Release 2.7.0 - 2015-04-20
     HADOOP-11837. AuthenticationFilter should destroy SignerSecretProvider in
     Tomcat deployments. (Bowen Zhang via wheat9)
 
-Release 2.6.4 - UNRELEASED
+Release 2.6.5 - UNRELEASED
+
+  INCOMPATIBLE CHANGES
+
+  NEW FEATURES
+
+  IMPROVEMENTS
+
+  OPTIMIZATIONS
+
+  BUG FIXES
+
+    HADOOP-12773. HBase classes fail to load with client/job classloader
+    enabled (sjlee)
+
+    HADOOP-12589. Fix intermittent test failure of TestCopyPreserveFlag
+    (iwasakims)
+
+Release 2.6.4 - 2016-02-11
 
   INCOMPATIBLE CHANGES
 
