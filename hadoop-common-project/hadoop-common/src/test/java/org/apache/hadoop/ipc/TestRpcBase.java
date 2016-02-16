@@ -39,8 +39,8 @@ public class TestRpcBase {
 
   protected final static String ADDRESS = "0.0.0.0";
   protected final static int PORT = 0;
-  protected static InetSocketAddress addr;
-  protected static Configuration conf;
+  protected InetSocketAddress addr;
+  protected Configuration conf;
 
   protected void setupConf() {
     conf = new Configuration();
@@ -72,13 +72,20 @@ public class TestRpcBase {
       builder.setNumHandlers(numHandlers);
     }
 
+    return setupTestServer(builder);
+  }
+
+  protected RPC.Server setupTestServer(RPC.Builder builder) throws IOException {
     RPC.Server server = builder.build();
+
+    server.start();
+
     addr = NetUtils.getConnectAddress(server);
 
     return server;
   }
 
-  protected static TestRpcService getClient() throws IOException {
+  protected TestRpcService getClient() throws IOException {
     return RPC.getProxy(TestRpcService.class, 0, addr, conf);
   }
 

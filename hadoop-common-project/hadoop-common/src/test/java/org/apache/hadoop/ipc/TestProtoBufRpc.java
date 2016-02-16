@@ -124,7 +124,7 @@ public class TestProtoBufRpc extends TestRpcBase {
     server.stop();
   }
 
-  private static TestRpcService2 getClient2() throws IOException {
+  private TestRpcService2 getClient2() throws IOException {
     return RPC.getProxy(TestRpcService2.class, 0, addr, conf);
   }
 
