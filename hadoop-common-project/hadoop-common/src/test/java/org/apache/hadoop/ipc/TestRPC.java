@@ -609,7 +609,11 @@ public class TestRPC  extends TestRpcBase {
       }
     } catch (ServiceException e) {
       if (expectFailure) {
-        assertTrue(e.getCause() instanceof AuthorizationException);
+        RemoteException re = (RemoteException) e.getCause();
+        assertTrue(AuthorizationException.class.getName().equals(
+            re.getClassName()));
+        assertEquals("RPC error code should be UNAUTHORIZED",
+            RpcErrorCodeProto.FATAL_UNAUTHORIZED, re.getErrorCode());
       } else {
         throw e;
       }

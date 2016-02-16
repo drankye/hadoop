@@ -82,7 +82,8 @@ public class TestRpcBase {
     return RPC.getProxy(TestRpcService.class, 0, addr, conf);
   }
 
-  @ProtocolInfo(protocolName = "testProto", protocolVersion = 1)
+  @ProtocolInfo(protocolName = "org.apache.hadoop.ipc.TestRpcBase$TestRpcService",
+      protocolVersion = 1)
   public interface TestRpcService
       extends TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface {
   }
