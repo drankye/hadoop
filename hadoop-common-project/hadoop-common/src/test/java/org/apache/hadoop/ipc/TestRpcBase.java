@@ -29,6 +29,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.junit.Assert;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -87,6 +90,41 @@ public class TestRpcBase {
 
   protected TestRpcService getClient() throws IOException {
     return RPC.getProxy(TestRpcService.class, 0, addr, conf);
+  }
+
+  protected void stop(Server server, TestRpcService proxy) {
+    if (proxy != null) {
+      try {
+        RPC.stopProxy(proxy);
+      } catch (Exception ignored) {}
+    }
+
+    if (server != null) {
+      try {
+        server.stop();
+      } catch (Exception ignored) {}
+    }
+  }
+
+  /**
+   * Count the number of threads that have a stack frame containing
+   * the given string
+   */
+  protected static int countThreads(String search) {
+    ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+
+    int count = 0;
+    ThreadInfo[] infos = threadBean.getThreadInfo(threadBean.getAllThreadIds(), 20);
+    for (ThreadInfo info : infos) {
+      if (info == null) continue;
+      for (StackTraceElement elem : info.getStackTrace()) {
+        if (elem.getClassName().contains(search)) {
+          count++;
+          break;
+        }
+      }
+    }
+    return count;
   }
 
   @ProtocolInfo(protocolName = "org.apache.hadoop.ipc.TestRpcBase$TestRpcService",

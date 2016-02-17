@@ -170,11 +170,11 @@ public class TestMultipleProtocolServer extends TestRpcBase {
   }
   @Before
   public void setUp() throws Exception {
-    RPC.setProtocolEngine(conf, Foo0.class, WritableRpcEngine.class);
-    RPC.setProtocolEngine(conf, FooUnimplemented.class, WritableRpcEngine.class);
-    RPC.setProtocolEngine(conf, Foo1.class, WritableRpcEngine.class);
-    RPC.setProtocolEngine(conf, Bar.class, WritableRpcEngine.class);
-    RPC.setProtocolEngine(conf, Mixin.class, WritableRpcEngine.class);
+    RPC.setProtocolEngine(conf, Foo0.class, ProtobufRpcEngine.class);
+    RPC.setProtocolEngine(conf, FooUnimplemented.class, ProtobufRpcEngine.class);
+    RPC.setProtocolEngine(conf, Foo1.class, ProtobufRpcEngine.class);
+    RPC.setProtocolEngine(conf, Bar.class, ProtobufRpcEngine.class);
+    RPC.setProtocolEngine(conf, Mixin.class, ProtobufRpcEngine.class);
 
     // create a server with two handlers
     server = new RPC.Builder(conf).setProtocol(Foo0.class)

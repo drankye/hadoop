@@ -18,8 +18,6 @@
 
 package org.apache.hadoop.ipc;
 
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
 import com.google.protobuf.ServiceException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,7 +45,6 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.test.MetricsAsserts;
 import org.apache.hadoop.test.MockitoUtil;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -57,9 +54,6 @@ import javax.net.SocketFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -74,7 +68,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -94,31 +87,13 @@ import static org.mockito.Mockito.verify;
 
 /** Unit tests for RPC. */
 @SuppressWarnings("deprecation")
-public class TestRPC  extends TestRpcBase {
+public class TestRPC extends TestRpcBase {
 
   public static final Log LOG = LogFactory.getLog(TestRPC.class);
-
-  private Server server;
-  private TestRpcService proxy;
 
   @Before
   public void setup() {
     setupConf();
-  }
-
-  @After
-  public void tearDown() {
-    if (proxy != null) {
-      try {
-        RPC.stopProxy(proxy);
-      } catch (Exception ignored) {}
-    }
-
-    if (server != null) {
-      try {
-        server.stop();
-      } catch (Exception ignored) {}
-    }
   }
 
   int datasize = 1024*100;
@@ -350,7 +325,9 @@ public class TestRPC  extends TestRpcBase {
 
   @Test
   public void testConfRpc() throws IOException {
-    server = setupTestServer(conf, 1);
+    Server server = newServerBuilder(conf)
+        .setNumHandlers(1).setVerbose(false).build();
+
     // Just one handler
     int confQ = conf.getInt(
         CommonConfigurationKeys.IPC_SERVER_HANDLER_QUEUE_SIZE_KEY,
@@ -361,7 +338,6 @@ public class TestRPC  extends TestRpcBase {
         CommonConfigurationKeys.IPC_SERVER_RPC_READ_THREADS_KEY,
         CommonConfigurationKeys.IPC_SERVER_RPC_READ_THREADS_DEFAULT);
     assertEquals(confReaders, server.getNumReaders());
-    server.stop();
 
     server = newServerBuilder(conf)
         .setNumHandlers(1).setnumReaders(3).setQueueSizePerHandler(200)
@@ -373,16 +349,24 @@ public class TestRPC  extends TestRpcBase {
 
   @Test
   public void testProxyAddress() throws IOException {
-    server = setupTestServer(conf, -1);
+    Server server = null;
+    TestRpcService proxy = null;
 
-    // create a client
-    proxy = getClient();
-
-    assertEquals(addr, RPC.getServerAddress(proxy));
+    try {
+      server = setupTestServer(conf, -1);
+      // create a client
+      proxy = getClient();
+      assertEquals(addr, RPC.getServerAddress(proxy));
+    } finally {
+      stop(server, proxy);
+    }
   }
 
   @Test
   public void testSlowRpc() throws IOException, ServiceException {
+    Server server;
+    TestRpcService proxy = null;
+
     System.out.println("Testing Slow RPC");
     // create a server with two handlers
     server = setupTestServer(conf, 2);
@@ -412,6 +396,7 @@ public class TestRPC  extends TestRpcBase {
       }
     } finally {
       System.out.println("Down slow rpc testing");
+      stop(server, proxy);
     }
   }
 
@@ -420,8 +405,11 @@ public class TestRPC  extends TestRpcBase {
     testCallsInternal(conf);
   }
 
-  private void testCallsInternal(Configuration conf) throws Exception {
-    server = setupTestServer(conf, -1);
+  private void testCallsInternal(Configuration myConf) throws Exception {
+    Server server;
+    TestRpcService proxy = null;
+
+    server = setupTestServer(myConf, -1);
     try {
       proxy = getClient();
 
@@ -518,15 +506,15 @@ public class TestRPC  extends TestRpcBase {
           i--;      // retry
         }
       }
-
     } finally {
-      server.stop();
-      if(proxy!=null) RPC.stopProxy(proxy);
+      stop(server, proxy);
     }
   }
 
   @Test
   public void testClientWithoutServer() throws Exception {
+    TestRpcService proxy;
+
     short invalidPort = 20;
     InetSocketAddress invalidAddress = new InetSocketAddress(ADDRESS,
         invalidPort);
@@ -555,19 +543,21 @@ public class TestRPC  extends TestRpcBase {
     public Service[] getServices() {
       return new Service[] { new Service(ACL_CONFIG, TestRpcService.class) };
     }
-
   }
 
-  private void doRPCs(Configuration conf, boolean expectFailure) throws Exception {
-    server = setupTestServer(conf, 5);
+  private void doRPCs(Configuration myConf, boolean expectFailure) throws Exception {
+    Server server;
+    TestRpcService proxy = null;
 
-    server.refreshServiceAcl(conf, new TestPolicyProvider());
+    server = setupTestServer(myConf, 5);
 
-    proxy = getClient();
+    server.refreshServiceAcl(myConf, new TestPolicyProvider());
+
     TestProtos.EmptyRequestProto emptyRequestProto =
         TestProtos.EmptyRequestProto.newBuilder().build();
 
     try {
+      proxy = getClient();
       proxy.ping(null, emptyRequestProto);
       if (expectFailure) {
         fail("Expect RPC.getProxy to fail with AuthorizationException!");
@@ -592,53 +582,46 @@ public class TestRPC  extends TestRpcBase {
       // 0 for the authentication successes and 0 for failure
       assertCounter("RpcAuthenticationFailures", 0L, rb);
       assertCounter("RpcAuthenticationSuccesses", 0L, rb);
+
+      stop(server, proxy);
     }
   }
 
   @Test
   public void testServerAddress() throws IOException {
+    Server server;
+
     server = setupTestServer(conf, 5);
-    InetSocketAddress bindAddr = NetUtils.getConnectAddress(server);
-    assertEquals(InetAddress.getLocalHost(), bindAddr.getAddress());
+    try {
+      InetSocketAddress bindAddr = NetUtils.getConnectAddress(server);
+      assertEquals(InetAddress.getLocalHost(), bindAddr.getAddress());
+    } finally {
+      stop(server, null);
+    }
   }
 
   @Test
   public void testAuthorization() throws Exception {
-    conf.setBoolean(CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION,
+    Configuration myConf = new Configuration();
+    myConf.setBoolean(CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION,
         true);
 
     // Expect to succeed
-    conf.set(ACL_CONFIG, "*");
-    try {
-      doRPCs(conf, false);
-    } finally {
-      tearDown();
-    }
+    myConf.set(ACL_CONFIG, "*");
+    doRPCs(myConf, false);
 
     // Reset authorization to expect failure
-    conf.set(ACL_CONFIG, "invalid invalid");
-    try {
-      doRPCs(conf, true);
-    } finally {
-      tearDown();
-    }
+    myConf.set(ACL_CONFIG, "invalid invalid");
+    doRPCs(myConf, true);
 
-    conf.setInt(CommonConfigurationKeys.IPC_SERVER_RPC_READ_THREADS_KEY, 2);
+    myConf.setInt(CommonConfigurationKeys.IPC_SERVER_RPC_READ_THREADS_KEY, 2);
     // Expect to succeed
-    conf.set(ACL_CONFIG, "*");
-    try {
-      doRPCs(conf, false);
-    } finally {
-      tearDown();
-    }
+    myConf.set(ACL_CONFIG, "*");
+    doRPCs(myConf, false);
 
     // Reset authorization to expect failure
-    conf.set(ACL_CONFIG, "invalid invalid");
-    try {
-      doRPCs(conf, true);
-    } finally {
-      tearDown();
-    }
+    myConf.set(ACL_CONFIG, "invalid invalid");
+    doRPCs(myConf, true);
   }
 
   /**
@@ -704,6 +687,9 @@ public class TestRPC  extends TestRpcBase {
 
   @Test
   public void testErrorMsgForInsecureClient() throws IOException {
+    Server server;
+    TestRpcService proxy = null;
+
     Configuration serverConf = new Configuration(conf);
     SecurityUtil.setAuthenticationMethod(AuthenticationMethod.KERBEROS,
         serverConf);
@@ -728,7 +714,7 @@ public class TestRPC  extends TestRpcBase {
       assertTrue(re.unwrapRemoteException() instanceof AccessControlException);
       succeeded = true;
     } finally {
-      tearDown();
+      stop(server, proxy);
     }
     assertTrue(succeeded);
 
@@ -750,30 +736,9 @@ public class TestRPC  extends TestRpcBase {
       assertTrue(re.unwrapRemoteException() instanceof AccessControlException);
       succeeded = true;
     } finally {
-      tearDown();
+      stop(server, proxy);
     }
     assertTrue(succeeded);
-  }
-
-  /**
-   * Count the number of threads that have a stack frame containing
-   * the given string
-   */
-  private static int countThreads(String search) {
-    ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
-
-    int count = 0;
-    ThreadInfo[] infos = threadBean.getThreadInfo(threadBean.getAllThreadIds(), 20);
-    for (ThreadInfo info : infos) {
-      if (info == null) continue;
-      for (StackTraceElement elem : info.getStackTrace()) {
-        if (elem.getClassName().contains(search)) {
-          count++;
-          break;
-        }
-      }
-    }
-    return count;
   }
 
   /**
@@ -781,6 +746,8 @@ public class TestRPC  extends TestRpcBase {
    */
   @Test
   public void testStopsAllThreads() throws IOException, InterruptedException {
+    Server server;
+
     int threadsBefore = countThreads("Server$Listener$Reader");
     assertEquals("Expect no Reader threads running before test",
         0, threadsBefore);
@@ -847,6 +814,9 @@ public class TestRPC  extends TestRpcBase {
 
   @Test(timeout=90000)
   public void testRPCInterruptedSimple() throws Exception {
+    Server server;
+    TestRpcService proxy = null;
+
     RPC.Builder builder = newServerBuilder(conf)
         .setNumHandlers(5).setVerbose(true)
         .setSecretManager(null);
@@ -856,29 +826,38 @@ public class TestRPC  extends TestRpcBase {
     TestProtos.EmptyRequestProto emptyRequestProto =
         TestProtos.EmptyRequestProto.newBuilder().build();
 
-    proxy = getClient();
-    // Connect to the server
-
-    proxy.ping(null, emptyRequestProto);
-    // Interrupt self, try another call
-    Thread.currentThread().interrupt();
     try {
+      proxy = getClient();
+      // Connect to the server
+
       proxy.ping(null, emptyRequestProto);
-      fail("Interruption did not cause IPC to fail");
-    } catch (ServiceException se) {
-      if (se.toString().contains("InterruptedException") ||
-          se.getCause() instanceof InterruptedIOException) {
-        // clear interrupt status for future tests
-        Thread.interrupted();
-        return;
+      // Interrupt self, try another call
+      Thread.currentThread().interrupt();
+      try {
+        proxy.ping(null, emptyRequestProto);
+        fail("Interruption did not cause IPC to fail");
+      } catch (ServiceException se) {
+        if (se.toString().contains("InterruptedException") ||
+            se.getCause() instanceof InterruptedIOException) {
+          // clear interrupt status for future tests
+          Thread.interrupted();
+          return;
+        }
+        throw se;
       }
-      throw se;
+    } finally {
+      stop(server, proxy);
     }
   }
 
   @Test(timeout=30000)
   public void testRPCInterrupted() throws IOException, InterruptedException {
-    server = setupTestServer(conf, 5);
+    Server server;
+
+    RPC.Builder builder = newServerBuilder(conf)
+        .setNumHandlers(5).setVerbose(true)
+        .setSecretManager(null);
+    server = setupTestServer(builder);
 
     final TestProtos.SlowPingRequestProto slowPingRequest =
         TestProtos.SlowPingRequestProto.newBuilder().
@@ -891,69 +870,83 @@ public class TestRPC  extends TestRpcBase {
     final AtomicReference<Throwable> error = new AtomicReference<>();
     Thread leaderThread = null;
 
-    for (int i = 0; i < numConcurrentRPC; i++) {
-      final int num = i;
-      proxy = getClient();
-      Thread rpcThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            barrier.await();
-            while (num == 0 || leaderRunning.get()) {
+    try {
+      for (int i = 0; i < numConcurrentRPC; i++) {
+        final int num = i;
+        final TestRpcService proxy = getClient();
+        Thread rpcThread = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              barrier.await();
+              while (num == 0 || leaderRunning.get()) {
+                proxy.slowPing(null, slowPingRequest);
+              }
+
               proxy.slowPing(null, slowPingRequest);
-            }
+            } catch (Exception e) {
+              if (num == 0) {
+                leaderRunning.set(false);
+              } else {
+                error.set(e);
+              }
 
-            proxy.slowPing(null, slowPingRequest);
-          } catch (Exception e) {
-            if (num == 0) {
-              leaderRunning.set(false);
-            } else {
-              error.set(e);
+              LOG.error("thread " + num, e);
+            } finally {
+              latch.countDown();
             }
-
-            LOG.error("thread " + num, e);
-          } finally {
-            latch.countDown();
           }
+        });
+        rpcThread.start();
+
+        if (leaderThread == null) {
+          leaderThread = rpcThread;
         }
-      });
-      rpcThread.start();
-
-      if (leaderThread == null) {
-        leaderThread = rpcThread;
       }
-    }
-    // let threads get past the barrier
-    Thread.sleep(1000);
-    // stop a single thread
-    while (leaderRunning.get()) {
-      leaderThread.interrupt();
-    }
+      // let threads get past the barrier
+      Thread.sleep(1000);
+      // stop a single thread
+      while (leaderRunning.get()) {
+        leaderThread.interrupt();
+      }
 
-    latch.await();
+      latch.await();
 
-    // should not cause any other thread to get an error
-    assertTrue("rpc got exception " + error.get(), error.get() == null);
+      // should not cause any other thread to get an error
+      assertTrue("rpc got exception " + error.get(), error.get() == null);
+    } finally {
+      server.stop();
+    }
   }
 
   @Test
   public void testConnectionPing() throws Exception {
+    Server server;
+    TestRpcService proxy = null;
+
     int pingInterval = 50;
     conf.setBoolean(CommonConfigurationKeys.IPC_CLIENT_PING_KEY, true);
     conf.setInt(CommonConfigurationKeys.IPC_PING_INTERVAL_KEY, pingInterval);
     server = setupTestServer(conf, 5);
 
-    proxy = getClient();
+    try {
+      proxy = getClient();
 
-    TestProtos.SleepRequestProto sleepRequestProto =
-        TestProtos.SleepRequestProto.newBuilder()
-            .setMilliSeconds(pingInterval * 4).build();
+      TestProtos.SleepRequestProto sleepRequestProto =
+          TestProtos.SleepRequestProto.newBuilder()
+              .setMilliSeconds(pingInterval * 4).build();
 
-    proxy.sleep(null, sleepRequestProto);
+      proxy.sleep(null, sleepRequestProto);
+    } finally {
+      stop(server, proxy);
+    }
   }
 
   @Test
   public void testRpcMetrics() throws Exception {
+    Server server;
+    TestRpcService proxy = null;
+
     final int interval = 1;
     conf.setBoolean(CommonConfigurationKeys.
         RPC_METRICS_QUANTILE_ENABLE, true);
@@ -962,85 +955,31 @@ public class TestRPC  extends TestRpcBase {
 
     server = setupTestServer(conf, 5);
 
-    proxy = getClient();
-
-    TestProtos.EmptyRequestProto emptyRequestProto =
-        TestProtos.EmptyRequestProto.newBuilder().build();
-
-    for (int i=0; i<1000; i++) {
-      proxy.ping(null, emptyRequestProto);
-
-      TestProtos.EchoRequestProto echoRequestProto =
-          TestProtos.EchoRequestProto.newBuilder().setMessage("" + i).build();
-      proxy.echo(null, echoRequestProto);
-    }
-    MetricsRecordBuilder rpcMetrics =
-        getMetrics(server.getRpcMetrics().name());
-    assertTrue("Expected non-zero rpc queue time",
-        getLongCounter("RpcQueueTimeNumOps", rpcMetrics) > 0);
-    assertTrue("Expected non-zero rpc processing time",
-        getLongCounter("RpcProcessingTimeNumOps", rpcMetrics) > 0);
-    MetricsAsserts.assertQuantileGauges("RpcQueueTime" + interval + "s",
-        rpcMetrics);
-    MetricsAsserts.assertQuantileGauges("RpcProcessingTime" + interval + "s",
-        rpcMetrics);
-  }
-
-  /**
-   *  Verify the RPC server can shutdown properly when callQueue is full.
-   */
-  @Test (timeout=30000)
-  public void testRPCServerShutdown() throws Exception {
-    final int numClients = 3;
-    final List<Future<Void>> res = new ArrayList<Future<Void>>();
-    final ExecutorService executorService =
-        Executors.newFixedThreadPool(numClients);
-    conf.setInt(CommonConfigurationKeys.IPC_CLIENT_CONNECT_MAX_RETRIES_KEY, 0);
-    RPC.Builder builder = newServerBuilder(conf)
-        .setQueueSizePerHandler(1).setNumHandlers(1).setVerbose(true);
-    server = setupTestServer(builder);
-
-    proxy = getClient();
-    final TestProtos.SleepRequestProto sleepRequestProto =
-        TestProtos.SleepRequestProto.newBuilder()
-            .setMilliSeconds(100000).build();
     try {
-      // start a sleep RPC call to consume the only handler thread.
-      // Start another sleep RPC call to make callQueue full.
-      // Start another sleep RPC call to make reader thread block on CallQueue.
-      for (int i = 0; i < numClients; i++) {
-        res.add(executorService.submit(
-            new Callable<Void>() {
-              @Override
-              public Void call() throws ServiceException, InterruptedException {
-                proxy.sleep(null, sleepRequestProto);
-                return null;
-              }
-            }));
+      proxy = getClient();
+
+      TestProtos.EmptyRequestProto emptyRequestProto =
+          TestProtos.EmptyRequestProto.newBuilder().build();
+
+      for (int i = 0; i < 1000; i++) {
+        proxy.ping(null, emptyRequestProto);
+
+        TestProtos.EchoRequestProto echoRequestProto =
+            TestProtos.EchoRequestProto.newBuilder().setMessage("" + i).build();
+        proxy.echo(null, echoRequestProto);
       }
-      while (server.getCallQueueLen() != 1
-          || countThreads(CallQueueManager.class.getName()) != 1
-          || countThreads(PBServerImpl.class.getName()) != 1) {
-        Thread.sleep(100);
-      }
+      MetricsRecordBuilder rpcMetrics =
+          getMetrics(server.getRpcMetrics().name());
+      assertTrue("Expected non-zero rpc queue time",
+          getLongCounter("RpcQueueTimeNumOps", rpcMetrics) > 0);
+      assertTrue("Expected non-zero rpc processing time",
+          getLongCounter("RpcProcessingTimeNumOps", rpcMetrics) > 0);
+      MetricsAsserts.assertQuantileGauges("RpcQueueTime" + interval + "s",
+          rpcMetrics);
+      MetricsAsserts.assertQuantileGauges("RpcProcessingTime" + interval + "s",
+          rpcMetrics);
     } finally {
-      try {
-        server.stop();
-        assertEquals("Not enough clients", numClients, res.size());
-        for (Future<Void> f : res) {
-          try {
-            f.get();
-            fail("Future get should not return");
-          } catch (ExecutionException e) {
-            ServiceException se = (ServiceException) e.getCause();
-            assertTrue("Unexpected exception: " + e,
-                se.getCause() instanceof IOException);
-            LOG.info("Expected exception", e.getCause());
-          }
-        }
-      } finally {
-        executorService.shutdown();
-      }
+      stop(server, proxy);
     }
   }
 
@@ -1049,6 +988,9 @@ public class TestRPC  extends TestRpcBase {
    */
   @Test (timeout=30000)
   public void testClientBackOff() throws Exception {
+    Server server;
+    final TestRpcService proxy;
+
     boolean succeeded = false;
     final int numClients = 2;
     final List<Future<Void>> res = new ArrayList<Future<Void>>();
@@ -1067,14 +1009,14 @@ public class TestRPC  extends TestRpcBase {
     Whitebox.setInternalState(server, "callQueue", spy);
 
     Exception lastException = null;
-    proxy = getClient();
-
     final TestProtos.SleepRequestProto sleep100000 =
         TestProtos.SleepRequestProto.newBuilder()
             .setMilliSeconds(100000).build();
     final TestProtos.SleepRequestProto sleep100 =
         TestProtos.SleepRequestProto.newBuilder()
             .setMilliSeconds(100).build();
+
+    proxy = getClient();
     try {
       // start a sleep RPC call to consume the only handler thread.
       // Start another sleep RPC call to make callQueue full.
@@ -1103,6 +1045,7 @@ public class TestRPC  extends TestRpcBase {
       }
     } finally {
       executorService.shutdown();
+      stop(server, proxy);
     }
     if (lastException != null) {
       LOG.error("Last received non-RetriableException:", lastException);
@@ -1115,14 +1058,16 @@ public class TestRPC  extends TestRpcBase {
    */
   @Test(timeout=30000)
   public void testClientRpcTimeout() throws Exception {
+    Server server;
+    TestRpcService proxy = null;
+
     RPC.Builder builder = newServerBuilder(conf)
         .setQueueSizePerHandler(1).setNumHandlers(1).setVerbose(true);
     server = setupTestServer(builder);
 
     conf.setInt(CommonConfigurationKeys.IPC_CLIENT_RPC_TIMEOUT_KEY, 1000);
-    proxy = getClient();
-
     try {
+      proxy = getClient();
       TestProtos.SleepRequestProto sleepRequestProto =
           TestProtos.SleepRequestProto.newBuilder()
               .setMilliSeconds(3000).build();
@@ -1131,6 +1076,8 @@ public class TestRPC  extends TestRpcBase {
     } catch (ServiceException e) {
       assertTrue(e.getCause() instanceof SocketTimeoutException);
       LOG.info("got expected timeout.", e);
+    } finally {
+      stop(server, proxy);
     }
   }
 

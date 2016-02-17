@@ -49,14 +49,15 @@ public class TestRPCWaitForProxy extends TestRpcBase {
    *
    * @throws Throwable any exception other than that which was expected
    */
-  @Test(timeout = 10000)
+  @Test(timeout = 50000)
   public void testWaitForProxy() throws Throwable {
     RpcThread worker = new RpcThread(0);
     worker.start();
     worker.join();
     Throwable caught = worker.getCaught();
-    Assert.assertNotNull("No exception was raised", caught);
-    if (!(caught instanceof ConnectException)) {
+    Throwable cause = caught.getCause();
+    Assert.assertNotNull("No exception was raised", cause);
+    if (!(cause instanceof ConnectException)) {
       throw caught;
     }
   }
@@ -85,6 +86,8 @@ public class TestRPCWaitForProxy extends TestRpcBase {
     if (cause == null) {
       // no inner cause, use outer exception as root cause.
       cause = caught;
+    } else if (cause.getCause() != null) {
+      cause = cause.getCause();
     }
     if (!(cause instanceof InterruptedIOException)
         && !(cause instanceof ClosedByInterruptException)) {

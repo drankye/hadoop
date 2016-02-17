@@ -189,7 +189,7 @@ public class TestSaslRPC {
     clientFallBackToSimpleAllowed = true;
 
     RPC.setProtocolEngine(conf,
-        TestSaslProtocol.class, WritableRpcEngine.class);
+        TestSaslProtocol.class, ProtobufRpcEngine.class);
   }
 
   static String getQOPNames (QualityOfProtection[] qops){
@@ -506,7 +506,7 @@ public class TestSaslRPC {
       proxy1 = RPC.getProxy(TestSaslProtocol.class,
           TestSaslProtocol.versionID, addr, newConf);
       proxy1.getAuthMethod();
-      client = WritableRpcEngine.getClient(newConf);
+      client = ProtobufRpcEngine.getClient(newConf);
       Set<ConnectionId> conns = client.getConnectionIds();
       assertEquals("number of connections in cache is wrong", 1, conns.size());
       // same conf, connection should be re-used
