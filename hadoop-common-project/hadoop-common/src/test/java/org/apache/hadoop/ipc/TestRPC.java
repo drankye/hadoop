@@ -348,7 +348,7 @@ public class TestRPC extends TestRpcBase {
   }
 
   @Test
-  public void testProxyAddress() throws IOException {
+  public void testProxyAddress() throws Exception {
     Server server = null;
     TestRpcService proxy = null;
 
@@ -851,7 +851,7 @@ public class TestRPC extends TestRpcBase {
   }
 
   @Test(timeout=30000)
-  public void testRPCInterrupted() throws IOException, InterruptedException {
+  public void testRPCInterrupted() throws Exception {
     Server server;
 
     RPC.Builder builder = newServerBuilder(conf)
