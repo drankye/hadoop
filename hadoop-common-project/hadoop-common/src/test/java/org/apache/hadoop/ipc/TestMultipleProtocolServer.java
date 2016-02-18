@@ -242,8 +242,7 @@ public class TestMultipleProtocolServer extends TestRpcBase {
     FooUnimplemented foo = (FooUnimplemented)proxy.getProxy(); 
     foo.ping();
   }
-  
-  
+
   /**
    * getProtocolVersion of an unimplemented version should return highest version
    * Similarly getProtocolSignature should work.

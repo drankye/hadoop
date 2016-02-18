@@ -58,7 +58,7 @@ public class TestRpcBase {
       "test.ipc.server.principal";
   protected final static String ADDRESS = "0.0.0.0";
   protected final static int PORT = 0;
-  protected InetSocketAddress addr;
+  protected static InetSocketAddress addr;
   protected static Configuration conf;
 
   protected void setupConf() {
@@ -68,7 +68,7 @@ public class TestRpcBase {
     UserGroupInformation.setConfiguration(conf);
   }
 
-  protected RPC.Builder newServerBuilder(
+  protected static RPC.Builder newServerBuilder(
       Configuration serverConf) throws IOException {
     // Create server side implementation
     PBServerImpl serverImpl = new PBServerImpl();
@@ -83,12 +83,12 @@ public class TestRpcBase {
     return builder;
   }
 
-  protected RPC.Server setupTestServer(Configuration serverConf,
+  protected static RPC.Server setupTestServer(Configuration serverConf,
                                        int numHandlers) throws IOException {
     return setupTestServer(serverConf, numHandlers, null);
   }
 
-  protected RPC.Server setupTestServer(Configuration serverConf,
+  protected static RPC.Server setupTestServer(Configuration serverConf,
                                        int numHandlers,
                                        SecretManager<?> serverSm)
       throws IOException {
@@ -105,7 +105,7 @@ public class TestRpcBase {
     return setupTestServer(builder);
   }
 
-  protected RPC.Server setupTestServer(RPC.Builder builder) throws IOException {
+  protected static RPC.Server setupTestServer(RPC.Builder builder) throws IOException {
     RPC.Server server = builder.build();
 
     server.start();
@@ -123,7 +123,7 @@ public class TestRpcBase {
     }
   }
 
-  protected TestRpcService getClient(InetSocketAddress serverAddr,
+  protected static TestRpcService getClient(InetSocketAddress serverAddr,
                                      Configuration clientConf)
       throws ServiceException {
     try {
@@ -133,7 +133,7 @@ public class TestRpcBase {
     }
   }
 
-  protected void stop(Server server, TestRpcService proxy) {
+  protected static void stop(Server server, TestRpcService proxy) {
     if (proxy != null) {
       try {
         RPC.stopProxy(proxy);

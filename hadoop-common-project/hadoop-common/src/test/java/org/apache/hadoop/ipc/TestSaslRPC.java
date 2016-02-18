@@ -28,7 +28,6 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.Client.ConnectionId;
-import org.apache.hadoop.ipc.Server.Call;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.KerberosInfo;
 import org.apache.hadoop.security.SaslInputStream;
@@ -76,9 +75,7 @@ import java.security.PrivilegedExceptionAction;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -183,9 +180,6 @@ public class TestSaslRPC extends TestRpcBase {
     forceSecretManager = null;
     clientFallBackToSimpleAllowed = true;
 
-    RPC.setProtocolEngine(conf,
-        TestSaslProtocol.class, ProtobufRpcEngine.class);
-
     // Set RPC engine to protobuf RPC engine
     RPC.setProtocolEngine(conf, TestRpcService.class, ProtobufRpcEngine.class);
   }
@@ -217,44 +211,6 @@ public class TestSaslRPC extends TestRpcBase {
     public byte[] retrievePassword(TestTokenIdentifier id) 
         throws InvalidToken {
       throw new InvalidToken(ERROR_MESSAGE);
-    }
-  }
-  
-  @KerberosInfo(serverPrincipal = SERVER_PRINCIPAL_KEY)
-  @TokenInfo(TestTokenSelector.class)
-  public interface TestSaslProtocol extends TestRPC.TestProtocol {
-    public AuthMethod getAuthMethod() throws IOException;
-    public String getAuthUser() throws IOException;
-    public String echoPostponed(String value) throws IOException;
-    public void sendPostponed() throws IOException;
-  }
-
-  public static class TestSaslImpl extends TestRPC.TestImpl implements
-      TestSaslProtocol {
-    private List<Call> postponedCalls = new ArrayList<Call>();
-    @Override
-    public AuthMethod getAuthMethod() throws IOException {
-      return UserGroupInformation.getCurrentUser()
-          .getAuthenticationMethod().getAuthMethod();
-    }
-    @Override
-    public String getAuthUser() throws IOException {
-      return UserGroupInformation.getCurrentUser().getUserName();
-    }
-    @Override
-    public String echoPostponed(String value) {
-      Call call = Server.getCurCall().get();
-      call.postponeResponse();
-      postponedCalls.add(call);
-      return value;
-    }
-    @Override
-    public void sendPostponed() throws IOException {
-      Collections.shuffle(postponedCalls);
-      for (Call call : postponedCalls) {
-        call.sendResponse();
-      }
-      postponedCalls.clear();
     }
   }
 
@@ -368,13 +324,13 @@ public class TestSaslRPC extends TestRpcBase {
     // set doPing to true
     newConf.setBoolean(CommonConfigurationKeys.IPC_CLIENT_PING_KEY, true);
     ConnectionId remoteId = ConnectionId.getConnectionId(
-        new InetSocketAddress(0), TestSaslProtocol.class, null, 0, newConf);
+        new InetSocketAddress(0), TestRpcService.class, null, 0, newConf);
     assertEquals(CommonConfigurationKeys.IPC_PING_INTERVAL_DEFAULT,
         remoteId.getPingInterval());
     // set doPing to false
     newConf.setBoolean(CommonConfigurationKeys.IPC_CLIENT_PING_KEY, false);
     remoteId = ConnectionId.getConnectionId(
-        new InetSocketAddress(0), TestSaslProtocol.class, null, 0, newConf);
+        new InetSocketAddress(0), TestRpcService.class, null, 0, newConf);
     assertEquals(0, remoteId.getPingInterval());
   }
   
@@ -446,24 +402,14 @@ public class TestSaslRPC extends TestRpcBase {
     UserGroupInformation current = UserGroupInformation.getCurrentUser();
     System.out.println("UGI: " + current);
 
-    Server server = new RPC.Builder(newConf)
-        .setProtocol(TestSaslProtocol.class).setInstance(new TestSaslImpl())
-        .setBindAddress(ADDRESS).setPort(0).setNumHandlers(5).setVerbose(true)
-        .build();
-    TestSaslProtocol proxy = null;
+    Server server = setupTestServer(newConf, 5);
+    TestRpcService proxy = null;
 
-    server.start();
-
-    InetSocketAddress addr = NetUtils.getConnectAddress(server);
     try {
-      proxy = RPC.getProxy(TestSaslProtocol.class,
-          TestSaslProtocol.versionID, addr, newConf);
-      proxy.ping();
+      proxy = getClient(addr, newConf);
+      proxy.ping(null, newEmptyRequest());
     } finally {
-      server.stop();
-      if (proxy != null) {
-        RPC.stopProxy(proxy);
-      }
+      stop(server, proxy);
     }
     System.out.println("Test is successful.");
   }
