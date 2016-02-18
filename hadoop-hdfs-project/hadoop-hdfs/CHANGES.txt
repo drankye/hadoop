@@ -1015,6 +1015,9 @@ Release 2.9.0 - UNRELEASED
     HDFS-9621. getListing wrongly associates Erasure Coding policy to pre-existing
     replicated files under an EC directory. (jing9)
 
+    HDFS-9691. TestBlockManagerSafeMode#testCheckSafeMode fails intermittently.
+    (Mingliang Liu via aajisaka)
+
 Release 2.8.0 - UNRELEASED
 
   NEW FEATURES
@@ -1921,6 +1924,9 @@ Release 2.8.0 - UNRELEASED
 
     HDFS-9797. Log Standby exceptions thrown by RequestHedgingProxyProvider
     at DEBUG Level (Inigo Goiri via asuresh)
+
+    HDFS-9773. Remove dead code related to SimulatedFSDataset in tests.
+    (Brahma Reddy Battula via aajisaka)
 
   OPTIMIZATIONS
 
@@ -2843,6 +2849,9 @@ Release 2.7.3 - UNRELEASED
 
     HDFS-9784. Example usage is not correct in Transparent Encryption document.
     (Takashi Ohnishi via aajisaka)
+
+    HDFS-9765. TestBlockScanner#testVolumeIteratorWithCaching fails
+    intermittently. (aajisaka)
 
 Release 2.7.2 - 2016-01-25
 
