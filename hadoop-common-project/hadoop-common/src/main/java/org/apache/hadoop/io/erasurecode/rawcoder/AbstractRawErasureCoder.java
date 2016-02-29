@@ -20,6 +20,7 @@ package org.apache.hadoop.io.erasurecode.rawcoder;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.io.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -137,6 +138,32 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
+   * Convert an input bytes array to direct ByteBuffer.
+   * @param input
+   * @return direct ByteBuffer
+   */
+  protected ByteBuffer convertInputBuffer(byte[] input, int offset, int len) {
+    if (input == null) { // an input can be null, if erased or not to read
+      return null;
+    }
+
+    ByteBuffer directBuffer = ByteBuffer.allocateDirect(len);
+    directBuffer.put(input, offset, len);
+    directBuffer.flip();
+    return directBuffer;
+  }
+
+  /**
+   * Convert an output bytes array buffer to direct ByteBuffer.
+   * @param output
+   * @return direct ByteBuffer
+   */
+  protected ByteBuffer convertOutputBuffer(byte[] output, int len) {
+    ByteBuffer directBuffer = ByteBuffer.allocateDirect(len);
+    return directBuffer;
+  }
+
+  /**
    * Ensure a buffer filled with ZERO bytes from current readable/writable
    * position.
    * @param buffer a buffer ready to read / write certain size bytes
@@ -165,6 +192,15 @@ public abstract class AbstractRawErasureCoder
   }
 
   /**
+   * Tell if output buffers need to be initialized with ZERO bytes.
+   * Note native coders don't want to init output buffers in the Java layer,
+   * because doing it in native codes will be much efficient via memset.
+   */
+  protected boolean initOutputs() {
+    return true;
+  }
+
+  /**
    * Check and ensure the buffers are of the length specified by dataLen, also
    * ensure the buffers are direct buffers or not according to isDirectBuffer.
    * @param buffers the buffers to check
@@ -188,7 +224,7 @@ public abstract class AbstractRawErasureCoder
           throw new HadoopIllegalArgumentException(
               "Invalid buffer, isDirect should be " + isDirectBuffer);
         }
-        if (isOutputs) {
+        if (isOutputs && initOutputs()) {
           resetBuffer(buffer, dataLen);
         }
       }
@@ -212,9 +248,34 @@ public abstract class AbstractRawErasureCoder
       } else if (buffer != null && buffer.length != dataLen) {
         throw new HadoopIllegalArgumentException(
             "Invalid buffer not of length " + dataLen);
-      } else if (isOutputs) {
+      } else if (isOutputs && initOutputs()) {
         resetBuffer(buffer, 0, dataLen);
       }
     }
+  }
+
+  /**
+   * Convert an array of this chunks to an array of ByteBuffers
+   * @param chunks chunks to convert into buffers
+   * @return an array of ByteBuffers
+   */
+  protected ByteBuffer[] toBuffers(ECChunk[] chunks) {
+    ByteBuffer[] buffers = new ByteBuffer[chunks.length];
+
+    ECChunk chunk;
+    ByteBuffer buffer;
+    for (int i = 0; i < chunks.length; i++) {
+      chunk = chunks[i];
+      if (chunk == null) {
+        buffers[i] = null;
+      } else {
+        buffer = buffers[i] = chunk.getBuffer();
+        if (chunk.isAllZero()) {
+          resetBuffer(buffer, buffer.remaining());
+        }
+      }
+    }
+
+    return buffers;
   }
 }

@@ -25,9 +25,10 @@ import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 import java.nio.ByteBuffer;
 
 /**
- * A raw erasure decoder in RS code scheme in pure Java in case native one
+ * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This one originated from HDFS-RAID in its core algorithm. Note
+ * it's not compatible with the native/ISA-L coder.
  *
  * Currently this implementation will compute and decode not to read units
  * unnecessarily due to the underlying implementation limit in GF. This will be
@@ -137,6 +138,11 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
      * implementations, so we have to adjust them before calling doDecodeImpl.
      */
 
+    byte[][] bytesArrayBuffers = new byte[getNumParityUnits()][];
+    byte[][] adjustedByteArrayOutputsParameter =
+        new byte[getNumParityUnits()][];
+    int[] adjustedOutputOffsets = new int[getNumParityUnits()];
+
     int[] erasedOrNotToReadIndexes =
         CoderUtil.getErasedOrNotToReadIndexes(inputs);
 
@@ -170,7 +176,8 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
     for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
       if (adjustedByteArrayOutputsParameter[i] == null) {
         adjustedByteArrayOutputsParameter[i] = resetBuffer(
-            checkGetBytesArrayBuffer(bufferIdx, dataLen), 0, dataLen);
+            checkGetBytesArrayBuffer(bytesArrayBuffers,
+                bufferIdx, dataLen), 0, dataLen);
         adjustedOutputOffsets[i] = 0; // Always 0 for such temp output
         bufferIdx++;
       }
@@ -190,6 +197,9 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
      * As passed parameters are friendly to callers but not to the underlying
      * implementations, so we have to adjust them before calling doDecodeImpl.
      */
+    ByteBuffer[] directBuffers = new ByteBuffer[getNumParityUnits()];
+    ByteBuffer[] adjustedDirectBufferOutputsParameter =
+        new ByteBuffer[getNumParityUnits()];
 
     int[] erasedOrNotToReadIndexes =
         CoderUtil.getErasedOrNotToReadIndexes(inputs);
@@ -220,7 +230,7 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
     // Use shared buffers for other positions (not set yet)
     for (int bufferIdx = 0, i = 0; i < erasedOrNotToReadIndexes.length; i++) {
       if (adjustedDirectBufferOutputsParameter[i] == null) {
-        ByteBuffer buffer = checkGetDirectBuffer(bufferIdx, dataLen);
+        ByteBuffer buffer = checkGetDirectBuffer(directBuffers, bufferIdx, dataLen);
         buffer.position(0);
         buffer.limit(dataLen);
         adjustedDirectBufferOutputsParameter[i] = resetBuffer(buffer, dataLen);
@@ -268,7 +278,8 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
         numErasedParityUnits, numErasedDataUnits);
   }
 
-  private byte[] checkGetBytesArrayBuffer(int idx, int bufferLen) {
+  private byte[] checkGetBytesArrayBuffer(byte[][] bytesArrayBuffers,
+                                          int idx, int bufferLen) {
     if (bytesArrayBuffers[idx] == null ||
             bytesArrayBuffers[idx].length < bufferLen) {
       bytesArrayBuffers[idx] = new byte[bufferLen];
@@ -276,7 +287,8 @@ public class RSRawDecoderLegacy extends AbstractRawErasureDecoder {
     return bytesArrayBuffers[idx];
   }
 
-  private ByteBuffer checkGetDirectBuffer(int idx, int bufferLen) {
+  private ByteBuffer checkGetDirectBuffer(ByteBuffer[] directBuffers,
+                                          int idx, int bufferLen) {
     if (directBuffers[idx] == null ||
         directBuffers[idx].capacity() < bufferLen) {
       directBuffers[idx] = ByteBuffer.allocateDirect(bufferLen);

@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "org_apache_hadoop.h"
-#include "../include/erasure_code.h"
+#include "../include/isal_load.h"
 #include "org_apache_hadoop_io_erasurecode_ErasureCodeNative.h"
 
 #ifdef UNIX
