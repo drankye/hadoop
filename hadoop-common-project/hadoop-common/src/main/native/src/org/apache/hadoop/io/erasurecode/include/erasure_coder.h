@@ -33,23 +33,23 @@
 #define MMAX 14
 #define KMAX 10
 
-typedef struct _CoderState {
+typedef struct _IsalCoder {
   int verbose;
   int numParityUnits;
   int numDataUnits;
   int numAllUnits;
-} CoderState;
+} IsalCoder;
 
-typedef struct _EncoderState {
-  CoderState coderState;
+typedef struct _IsalEncoder {
+  IsalCoder coder;
 
   unsigned char gftbls[MMAX * KMAX * 32];
 
   unsigned char encodeMatrix[MMAX * KMAX];
-} EncoderState;
+} IsalEncoder;
 
-typedef struct _DecoderState {
-  CoderState coderState;
+typedef struct _IsalDecoder {
+  IsalCoder coder;
 
   unsigned char encodeMatrix[MMAX * KMAX];
 
@@ -64,30 +64,30 @@ typedef struct _DecoderState {
   int numErased;
   int numErasedDataUnits;
   unsigned char* realInputs[MMAX];
-} DecoderState;
+} IsalDecoder;
 
-void initCoder(CoderState* pCoderState, int numDataUnits, int numParityUnits);
+void initCoder(IsalCoder* pCoder, int numDataUnits, int numParityUnits);
 
-void allowVerbose(CoderState* pCoderState, int flag);
+void allowVerbose(IsalCoder* pCoder, int flag);
 
-void initEncoder(EncoderState* encoder, int numDataUnits, int numParityUnits);
+void initEncoder(IsalEncoder* encoder, int numDataUnits, int numParityUnits);
 
-void initDecoder(DecoderState* decoder, int numDataUnits, int numParityUnits);
+void initDecoder(IsalDecoder* decoder, int numDataUnits, int numParityUnits);
 
-void clearDecoder(DecoderState* decoder);
+void clearDecoder(IsalDecoder* decoder);
 
-int encode(EncoderState* pCoderState, unsigned char** dataUnits,
+int encode(IsalEncoder* encoder, unsigned char** dataUnits,
     unsigned char** parityUnits, int chunkSize);
 
-int decode(DecoderState* pCoderState, unsigned char** allUnits,
+int decode(IsalDecoder* decoder, unsigned char** allUnits,
     int* erasedIndexes, int numErased,
     unsigned char** recoveredUnits, int chunkSize);
 
-int generateDecodeMatrix(DecoderState* pCoderState);
+int generateDecodeMatrix(IsalDecoder* pCoder);
 
-void dumpEncoder(EncoderState* pCoderState);
+void dumpEncoder(IsalEncoder* pCoder);
 
-void dumpDecoder(DecoderState* pCoderState);
+void dumpDecoder(IsalDecoder* pCoder);
 
 void dump(unsigned char* buf, int len);
 

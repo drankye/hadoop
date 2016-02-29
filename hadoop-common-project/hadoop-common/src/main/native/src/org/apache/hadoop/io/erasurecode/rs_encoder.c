@@ -23,46 +23,45 @@
 #include "org_apache_hadoop.h"
 #include "../include/erasure_code.h"
 #include "../include/gf_util.h"
-#include "coder_util.h"
+#include "../include/coder_util.h"
 #include "org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder.h"
 
-typedef struct _RSEncoderState {
-  EncoderState coderStates;
+typedef struct _RSEncoder {
+  IsalEncoder encoder;
   unsigned char* inputs[MMAX];
   unsigned char* outputs[MMAX];
-} RSEncoderState;
+} RSEncoder;
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder_initImpl(
 JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
-  RSEncoderState* pCoderState = (RSEncoderState*)malloc(sizeof(RSEncoderState));
-  memset(pCoderState, 0, sizeof(*pCoderState));
-  initEncoder((EncoderState*)pCoderState, (int)numDataUnits, (int)numParityUnits);
+  RSEncoder* rsEncoder = (RSEncoder*)malloc(sizeof(RSEncoder));
+  memset(rsEncoder, 0, sizeof(*rsEncoder));
+  initEncoder(&rsEncoder->encoder, (int)numDataUnits, (int)numParityUnits);
 
-  setCoderState(env, thiz, (CoderState*)pCoderState);
+  setCoder(env, thiz, &rsEncoder->encoder.coder);
 }
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder_encodeImpl(
 JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
 jint dataLen, jobjectArray outputs, jintArray outputOffsets) {
-  RSEncoderState* rsEncoder = (RSEncoderState*)getCoderState(env, thiz);
+  RSEncoder* rsEncoder = (RSEncoder*)getCoder(env, thiz);
   
-  int numDataUnits = ((CoderState*)rsEncoder)->numDataUnits;
-  int numParityUnits = ((CoderState*)rsEncoder)->numParityUnits;
+  int numDataUnits = rsEncoder->encoder.coder.numDataUnits;
+  int numParityUnits = rsEncoder->encoder.coder.numParityUnits;
   int chunkSize = (int)dataLen;
 
   getInputs(env, inputs, inputOffsets, rsEncoder->inputs, numDataUnits);
   getOutputs(env, outputs, outputOffsets, rsEncoder->outputs, numParityUnits);
 
-  encode((EncoderState*)rsEncoder, rsEncoder->inputs,
-                                              rsEncoder->outputs, chunkSize);
+  encode(&rsEncoder->encoder, rsEncoder->inputs, rsEncoder->outputs, chunkSize);
 }
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawEncoder_destroyImpl(
 JNIEnv *env, jobject thiz) {
-  RSEncoderState* rsEncoder = (RSEncoderState*)getCoderState(env, thiz);
+  RSEncoder* rsEncoder = (RSEncoder*)getCoder(env, thiz);
   free(rsEncoder);
 }
 

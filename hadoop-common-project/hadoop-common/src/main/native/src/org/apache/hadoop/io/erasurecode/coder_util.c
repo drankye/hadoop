@@ -20,8 +20,9 @@
 #include <string.h>
 
 #include "org_apache_hadoop.h"
+#include "../include/isal_load.h"
 #include "../include/erasure_code.h"
-#include "coder_util.h"
+#include "../include/coder_util.h"
 
 void loadLib(JNIEnv *env) {
   char errMsg[1024];
@@ -31,24 +32,24 @@ void loadLib(JNIEnv *env) {
   }
 }
 
-void setCoderState(JNIEnv* env, jobject thiz, CoderState* coderState) {
+void setCoder(JNIEnv* env, jobject thiz, IsalCoder* pCoder) {
   jclass clazz = (*env)->GetObjectClass(env, thiz);
   jfieldID __coderState = (*env)->GetFieldID(env, clazz, "__native_coder", "J");
-  (*env)->SetLongField(env, thiz, __coderState, (jlong) coderState);
+  (*env)->SetLongField(env, thiz, __coderState, (jlong) pCoder);
 }
 
-CoderState* getCoderState(JNIEnv* env, jobject thiz) {
+IsalCoder* getCoder(JNIEnv* env, jobject thiz) {
   jclass clazz = (*env)->GetObjectClass(env, thiz);
 
   jfieldID __verbose = (*env)->GetFieldID(env, clazz, "__native_verbose", "J");
   int verbose = (int)(*env)->GetIntField(env, thiz, __verbose);
 
   jfieldID __coderState = (*env)->GetFieldID(env, clazz, "__native_coder", "J");
-  CoderState* pCoderState = (CoderState*)(*env)->GetLongField(env,
+  IsalCoder* pCoder = (IsalCoder*)(*env)->GetLongField(env,
                                                        thiz, __coderState);
-  pCoderState->verbose = verbose;
+  pCoder->verbose = verbose;
 
-  return pCoderState;
+  return pCoder;
 }
 
 void getInputs(JNIEnv *env, jobjectArray inputs, jintArray inputOffsets,

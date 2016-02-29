@@ -29,9 +29,9 @@
 
 void loadLib(JNIEnv *env);
 
-void setCoderState(JNIEnv* env, jobject thiz, CoderState* coderState);
+void setCoder(JNIEnv* env, jobject thiz, IsalCoder* coder);
 
-CoderState* getCoderState(JNIEnv* env, jobject thiz);
+IsalCoder* getCoder(JNIEnv* env, jobject thiz);
 
 void getInputs(JNIEnv *env, jobjectArray inputs, jintArray inputOffsets,
                               unsigned char** destInputs, int num);

@@ -109,6 +109,7 @@ if (ISAL_LIBRARY)
         ${SRC}/io/erasurecode/isal_load.c
         ${SRC}/io/erasurecode/erasure_code.c
         ${SRC}/io/erasurecode/gf_util.c
+        ${SRC}/io/erasurecode/dump.c
         ${SRC}/io/erasurecode/erasure_coder.c
         ${SRC}/io/erasurecode/coder_util.c
         ${SRC}/io/erasurecode/erasure_code_native.c
@@ -119,6 +120,7 @@ if (ISAL_LIBRARY)
         ${SRC}/io/erasurecode/isal_load.c
         ${SRC}/io/erasurecode/erasure_code.c
         ${SRC}/io/erasurecode/gf_util.c
+        ${SRC}/io/erasurecode/dump.c
         ${SRC}/io/erasurecode/erasure_coder.c
         ${TST}/io/erasurecode/erasure_code_test.c
         )

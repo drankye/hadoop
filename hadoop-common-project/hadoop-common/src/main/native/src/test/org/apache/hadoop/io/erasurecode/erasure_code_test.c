@@ -32,12 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void usage(char* errorMsg) {
-  fprintf(stderr, "A Reed-Solomon coding test using 6+3 schema.\n");
-  if (errorMsg != NULL) fprintf(stderr, "\n%s\n\n", errorMsg);
-  exit(1);
-}
-
 int main(int argc, char *argv[]) {
   int i, j;
   char err[256];
@@ -45,13 +39,12 @@ int main(int argc, char *argv[]) {
   int chunkSize = 1024;
   int numDataUnits = 6;
   int numParityUnits = 3;
-  char errMsg[256];
   unsigned char** dataUnits;
   unsigned char** parityUnits;
-  EncoderState* pEncoder;
+  IsalEncoder* pEncoder;
   int erasedIndexes[2];
   unsigned char* allUnits[MMAX];
-  DecoderState* pDecoder;
+  IsalDecoder* pDecoder;
   unsigned char* decodingOutput[2];
   unsigned char** backupUnits;
 
@@ -89,12 +82,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  pEncoder = (EncoderState*)malloc(sizeof(EncoderState));
+  pEncoder = (IsalEncoder*)malloc(sizeof(IsalEncoder));
   memset(pEncoder, 0, sizeof(*pEncoder));
   initEncoder(pEncoder, numDataUnits, numParityUnits);
   encode(pEncoder, dataUnits, parityUnits, chunkSize);
 
-  pDecoder = (DecoderState*)malloc(sizeof(DecoderState));
+  pDecoder = (IsalDecoder*)malloc(sizeof(IsalDecoder));
   memset(pDecoder, 0, sizeof(*pDecoder));
   initDecoder(pDecoder, numDataUnits, numParityUnits);
 

@@ -170,6 +170,7 @@
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code_native.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\coder_util.c" Condition="'$(IsalEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\dump.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\rs_encoder.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\rs_decoder.c" Condition="'$(IsalEnabled)' == 'true'"/>
   </ItemGroup>

@@ -16,56 +16,9 @@
  * limitations under the License.
  */
 
-#include "erasure_code.h"
-#include "gf_util.h"
-#include "erasure_coder.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-void dumpEncoder(EncoderState* pCoderState) {
-  int numDataUnits = pCoderState->coderState.numDataUnits;
-  int numParityUnits = pCoderState->coderState.numDataUnits;
-  int numAllUnits = pCoderState->coderState.numAllUnits;
-
-  printf("Encoding (numAlnumParityUnitslUnits = %d, numDataUnits = %d)\n",
-                                    numParityUnits, numDataUnits);
-
-  printf("\n\nEncodeMatrix:\n");
-  dumpCodingMatrix((unsigned char*) pCoderState->encodeMatrix,
-                                           numDataUnits, numAllUnits);
-}
-
-void dumpDecoder(DecoderState* pCoderState) {
-  int i, j;
-  int numDataUnits = pCoderState->coderState.numDataUnits;
-  int numAllUnits = pCoderState->coderState.numAllUnits;
-
-  printf("Recovering (numAllUnits = %d, numDataUnits = %d, numErased = %d)\n",
-                       numAllUnits, numDataUnits, pCoderState->numErased);
-
-  printf(" - ErasedIndexes = ");
-  for (j = 0; j < pCoderState->numErased; j++) {
-    printf(" %d", pCoderState->erasedIndexes[j]);
-  }
-  printf("       - DecodeIndex = ");
-  for (i = 0; i < numDataUnits; i++) {
-    printf(" %d", pCoderState->decodeIndex[i]);
-  }
-
-  printf("\n\nEncodeMatrix:\n");
-  dumpCodingMatrix((unsigned char*) pCoderState->encodeMatrix,
-                                    numDataUnits, numAllUnits);
-
-  printf("InvertMatrix:\n");
-  dumpCodingMatrix((unsigned char*) pCoderState->invertMatrix,
-                                   numDataUnits, numDataUnits);
-
-  printf("DecodeMatrix:\n");
-  dumpCodingMatrix((unsigned char*) pCoderState->decodeMatrix,
-                                    numDataUnits, numAllUnits);
-}
 
 void dump(unsigned char* buf, int len) {
   int i;
