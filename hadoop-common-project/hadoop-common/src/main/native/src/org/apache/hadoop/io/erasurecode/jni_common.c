@@ -22,7 +22,7 @@
 #include "org_apache_hadoop.h"
 #include "isal_load.h"
 #include "erasure_code.h"
-#include "jni_coder_common.h"
+#include "jni_common.h"
 
 void loadLib(JNIEnv *env) {
   char errMsg[1024];

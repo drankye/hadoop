@@ -23,7 +23,7 @@
 #include "org_apache_hadoop.h"
 #include "erasure_code.h"
 #include "gf_util.h"
-#include "jni_coder_common.h"
+#include "jni_common.h"
 #include "org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder.h"
 
 typedef struct _RSDecoder {

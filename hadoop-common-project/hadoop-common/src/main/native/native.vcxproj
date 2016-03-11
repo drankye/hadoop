@@ -167,10 +167,10 @@
     </ClCompile>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\gf_util.c" Condition="'$(IsalEnabled)' == 'true'"/>
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_code_native.c" Condition="'$(IsalEnabled)' == 'true'"/>
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_erasure_coder.c" Condition="'$(IsalEnabled)' == 'true'"/>
-    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_coder_common.c" Condition="'$(IsalEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\erasure_coder.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\dump.c" Condition="'$(IsalEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_erasure_code_native.c" Condition="'$(IsalEnabled)' == 'true'"/>
+    <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_common.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_rs_encoder.c" Condition="'$(IsalEnabled)' == 'true'"/>
     <ClCompile Include="src\org\apache\hadoop\io\erasurecode\jni_rs_decoder.c" Condition="'$(IsalEnabled)' == 'true'"/>
   </ItemGroup>

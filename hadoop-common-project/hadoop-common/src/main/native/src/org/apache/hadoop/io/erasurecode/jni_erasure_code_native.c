@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "org_apache_hadoop.h"
-#include "isal_load.h"
+#include "jni_common.h"
 #include "org_apache_hadoop_io_erasurecode_ErasureCodeNative.h"
 
 #ifdef UNIX
@@ -31,11 +31,7 @@
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_io_erasurecode_ErasureCodeNative_loadLibrary
 (JNIEnv *env, jclass myclass) {
-  char errMsg[1024];
-  load_erasurecode_lib(errMsg, sizeof(errMsg));
-  if (strlen(errMsg) > 0) {
-    THROW(env, "java/lang/UnsatisfiedLinkError", errMsg);
-  }
+  loadLib(env);
 }
 
 JNIEXPORT jstring JNICALL
