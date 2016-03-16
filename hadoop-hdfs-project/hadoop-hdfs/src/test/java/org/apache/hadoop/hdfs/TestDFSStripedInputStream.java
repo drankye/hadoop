@@ -261,12 +261,16 @@ public class TestDFSStripedInputStream {
     // |10     |
     done += in.read(0, readBuffer, 0, delta);
     assertEquals(delta, done);
+    assertArrayEquals(Arrays.copyOf(expected, done),
+        Arrays.copyOf(readBuffer, done));
     // both head and trail cells are partial
     // |c_0      |c_1    |c_2 |c_3 |c_4      |c_5         |
     // |256K - 10|missing|256K|256K|256K - 10|not in range|
     done += in.read(delta, readBuffer, delta,
         CELLSIZE * (DATA_BLK_NUM - 1) - 2 * delta);
     assertEquals(CELLSIZE * (DATA_BLK_NUM - 1) - delta, done);
+    assertArrayEquals(Arrays.copyOf(expected, done),
+        Arrays.copyOf(readBuffer, done));
     // read the rest
     done += in.read(done, readBuffer, done, readSize - done);
     assertEquals(readSize, done);
