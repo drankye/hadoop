@@ -339,6 +339,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         for (ByteBufferStrategy strategy : strategies) {
           result += readToBuffer(reader, datanode, strategy, currentBlock,
               corruptedBlocks);
+          strategy.getReadBuffer().flip();
         }
         return null;
       }
