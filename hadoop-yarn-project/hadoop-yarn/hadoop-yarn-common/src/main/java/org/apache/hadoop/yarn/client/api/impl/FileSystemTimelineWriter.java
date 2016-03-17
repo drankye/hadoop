@@ -276,6 +276,7 @@ public class FileSystemTimelineWriter extends TimelineWriter{
     mapper.setAnnotationIntrospector(new JaxbAnnotationIntrospector());
     mapper.setSerializationInclusion(Inclusion.NON_NULL);
     mapper.configure(Feature.CLOSE_CLOSEABLE, false);
+    mapper.configure(Feature.FLUSH_AFTER_WRITE_VALUE, false);
     return mapper;
   }
 
@@ -305,8 +306,10 @@ public class FileSystemTimelineWriter extends TimelineWriter{
     Path domainLogPath =
         new Path(createAttemptDir(appAttemptId), DOMAIN_LOG_PREFIX
             + appAttemptId.toString());
-    LOG.info("Writing domains for " + appAttemptId.toString() + " to "
-        + domainLogPath);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Writing domains for " + appAttemptId.toString() + " to "
+          + domainLogPath);
+    }
     this.logFDsCache.writeDomainLog(
         fs, domainLogPath, objMapper, domain, isAppendSupported);
   }
