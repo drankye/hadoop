@@ -17,95 +17,59 @@
  */
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
+import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.io.erasurecode.rawcoder.util.DumpUtil;
 import org.apache.hadoop.io.erasurecode.rawcoder.util.RSUtil;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * A raw erasure encoder in RS code scheme in pure Java in case native one
  * isn't available in some environment. Please always use native implementations
- * when possible.
+ * when possible. This new Java coder is about 5X faster than the one originated
+ * from HDFS-RAID, and also compatible with the native/ISA-L coder.
  */
 @InterfaceAudience.Private
 public class RSRawEncoder extends AbstractRawErasureEncoder {
-  private int[] generatingPolynomial;
+  // relevant to schema and won't change during encode calls.
+  private byte[] encodeMatrix;
+  /**
+   * Array of input tables generated from coding coefficients previously.
+   * Must be of size 32*k*rows
+   */
+  private byte[] gfTables;
 
   public RSRawEncoder(int numDataUnits, int numParityUnits) {
     super(numDataUnits, numParityUnits);
 
-    assert (getNumDataUnits() + getNumParityUnits() < RSUtil.GF.getFieldSize());
-
-    int[] primitivePower = RSUtil.getPrimitivePower(numDataUnits,
-        numParityUnits);
-    // compute generating polynomial
-    int[] gen = {1};
-    int[] poly = new int[2];
-    for (int i = 0; i < numParityUnits; i++) {
-      poly[0] = primitivePower[i];
-      poly[1] = 1;
-      gen = RSUtil.GF.multiply(gen, poly);
+    if (numDataUnits + numParityUnits >= RSUtil.GF.getFieldSize()) {
+      throw new HadoopIllegalArgumentException(
+          "Invalid numDataUnits and numParityUnits");
     }
-    // generating polynomial has all generating roots
-    generatingPolynomial = gen;
+
+    encodeMatrix = new byte[getNumAllUnits() * numDataUnits];
+    RSUtil.genCauchyMatrix(encodeMatrix, getNumAllUnits(), numDataUnits);
+    if (isAllowingVerboseDump()) {
+      DumpUtil.dumpMatrix(encodeMatrix, numDataUnits, getNumAllUnits());
+    }
+    gfTables = new byte[getNumAllUnits() * numDataUnits * 32];
+    RSUtil.initTables(numDataUnits, numParityUnits, encodeMatrix,
+        numDataUnits * numDataUnits, gfTables);
+    if (isAllowingVerboseDump()) {
+      System.out.println(DumpUtil.bytesToHex(gfTables, -1));
+    }
   }
 
   @Override
   protected void doEncode(ByteBuffer[] inputs, ByteBuffer[] outputs) {
-    // parity units + data units
-    ByteBuffer[] all = new ByteBuffer[outputs.length + inputs.length];
-
-    if (isAllowingChangeInputs()) {
-      System.arraycopy(outputs, 0, all, 0, outputs.length);
-      System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
-    } else {
-      System.arraycopy(outputs, 0, all, 0, outputs.length);
-
-      /**
-       * Note when this coder would be really (rarely) used in a production
-       * system, this can  be optimized to cache and reuse the new allocated
-       * buffers avoiding reallocating.
-       */
-      ByteBuffer tmp;
-      for (int i = 0; i < inputs.length; i++) {
-        tmp = ByteBuffer.allocate(inputs[i].remaining());
-        tmp.put(inputs[i]);
-        tmp.flip();
-        all[outputs.length + i] = tmp;
-      }
-    }
-
-    // Compute the remainder
-    RSUtil.GF.remainder(all, generatingPolynomial);
+    RSUtil.encodeData(gfTables, inputs, outputs);
   }
 
   @Override
   protected void doEncode(byte[][] inputs, int[] inputOffsets,
-                          int dataLen, byte[][] outputs,
-                          int[] outputOffsets) {
-    // parity units + data units
-    byte[][] all = new byte[outputs.length + inputs.length][];
-    int[] allOffsets = new int[outputOffsets.length + inputOffsets.length];
-
-    if (isAllowingChangeInputs()) {
-      System.arraycopy(outputs, 0, all, 0, outputs.length);
-      System.arraycopy(inputs, 0, all, outputs.length, inputs.length);
-
-      System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
-      System.arraycopy(inputOffsets, 0, allOffsets,
-          outputOffsets.length, inputOffsets.length);
-    } else {
-      System.arraycopy(outputs, 0, all, 0, outputs.length);
-      System.arraycopy(outputOffsets, 0, allOffsets, 0, outputOffsets.length);
-
-      for (int i = 0; i < inputs.length; i++) {
-        all[outputs.length + i] = Arrays.copyOfRange(inputs[i],
-            inputOffsets[i], inputOffsets[i] + dataLen);
-      }
-    }
-
-    // Compute the remainder
-    RSUtil.GF.remainder(all, allOffsets, dataLen, generatingPolynomial);
+                          int dataLen, byte[][] outputs, int[] outputOffsets) {
+    RSUtil.encodeData(gfTables, dataLen, inputs, inputOffsets, outputs,
+        outputOffsets);
   }
 }

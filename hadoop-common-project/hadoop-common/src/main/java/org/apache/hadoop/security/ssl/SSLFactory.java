@@ -69,7 +69,8 @@ public class SSLFactory implements ConnectionConfigurator {
 
   public static final String SSL_ENABLED_PROTOCOLS =
       "hadoop.ssl.enabled.protocols";
-  public static final String DEFAULT_SSL_ENABLED_PROTOCOLS = "TLSv1";
+  public static final String DEFAULT_SSL_ENABLED_PROTOCOLS =
+      "TLSv1,SSLv2Hello,TLSv1.1,TLSv1.2";
 
   private Configuration conf;
   private Mode mode;
@@ -211,7 +212,8 @@ public class SSLFactory implements ConnectionConfigurator {
   public SSLServerSocketFactory createSSLServerSocketFactory()
     throws GeneralSecurityException, IOException {
     if (mode != Mode.SERVER) {
-      throw new IllegalStateException("Factory is in CLIENT mode");
+      throw new IllegalStateException(
+          "Factory is not in SERVER mode. Actual mode is " + mode.toString());
     }
     return context.getServerSocketFactory();
   }
@@ -228,7 +230,8 @@ public class SSLFactory implements ConnectionConfigurator {
   public SSLSocketFactory createSSLSocketFactory()
     throws GeneralSecurityException, IOException {
     if (mode != Mode.CLIENT) {
-      throw new IllegalStateException("Factory is in CLIENT mode");
+      throw new IllegalStateException(
+          "Factory is not in CLIENT mode. Actual mode is " + mode.toString());
     }
     return context.getSocketFactory();
   }
@@ -240,7 +243,8 @@ public class SSLFactory implements ConnectionConfigurator {
    */
   public HostnameVerifier getHostnameVerifier() {
     if (mode != Mode.CLIENT) {
-      throw new IllegalStateException("Factory is in CLIENT mode");
+      throw new IllegalStateException(
+          "Factory is not in CLIENT mode. Actual mode is " + mode.toString());
     }
     return hostnameVerifier;
   }

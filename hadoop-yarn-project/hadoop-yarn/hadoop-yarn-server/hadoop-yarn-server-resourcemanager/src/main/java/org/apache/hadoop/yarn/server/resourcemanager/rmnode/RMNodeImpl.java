@@ -68,6 +68,7 @@ import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppImpl;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppRunningOnNodeEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmcontainer.ContainerAllocationExpirer;
+import org.apache.hadoop.yarn.server.resourcemanager.rmcontainer.AllocationExpirationInfo;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.NodeAddedSchedulerEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.NodeRemovedSchedulerEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.NodeResourceUpdateSchedulerEvent;
@@ -78,6 +79,7 @@ import org.apache.hadoop.yarn.state.MultipleArcTransition;
 import org.apache.hadoop.yarn.state.SingleArcTransition;
 import org.apache.hadoop.yarn.state.StateMachine;
 import org.apache.hadoop.yarn.state.StateMachineFactory;
+import org.apache.hadoop.yarn.util.resource.Resources;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -109,6 +111,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
   private int httpPort;
   private final String nodeAddress; // The containerManager address
   private String httpAddress;
+  /* Snapshot of total resources before receiving decommissioning command */
+  private volatile Resource originalTotalCapability;
   private volatile Resource totalCapability;
   private final Node node;
 
@@ -235,6 +239,9 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
       .addTransition(NodeState.DECOMMISSIONING, NodeState.RUNNING,
           RMNodeEventType.RECOMMISSION,
           new RecommissionNodeTransition(NodeState.RUNNING))
+      .addTransition(NodeState.DECOMMISSIONING, NodeState.DECOMMISSIONING,
+          RMNodeEventType.RESOURCE_UPDATE,
+          new UpdateNodeResourceWhenRunningTransition())
       .addTransition(NodeState.DECOMMISSIONING,
           EnumSet.of(NodeState.DECOMMISSIONING, NodeState.DECOMMISSIONED),
           RMNodeEventType.STATUS_UPDATE,
@@ -1010,6 +1017,10 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
    */
   public static void deactivateNode(RMNodeImpl rmNode, NodeState finalState) {
 
+    if (rmNode.getNodeID().getPort() == -1) {
+      rmNode.updateMetricsForDeactivatedNode(rmNode.getState(), finalState);
+      return;
+    }
     reportNodeUnusable(rmNode, finalState);
 
     // Deactivate the node
@@ -1063,7 +1074,12 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
       LOG.info("Put Node " + rmNode.nodeId + " in DECOMMISSIONING.");
       // Update NM metrics during graceful decommissioning.
       rmNode.updateMetricsForGracefulDecommission(initState, finalState);
-      // TODO (in YARN-3223) Keep NM's available resource to be 0
+      if (rmNode.originalTotalCapability == null){
+        rmNode.originalTotalCapability =
+            Resources.clone(rmNode.totalCapability);
+        LOG.info("Preserve original total capability: "
+            + rmNode.originalTotalCapability);
+      }
     }
   }
 
@@ -1077,11 +1093,22 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
     @Override
     public void transition(RMNodeImpl rmNode, RMNodeEvent event) {
+      // Restore the original total capability
+      if (rmNode.originalTotalCapability != null) {
+        rmNode.totalCapability = rmNode.originalTotalCapability;
+        rmNode.originalTotalCapability = null;
+      }
       LOG.info("Node " + rmNode.nodeId + " in DECOMMISSIONING is " +
           "recommissioned back to RUNNING.");
       rmNode
           .updateMetricsForGracefulDecommission(rmNode.getState(), finalState);
-      // TODO handle NM resource resume in YARN-3223.
+      //update the scheduler with the restored original total capability
+      rmNode.context
+          .getDispatcher()
+          .getEventHandler()
+          .handle(
+              new NodeResourceUpdateSchedulerEvent(rmNode, ResourceOption
+                  .newInstance(rmNode.totalCapability, 0)));
     }
   }
 
@@ -1306,14 +1333,16 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
           launchedContainers.add(containerId);
           newlyLaunchedContainers.add(remoteContainer);
           // Unregister from containerAllocationExpirer.
-          containerAllocationExpirer.unregister(containerId);
+          containerAllocationExpirer.unregister(
+              new AllocationExpirationInfo(containerId));
         }
       } else {
         // A finished container
         launchedContainers.remove(containerId);
         completedContainers.add(remoteContainer);
         // Unregister from containerAllocationExpirer.
-        containerAllocationExpirer.unregister(containerId);
+        containerAllocationExpirer.unregister(
+            new AllocationExpirationInfo(containerId));
       }
     }
     if (newlyLaunchedContainers.size() != 0 || completedContainers.size() != 0) {
@@ -1350,4 +1379,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
       writeLock.unlock();
     }
    }
+
+  public Resource getOriginalTotalCapability() {
+    return this.originalTotalCapability;
+  }
  }

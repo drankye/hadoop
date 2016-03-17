@@ -27,6 +27,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
 import org.apache.hadoop.hdfs.protocol.datatransfer.InvalidEncryptionKeyException;
+import org.apache.hadoop.hdfs.DFSUtilClient.CorruptedBlocks;
 import org.apache.hadoop.hdfs.util.StripedBlockUtil;
 import org.apache.hadoop.io.ByteBufferPool;
 
@@ -260,7 +261,12 @@ public class DFSStripedInputStream extends DFSInputStream {
 
   private void closeReader(BlockReaderInfo readerInfo) {
     if (readerInfo != null) {
-//      IOUtils.cleanup(null, readerInfo.reader);
+      if (readerInfo.reader != null) {
+        try {
+          readerInfo.reader.close();
+        } catch (Throwable ignored) {
+        }
+      }
       readerInfo.skip();
     }
   }
@@ -277,8 +283,7 @@ public class DFSStripedInputStream extends DFSInputStream {
    * Read a new stripe covering the current position, and store the data in the
    * {@link #curStripeBuf}.
    */
-  private void readOneStripe(
-      Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
+  private void readOneStripe(CorruptedBlocks corruptedBlocks)
       throws IOException {
     resetCurStripeBuffer();
 
@@ -302,7 +307,7 @@ public class DFSStripedInputStream extends DFSInputStream {
     for (AlignedStripe stripe : stripes) {
       // Parse group to get chosen DN location
       StripeReader sreader = new StatefulStripeReader(readingService, stripe,
-          blks, blockReaders, corruptedBlockMap);
+          blks, blockReaders, corruptedBlocks);
       sreader.readStripe();
     }
     curStripeBuf.position(stripeBufOffset);
@@ -314,7 +319,7 @@ public class DFSStripedInputStream extends DFSInputStream {
       final DatanodeInfo datanode, final long currentReaderOffset,
       final long targetReaderOffset, final ByteBufferStrategy[] strategies,
       final ExtendedBlock currentBlock,
-      final Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap) {
+      final CorruptedBlocks corruptedBlocks) {
     return new Callable<Void>() {
       @Override
       public Void call() throws Exception {
@@ -333,7 +338,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         int result = 0;
         for (ByteBufferStrategy strategy : strategies) {
           result += readToBuffer(reader, datanode, strategy, currentBlock,
-              corruptedBlockMap);
+              corruptedBlocks);
         }
         return null;
       }
@@ -343,7 +348,7 @@ public class DFSStripedInputStream extends DFSInputStream {
   private int readToBuffer(BlockReader blockReader,
       DatanodeInfo currentNode, ByteBufferStrategy strategy,
       ExtendedBlock currentBlock,
-      Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
+      CorruptedBlocks corruptedBlocks)
       throws IOException {
     final int targetLength = strategy.getTargetLength();
     int length = 0;
@@ -362,8 +367,7 @@ public class DFSStripedInputStream extends DFSInputStream {
           + currentBlock + " from " + currentNode
           + " at " + ce.getPos());
       // we want to remember which block replicas we have tried
-      addIntoCorruptedBlockMap(currentBlock, currentNode,
-          corruptedBlockMap);
+      corruptedBlocks.addCorruptedBlock(currentBlock, currentNode);
       throw ce;
     } catch (IOException e) {
       DFSClient.LOG.warn("Exception while reading from "
@@ -421,8 +425,8 @@ public class DFSStripedInputStream extends DFSInputStream {
     }
 
     int len = strategy.getTargetLength();
-    Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap =
-        new ConcurrentHashMap<>();
+    CorruptedBlocks corruptedBlocks = new CorruptedBlocks();
+
     if (pos < getFileLength()) {
       try {
         if (pos > blockEnd) {
@@ -440,7 +444,7 @@ public class DFSStripedInputStream extends DFSInputStream {
         int result = 0;
         while (result < realLen) {
           if (!curStripeRange.include(getOffsetInBlockGroup())) {
-            readOneStripe(corruptedBlockMap);
+            readOneStripe(corruptedBlocks);
           }
           int ret = copyToTargetBuf(strategy, realLen - result);
           result += ret;
@@ -453,7 +457,7 @@ public class DFSStripedInputStream extends DFSInputStream {
       } finally {
         // Check if need to report block replicas corruption either read
         // was successful or ChecksumException occured.
-        reportCheckSumFailure(corruptedBlockMap,
+        reportCheckSumFailure(corruptedBlocks,
             currentLocatedBlock.getLocations().length, true);
       }
     }
@@ -515,8 +519,7 @@ public class DFSStripedInputStream extends DFSInputStream {
    */
   @Override
   protected void fetchBlockByteRange(LocatedBlock block, long start,
-      long end, byte[] buf, int offset,
-      Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap)
+      long end, byte[] buf, int offset, CorruptedBlocks corruptedBlocks)
       throws IOException {
     // Refresh the striped block group
     LocatedStripedBlock blockGroup = getBlockGroupAt(block.getStartOffset());
@@ -532,7 +535,7 @@ public class DFSStripedInputStream extends DFSInputStream {
       for (AlignedStripe stripe : stripes) {
         // Parse group to get chosen DN location
         StripeReader preader = new PositionStripeReader(readService, stripe,
-            blks, preaderInfos, corruptedBlockMap);
+            blks, preaderInfos, corruptedBlocks);
         preader.readStripe();
       }
     } finally {
@@ -571,17 +574,17 @@ public class DFSStripedInputStream extends DFSInputStream {
     final AlignedStripe alignedStripe;
     final CompletionService<Void> service;
     final LocatedBlock[] targetBlocks;
-    final Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap;
+    final CorruptedBlocks corruptedBlocks;
     final BlockReaderInfo[] readerInfos;
 
     StripeReader(CompletionService<Void> service, AlignedStripe alignedStripe,
         LocatedBlock[] targetBlocks, BlockReaderInfo[] readerInfos,
-        Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap) {
+                 CorruptedBlocks corruptedBlocks) {
       this.service = service;
       this.alignedStripe = alignedStripe;
       this.targetBlocks = targetBlocks;
       this.readerInfos = readerInfos;
-      this.corruptedBlockMap = corruptedBlockMap;
+      this.corruptedBlocks = corruptedBlocks;
     }
 
     /** prepare all the data chunks */
@@ -603,7 +606,8 @@ public class DFSStripedInputStream extends DFSInputStream {
       if (alignedStripe.missingChunksNum > parityBlkNum) {
         clearFutures(futures.keySet());
         throw new IOException(alignedStripe.missingChunksNum
-            + " missing blocks, the stripe is: " + alignedStripe);
+            + " missing blocks, the stripe is: " + alignedStripe
+            + "; locatedBlocks is: " + locatedBlocks);
       }
     }
 
@@ -728,7 +732,7 @@ public class DFSStripedInputStream extends DFSInputStream {
           readerInfos[chunkIndex].datanode,
           readerInfos[chunkIndex].blockReaderOffset,
           alignedStripe.getOffsetInBlock(), getReadStrategies(chunk),
-          block.getBlock(), corruptedBlockMap);
+          block.getBlock(), corruptedBlocks);
 
       Future<Void> request = service.submit(readCallable);
       futures.put(request, chunkIndex);
@@ -809,10 +813,9 @@ public class DFSStripedInputStream extends DFSInputStream {
 
     PositionStripeReader(CompletionService<Void> service,
         AlignedStripe alignedStripe, LocatedBlock[] targetBlocks,
-        BlockReaderInfo[] readerInfos,
-        Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap) {
+        BlockReaderInfo[] readerInfos, CorruptedBlocks corruptedBlocks) {
       super(service, alignedStripe, targetBlocks, readerInfos,
-          corruptedBlockMap);
+          corruptedBlocks);
     }
 
     @Override
@@ -846,10 +849,9 @@ public class DFSStripedInputStream extends DFSInputStream {
 
     StatefulStripeReader(CompletionService<Void> service,
         AlignedStripe alignedStripe, LocatedBlock[] targetBlocks,
-        BlockReaderInfo[] readerInfos,
-        Map<ExtendedBlock, Set<DatanodeInfo>> corruptedBlockMap) {
+        BlockReaderInfo[] readerInfos, CorruptedBlocks corruptedBlocks) {
       super(service, alignedStripe, targetBlocks, readerInfos,
-          corruptedBlockMap);
+          corruptedBlocks);
     }
 
     @Override

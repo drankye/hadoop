@@ -19,6 +19,7 @@ package org.apache.hadoop.hdfs.server.datanode;
 
 import static org.apache.hadoop.util.Time.monotonicNow;
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -28,10 +29,10 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.base.Joiner;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.ha.HAServiceProtocol.HAServiceState;
 import org.apache.hadoop.hdfs.client.BlockReportOptions;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeStatus;
 import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
+import org.apache.hadoop.hdfs.protocolPB.DatanodeLifelineProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
@@ -51,9 +53,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.DisallowedDatanodeException;
 import org.apache.hadoop.hdfs.server.protocol.HeartbeatResponse;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
-import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo;
 import org.apache.hadoop.hdfs.server.protocol.StorageBlockReport;
-import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.server.protocol.VolumeFailureSummary;
 import org.apache.hadoop.io.IOUtils;
@@ -61,10 +61,10 @@ import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.Time;
 import org.apache.hadoop.util.VersionInfo;
 import org.apache.hadoop.util.VersionUtil;
+import org.slf4j.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Maps;
-import org.slf4j.Logger;
+import com.google.common.base.Joiner;
 
 /**
  * A thread per active or standby namenode to perform:
@@ -95,40 +95,39 @@ class BPServiceActor implements Runnable {
   }
 
   private volatile RunningState runningState = RunningState.CONNECTING;
-
-  /**
-   * Between block reports (which happen on the order of once an hour) the
-   * DN reports smaller incremental changes to its block list. This map,
-   * keyed by block ID, contains the pending changes which have yet to be
-   * reported to the NN. Access should be synchronized on this object.
-   */
-  private final Map<DatanodeStorage, PerStoragePendingIncrementalBR>
-      pendingIncrementalBRperStorage = Maps.newHashMap();
-
-  // IBR = Incremental Block Report. If this flag is set then an IBR will be
-  // sent immediately by the actor thread without waiting for the IBR timer
-  // to elapse.
-  private volatile boolean sendImmediateIBR = false;
   private volatile boolean shouldServiceRun = true;
   private final DataNode dn;
   private final DNConf dnConf;
   private long prevBlockReportId;
 
+  private final IncrementalBlockReportManager ibrManager;
+
   private DatanodeRegistration bpRegistration;
   final LinkedList<BPServiceActorAction> bpThreadQueue 
       = new LinkedList<BPServiceActorAction>();
 
-  BPServiceActor(InetSocketAddress nnAddr, BPOfferService bpos) {
+  BPServiceActor(InetSocketAddress nnAddr, InetSocketAddress lifelineNnAddr,
+      BPOfferService bpos) {
     this.bpos = bpos;
     this.dn = bpos.getDataNode();
     this.nnAddr = nnAddr;
+    this.lifelineSender = lifelineNnAddr != null ?
+        new LifelineSender(lifelineNnAddr) : null;
+    this.initialRegistrationComplete = lifelineNnAddr != null ?
+        new CountDownLatch(1) : null;
     this.dnConf = dn.getDnConf();
+    this.ibrManager = new IncrementalBlockReportManager(dnConf.ibrInterval);
     prevBlockReportId = ThreadLocalRandom.current().nextLong();
-    scheduler = new Scheduler(dnConf.heartBeatInterval, dnConf.blockReportInterval);
+    scheduler = new Scheduler(dnConf.heartBeatInterval,
+        dnConf.getLifelineIntervalMs(), dnConf.blockReportInterval);
   }
 
   public DatanodeRegistration getBpRegistration() {
     return bpRegistration;
+  }
+
+  IncrementalBlockReportManager getIbrManager() {
+    return ibrManager;
   }
 
   boolean isAlive() {
@@ -148,6 +147,9 @@ class BPServiceActor implements Runnable {
     return nnAddr;
   }
 
+  private final CountDownLatch initialRegistrationComplete;
+  private final LifelineSender lifelineSender;
+
   /**
    * Used to inject a spy NN in the unit tests.
    */
@@ -159,6 +161,20 @@ class BPServiceActor implements Runnable {
   @VisibleForTesting
   DatanodeProtocolClientSideTranslatorPB getNameNodeProxy() {
     return bpNamenode;
+  }
+
+  /**
+   * Used to inject a spy NN in the unit tests.
+   */
+  @VisibleForTesting
+  void setLifelineNameNode(
+      DatanodeLifelineProtocolClientSideTranslatorPB dnLifelineProtocol) {
+    lifelineSender.lifelineNamenode = dnLifelineProtocol;
+  }
+
+  @VisibleForTesting
+  DatanodeLifelineProtocolClientSideTranslatorPB getLifelineNameNodeProxy() {
+    return lifelineSender.lifelineNamenode;
   }
 
   /**
@@ -231,141 +247,20 @@ class BPServiceActor implements Runnable {
     register(nsInfo);
   }
 
-  /**
-   * Report received blocks and delete hints to the Namenode for each
-   * storage.
-   *
-   * @throws IOException
-   */
-  private void reportReceivedDeletedBlocks() throws IOException {
-
-    // Generate a list of the pending reports for each storage under the lock
-    ArrayList<StorageReceivedDeletedBlocks> reports =
-        new ArrayList<StorageReceivedDeletedBlocks>(pendingIncrementalBRperStorage.size());
-    synchronized (pendingIncrementalBRperStorage) {
-      for (Map.Entry<DatanodeStorage, PerStoragePendingIncrementalBR> entry :
-           pendingIncrementalBRperStorage.entrySet()) {
-        final DatanodeStorage storage = entry.getKey();
-        final PerStoragePendingIncrementalBR perStorageMap = entry.getValue();
-
-        if (perStorageMap.getBlockInfoCount() > 0) {
-          // Send newly-received and deleted blockids to namenode
-          ReceivedDeletedBlockInfo[] rdbi = perStorageMap.dequeueBlockInfos();
-          reports.add(new StorageReceivedDeletedBlocks(storage, rdbi));
-        }
-      }
-      sendImmediateIBR = false;
-    }
-
-    if (reports.size() == 0) {
-      // Nothing new to report.
-      return;
-    }
-
-    // Send incremental block reports to the Namenode outside the lock
-    boolean success = false;
-    final long startTime = monotonicNow();
-    try {
-      bpNamenode.blockReceivedAndDeleted(bpRegistration,
-          bpos.getBlockPoolId(),
-          reports.toArray(new StorageReceivedDeletedBlocks[reports.size()]));
-      success = true;
-    } finally {
-      dn.getMetrics().addIncrementalBlockReport(monotonicNow() - startTime);
-      if (!success) {
-        synchronized (pendingIncrementalBRperStorage) {
-          for (StorageReceivedDeletedBlocks report : reports) {
-            // If we didn't succeed in sending the report, put all of the
-            // blocks back onto our queue, but only in the case where we
-            // didn't put something newer in the meantime.
-            PerStoragePendingIncrementalBR perStorageMap =
-                pendingIncrementalBRperStorage.get(report.getStorage());
-            perStorageMap.putMissingBlockInfos(report.getBlocks());
-            sendImmediateIBR = true;
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * @return pending incremental block report for given {@code storage}
-   */
-  private PerStoragePendingIncrementalBR getIncrementalBRMapForStorage(
-      DatanodeStorage storage) {
-    PerStoragePendingIncrementalBR mapForStorage =
-        pendingIncrementalBRperStorage.get(storage);
-
-    if (mapForStorage == null) {
-      // This is the first time we are adding incremental BR state for
-      // this storage so create a new map. This is required once per
-      // storage, per service actor.
-      mapForStorage = new PerStoragePendingIncrementalBR();
-      pendingIncrementalBRperStorage.put(storage, mapForStorage);
-    }
-
-    return mapForStorage;
-  }
-
-  /**
-   * Add a blockInfo for notification to NameNode. If another entry
-   * exists for the same block it is removed.
-   *
-   * Caller must synchronize access using pendingIncrementalBRperStorage.
-   */
-  void addPendingReplicationBlockInfo(ReceivedDeletedBlockInfo bInfo,
-      DatanodeStorage storage) {
-    // Make sure another entry for the same block is first removed.
-    // There may only be one such entry.
-    for (Map.Entry<DatanodeStorage, PerStoragePendingIncrementalBR> entry :
-          pendingIncrementalBRperStorage.entrySet()) {
-      if (entry.getValue().removeBlockInfo(bInfo)) {
-        break;
-      }
-    }
-    getIncrementalBRMapForStorage(storage).putBlockInfo(bInfo);
-  }
-
-  /*
-   * Informing the name node could take a long long time! Should we wait
-   * till namenode is informed before responding with success to the
-   * client? For now we don't.
-   */
-  void notifyNamenodeBlock(ReceivedDeletedBlockInfo bInfo,
-      String storageUuid, boolean now) {
-    synchronized (pendingIncrementalBRperStorage) {
-      addPendingReplicationBlockInfo(
-          bInfo, dn.getFSDataset().getStorage(storageUuid));
-      sendImmediateIBR = true;
-      // If now is true, the report is sent right away.
-      // Otherwise, it will be sent out in the next heartbeat.
-      if (now) {
-        pendingIncrementalBRperStorage.notifyAll();
-      }
-    }
-  }
-
-  void notifyNamenodeDeletedBlock(
-      ReceivedDeletedBlockInfo bInfo, String storageUuid) {
-    synchronized (pendingIncrementalBRperStorage) {
-      addPendingReplicationBlockInfo(
-          bInfo, dn.getFSDataset().getStorage(storageUuid));
-    }
-  }
 
   /**
    * Run an immediate block report on this thread. Used by tests.
    */
   @VisibleForTesting
   void triggerBlockReportForTests() {
-    synchronized (pendingIncrementalBRperStorage) {
+    synchronized (ibrManager) {
       scheduler.scheduleHeartbeat();
       long oldBlockReportTime = scheduler.nextBlockReportTime;
       scheduler.forceFullBlockReportNow();
-      pendingIncrementalBRperStorage.notifyAll();
+      ibrManager.notifyAll();
       while (oldBlockReportTime == scheduler.nextBlockReportTime) {
         try {
-          pendingIncrementalBRperStorage.wait(100);
+          ibrManager.wait(100);
         } catch (InterruptedException e) {
           return;
         }
@@ -375,38 +270,17 @@ class BPServiceActor implements Runnable {
   
   @VisibleForTesting
   void triggerHeartbeatForTests() {
-    synchronized (pendingIncrementalBRperStorage) {
+    synchronized (ibrManager) {
       final long nextHeartbeatTime = scheduler.scheduleHeartbeat();
-      pendingIncrementalBRperStorage.notifyAll();
+      ibrManager.notifyAll();
       while (nextHeartbeatTime - scheduler.nextHeartbeatTime >= 0) {
         try {
-          pendingIncrementalBRperStorage.wait(100);
+          ibrManager.wait(100);
         } catch (InterruptedException e) {
           return;
         }
       }
     }
-  }
-
-  @VisibleForTesting
-  void triggerDeletionReportForTests() {
-    synchronized (pendingIncrementalBRperStorage) {
-      sendImmediateIBR = true;
-      pendingIncrementalBRperStorage.notifyAll();
-
-      while (sendImmediateIBR) {
-        try {
-          pendingIncrementalBRperStorage.wait(100);
-        } catch (InterruptedException e) {
-          return;
-        }
-      }
-    }
-  }
-
-  @VisibleForTesting
-  boolean hasPendingIBR() {
-    return sendImmediateIBR;
   }
 
   private long generateUniqueBlockReportId() {
@@ -432,7 +306,8 @@ class BPServiceActor implements Runnable {
     // we have a chance that we will miss the delHint information
     // or we will report an RBW replica after the BlockReport already reports
     // a FINALIZED one.
-    reportReceivedDeletedBlocks();
+    ibrManager.sendIBRs(bpNamenode, bpRegistration,
+        bpos.getBlockPoolId(), dn.getMetrics());
 
     long brCreateStartTime = monotonicNow();
     Map<DatanodeStorage, BlockListAsLongs> perVolumeBlockLists =
@@ -461,7 +336,7 @@ class BPServiceActor implements Runnable {
         // Below split threshold, send all reports in a single message.
         DatanodeCommand cmd = bpNamenode.blockReport(
             bpRegistration, bpos.getBlockPoolId(), reports,
-              new BlockReportContext(1, 0, reportId, fullBrLeaseId));
+              new BlockReportContext(1, 0, reportId, fullBrLeaseId, true));
         numRPCs = 1;
         numReportsSent = reports.length;
         if (cmd != null) {
@@ -474,7 +349,7 @@ class BPServiceActor implements Runnable {
           DatanodeCommand cmd = bpNamenode.blockReport(
               bpRegistration, bpos.getBlockPoolId(), singleReport,
               new BlockReportContext(reports.length, r, reportId,
-                  fullBrLeaseId));
+                  fullBrLeaseId, true));
           numReportsSent++;
           numRPCs++;
           if (cmd != null) {
@@ -571,29 +446,39 @@ class BPServiceActor implements Runnable {
       //Thread is started already
       return;
     }
-    bpThread = new Thread(this, formatThreadName());
+    bpThread = new Thread(this, formatThreadName("heartbeating", nnAddr));
     bpThread.setDaemon(true); // needed for JUnit testing
     bpThread.start();
+
+    if (lifelineSender != null) {
+      lifelineSender.start();
+    }
   }
   
-  private String formatThreadName() {
+  private String formatThreadName(String action, InetSocketAddress addr) {
     Collection<StorageLocation> dataDirs =
         DataNode.getStorageLocations(dn.getConf());
-    return "DataNode: [" + dataDirs.toString() + "] " +
-      " heartbeating to " + nnAddr;
+    return "DataNode: [" + dataDirs.toString() + "]  " +
+        action + " to " + addr;
   }
   
   //This must be called only by blockPoolManager.
   void stop() {
     shouldServiceRun = false;
+    if (lifelineSender != null) {
+      lifelineSender.stop();
+    }
     if (bpThread != null) {
-        bpThread.interrupt();
+      bpThread.interrupt();
     }
   }
   
   //This must be called only by blockPoolManager
   void join() {
     try {
+      if (lifelineSender != null) {
+        lifelineSender.join();
+      }
       if (bpThread != null) {
         bpThread.join();
       }
@@ -605,6 +490,7 @@ class BPServiceActor implements Runnable {
     
     shouldServiceRun = false;
     IOUtils.cleanup(null, bpNamenode);
+    IOUtils.cleanup(null, lifelineSender);
     bpos.shutdownActor(this);
   }
 
@@ -631,7 +517,9 @@ class BPServiceActor implements Runnable {
         + " BLOCKREPORT_INTERVAL of " + dnConf.blockReportInterval + "msec"
         + " CACHEREPORT_INTERVAL of " + dnConf.cacheReportInterval + "msec"
         + " Initial delay: " + dnConf.initialBlockReportDelayMs + "msec"
-        + "; heartBeatInterval=" + dnConf.heartBeatInterval);
+        + "; heartBeatInterval=" + dnConf.heartBeatInterval
+        + (lifelineSender != null ?
+            "; lifelineIntervalMs=" + dnConf.getLifelineIntervalMs() : ""));
     long fullBlockReportLeaseId = 0;
 
     //
@@ -697,8 +585,9 @@ class BPServiceActor implements Runnable {
             }
           }
         }
-        if (sendImmediateIBR || sendHeartbeat) {
-          reportReceivedDeletedBlocks();
+        if (ibrManager.sendImmediately() || sendHeartbeat) {
+          ibrManager.sendIBRs(bpNamenode, bpRegistration,
+              bpos.getBlockPoolId(), dn.getMetrics());
         }
 
         List<DatanodeCommand> cmds = null;
@@ -718,20 +607,14 @@ class BPServiceActor implements Runnable {
           processCommand(new DatanodeCommand[]{ cmd });
         }
 
-        //
+        if (sendHeartbeat) {
+          dn.getMetrics().addHeartbeatTotal(
+              scheduler.monotonicNow() - startTime);
+        }
+
         // There is no work to do;  sleep until hearbeat timer elapses, 
         // or work arrives, and then iterate again.
-        //
-        long waitTime = scheduler.getHeartbeatWaitTime();
-        synchronized(pendingIncrementalBRperStorage) {
-          if (waitTime > 0 && !sendImmediateIBR) {
-            try {
-              pendingIncrementalBRperStorage.wait(waitTime);
-            } catch (InterruptedException ie) {
-              LOG.warn("BPOfferService for " + this + " interrupted");
-            }
-          }
-        } // synchronized
+        ibrManager.waitTillNextIBR(scheduler.getHeartbeatWaitTime());
       } catch(RemoteException re) {
         String reClass = re.getClassName();
         if (UnregisteredNodeException.class.getName().equals(reClass) ||
@@ -845,6 +728,9 @@ class BPServiceActor implements Runnable {
       }
 
       runningState = RunningState.RUNNING;
+      if (initialRegistrationComplete != null) {
+        initialRegistrationComplete.countDown();
+      }
 
       while (shouldRun()) {
         try {
@@ -915,82 +801,15 @@ class BPServiceActor implements Runnable {
     }
   }
 
-  private static class PerStoragePendingIncrementalBR {
-    private final Map<Long, ReceivedDeletedBlockInfo> pendingIncrementalBR =
-        Maps.newHashMap();
-
-    /**
-     * Return the number of blocks on this storage that have pending
-     * incremental block reports.
-     * @return
-     */
-    int getBlockInfoCount() {
-      return pendingIncrementalBR.size();
-    }
-
-    /**
-     * Dequeue and return all pending incremental block report state.
-     * @return
-     */
-    ReceivedDeletedBlockInfo[] dequeueBlockInfos() {
-      ReceivedDeletedBlockInfo[] blockInfos =
-          pendingIncrementalBR.values().toArray(
-              new ReceivedDeletedBlockInfo[getBlockInfoCount()]);
-
-      pendingIncrementalBR.clear();
-      return blockInfos;
-    }
-
-    /**
-     * Add blocks from blockArray to pendingIncrementalBR, unless the
-     * block already exists in pendingIncrementalBR.
-     * @param blockArray list of blocks to add.
-     * @return the number of missing blocks that we added.
-     */
-    int putMissingBlockInfos(ReceivedDeletedBlockInfo[] blockArray) {
-      int blocksPut = 0;
-      for (ReceivedDeletedBlockInfo rdbi : blockArray) {
-        if (!pendingIncrementalBR.containsKey(rdbi.getBlock().getBlockId())) {
-          pendingIncrementalBR.put(rdbi.getBlock().getBlockId(), rdbi);
-          ++blocksPut;
-        }
-      }
-      return blocksPut;
-    }
-
-    /**
-     * Add pending incremental block report for a single block.
-     * @param blockInfo
-     */
-    void putBlockInfo(ReceivedDeletedBlockInfo blockInfo) {
-      pendingIncrementalBR.put(blockInfo.getBlock().getBlockId(), blockInfo);
-    }
-
-    /**
-     * Remove pending incremental block report for a single block if it
-     * exists.
-     *
-     * @param blockInfo
-     * @return true if a report was removed, false if no report existed for
-     *         the given block.
-     */
-    boolean removeBlockInfo(ReceivedDeletedBlockInfo blockInfo) {
-      return (pendingIncrementalBR.remove(blockInfo.getBlock().getBlockId()) != null);
-    }
-  }
-
-  void triggerBlockReport(BlockReportOptions options) throws IOException {
+  void triggerBlockReport(BlockReportOptions options) {
     if (options.isIncremental()) {
       LOG.info(bpos.toString() + ": scheduling an incremental block report.");
-      synchronized(pendingIncrementalBRperStorage) {
-        sendImmediateIBR = true;
-        pendingIncrementalBRperStorage.notifyAll();
-      }
+      ibrManager.triggerIBR(true);
     } else {
       LOG.info(bpos.toString() + ": scheduling a full block report.");
-      synchronized(pendingIncrementalBRperStorage) {
+      synchronized(ibrManager) {
         scheduler.forceFullBlockReportNow();
-        pendingIncrementalBRperStorage.notifyAll();
+        ibrManager.notifyAll();
       }
     }
   }
@@ -1025,6 +844,135 @@ class BPServiceActor implements Runnable {
     return scheduler;
   }
 
+  private final class LifelineSender implements Runnable, Closeable {
+
+    private final InetSocketAddress lifelineNnAddr;
+    private Thread lifelineThread;
+    private DatanodeLifelineProtocolClientSideTranslatorPB lifelineNamenode;
+
+    public LifelineSender(InetSocketAddress lifelineNnAddr) {
+      this.lifelineNnAddr = lifelineNnAddr;
+    }
+
+    @Override
+    public void close() {
+      stop();
+      try {
+        join();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      IOUtils.cleanup(null, lifelineNamenode);
+    }
+
+    @Override
+    public void run() {
+      // The lifeline RPC depends on registration with the NameNode, so wait for
+      // initial registration to complete.
+      while (shouldRun()) {
+        try {
+          initialRegistrationComplete.await();
+          break;
+        } catch (InterruptedException e) {
+          // The only way thread interruption can happen while waiting on this
+          // latch is if the state of the actor has been updated to signal
+          // shutdown.  The next loop's call to shouldRun() will return false,
+          // and the thread will finish.
+          Thread.currentThread().interrupt();
+        }
+      }
+
+      // After initial NameNode registration has completed, execute the main
+      // loop for sending periodic lifeline RPCs if needed.  This is done in a
+      // second loop to avoid a pointless wait on the above latch in every
+      // iteration of the main loop.
+      while (shouldRun()) {
+        try {
+          if (lifelineNamenode == null) {
+            lifelineNamenode = dn.connectToLifelineNN(lifelineNnAddr);
+          }
+          sendLifelineIfDue();
+          Thread.sleep(scheduler.getLifelineWaitTime());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        } catch (IOException e) {
+          LOG.warn("IOException in LifelineSender for " + BPServiceActor.this,
+              e);
+        }
+      }
+
+      LOG.info("LifelineSender for " + BPServiceActor.this + " exiting.");
+    }
+
+    public void start() {
+      lifelineThread = new Thread(this, formatThreadName("lifeline",
+          lifelineNnAddr));
+      lifelineThread.setDaemon(true);
+      lifelineThread.setUncaughtExceptionHandler(
+          new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable t) {
+              LOG.error(thread + " terminating on unexpected exception", t);
+            }
+          });
+      lifelineThread.start();
+    }
+
+    public void stop() {
+      if (lifelineThread != null) {
+        lifelineThread.interrupt();
+      }
+    }
+
+    public void join() throws InterruptedException {
+      if (lifelineThread != null) {
+        lifelineThread.join();
+      }
+    }
+
+    private void sendLifelineIfDue() throws IOException {
+      long startTime = scheduler.monotonicNow();
+      if (!scheduler.isLifelineDue(startTime)) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Skipping sending lifeline for " + BPServiceActor.this
+              + ", because it is not due.");
+        }
+        return;
+      }
+      if (dn.areHeartbeatsDisabledForTests()) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Skipping sending lifeline for " + BPServiceActor.this
+              + ", because heartbeats are disabled for tests.");
+        }
+        return;
+      }
+      sendLifeline();
+      dn.getMetrics().addLifeline(scheduler.monotonicNow() - startTime);
+      scheduler.scheduleNextLifeline(scheduler.monotonicNow());
+    }
+
+    private void sendLifeline() throws IOException {
+      StorageReport[] reports =
+          dn.getFSDataset().getStorageReports(bpos.getBlockPoolId());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Sending lifeline with " + reports.length + " storage " +
+                  " reports from service actor: " + BPServiceActor.this);
+      }
+      VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()
+          .getVolumeFailureSummary();
+      int numFailedVolumes = volumeFailureSummary != null ?
+          volumeFailureSummary.getFailedStorageLocations().length : 0;
+      lifelineNamenode.sendLifeline(bpRegistration,
+                                    reports,
+                                    dn.getFSDataset().getCacheCapacity(),
+                                    dn.getFSDataset().getCacheUsed(),
+                                    dn.getXmitsInProgress(),
+                                    dn.getXceiverCount(),
+                                    numFailedVolumes,
+                                    volumeFailureSummary);
+    }
+  }
+
   /**
    * Utility class that wraps the timestamp computations for scheduling
    * heartbeats and block reports.
@@ -1040,16 +988,22 @@ class BPServiceActor implements Runnable {
     volatile long nextHeartbeatTime = monotonicNow();
 
     @VisibleForTesting
+    volatile long nextLifelineTime = monotonicNow();
+
+    @VisibleForTesting
     boolean resetBlockReportTime = true;
 
     private final AtomicBoolean forceFullBlockReport =
         new AtomicBoolean(false);
 
     private final long heartbeatIntervalMs;
+    private final long lifelineIntervalMs;
     private final long blockReportIntervalMs;
 
-    Scheduler(long heartbeatIntervalMs, long blockReportIntervalMs) {
+    Scheduler(long heartbeatIntervalMs, long lifelineIntervalMs,
+        long blockReportIntervalMs) {
       this.heartbeatIntervalMs = heartbeatIntervalMs;
+      this.lifelineIntervalMs = lifelineIntervalMs;
       this.blockReportIntervalMs = blockReportIntervalMs;
     }
 
@@ -1063,17 +1017,29 @@ class BPServiceActor implements Runnable {
     //    Blockreport.
     long scheduleHeartbeat() {
       nextHeartbeatTime = monotonicNow();
+      scheduleNextLifeline(nextHeartbeatTime);
       return nextHeartbeatTime;
     }
 
     long scheduleNextHeartbeat() {
       // Numerical overflow is possible here and is okay.
       nextHeartbeatTime = monotonicNow() + heartbeatIntervalMs;
+      scheduleNextLifeline(nextHeartbeatTime);
       return nextHeartbeatTime;
+    }
+
+    long scheduleNextLifeline(long baseTime) {
+      // Numerical overflow is possible here and is okay.
+      nextLifelineTime = baseTime + lifelineIntervalMs;
+      return nextLifelineTime;
     }
 
     boolean isHeartbeatDue(long startTime) {
       return (nextHeartbeatTime - startTime <= 0);
+    }
+
+    boolean isLifelineDue(long startTime) {
+      return (nextLifelineTime - startTime <= 0);
     }
 
     boolean isBlockReportDue(long curTime) {
@@ -1129,6 +1095,10 @@ class BPServiceActor implements Runnable {
 
     long getHeartbeatWaitTime() {
       return nextHeartbeatTime - monotonicNow();
+    }
+
+    long getLifelineWaitTime() {
+      return nextLifelineTime - monotonicNow();
     }
 
     /**

@@ -23,6 +23,8 @@ WebHDFS REST API
         * [HDFS Configuration Options](#HDFS_Configuration_Options)
     * [Authentication](#Authentication)
     * [Proxy Users](#Proxy_Users)
+    * [Cross-Site Request Forgery Prevention](#Cross-Site_Request_Forgery_Prevention)
+    * [WebHDFS Retry Policy](#WebHDFS_Retry_Policy)
     * [File and Directory Operations](#File_and_Directory_Operations)
         * [Create and Write to a File](#Create_and_Write_to_a_File)
         * [Append to a File](#Append_to_a_File)
@@ -161,8 +163,8 @@ The HTTP REST API supports the complete [FileSystem](../../api/org/apache/hadoop
     * [`SETOWNER`](#Set_Owner) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).setOwner)
     * [`SETPERMISSION`](#Set_Permission) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).setPermission)
     * [`SETTIMES`](#Set_Access_or_Modification_Time) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).setTimes)
-    * [`RENEWDELEGATIONTOKEN`](#Renew_Delegation_Token) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).renewDelegationToken)
-    * [`CANCELDELEGATIONTOKEN`](#Cancel_Delegation_Token) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).cancelDelegationToken)
+    * [`RENEWDELEGATIONTOKEN`](#Renew_Delegation_Token) (see [DelegationTokenAuthenticator](../../api/org/apache/hadoop/security/token/delegation/web/DelegationTokenAuthenticator.html).renewDelegationToken)
+    * [`CANCELDELEGATIONTOKEN`](#Cancel_Delegation_Token) (see [DelegationTokenAuthenticator](../../api/org/apache/hadoop/security/token/delegation/web/DelegationTokenAuthenticator.html).cancelDelegationToken)
     * [`CREATESNAPSHOT`](#Create_Snapshot) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).createSnapshot)
     * [`RENAMESNAPSHOT`](#Rename_Snapshot) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).renameSnapshot)
     * [`SETXATTR`](#Set_XAttr) (see [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).setXAttr)
@@ -197,6 +199,8 @@ Below are the HDFS configuration options for WebHDFS.
 |:---- |:---- |
 | `dfs.web.authentication.kerberos.principal` | The HTTP Kerberos principal used by Hadoop-Auth in the HTTP endpoint. The HTTP Kerberos principal MUST start with 'HTTP/' per Kerberos HTTP SPNEGO specification. A value of "\*" will use all HTTP principals found in the keytab. |
 | `dfs.web.authentication.kerberos.keytab ` | The Kerberos keytab file with the credentials for the HTTP Kerberos principal used by Hadoop-Auth in the HTTP endpoint. |
+| `dfs.webhdfs.socket.connect-timeout` | How long to wait for a connection to be established before failing.  Specified as a time duration, ie numerical value followed by a units symbol, eg 2m for two minutes. Defaults to 60s. |
+| `dfs.webhdfs.socket.read-timeout` | How long to wait for data to arrive before failing.  Defaults to 60s. |
 
 Authentication
 --------------
@@ -262,6 +266,58 @@ When the proxy user feature is enabled, a proxy user *P* may submit a request on
 3.  A proxy request using Hadoop delegation token when security is on:
 
         curl -i "http://<HOST>:<PORT>/webhdfs/v1/<PATH>?delegation=<TOKEN>&op=..."
+
+Cross-Site Request Forgery Prevention
+-------------------------------------
+
+WebHDFS supports an optional, configurable mechanism for cross-site request
+forgery (CSRF) prevention.  When enabled, WebHDFS HTTP requests to the NameNode
+or DataNode must include a custom HTTP header.  Configuration properties allow
+adjusting which specific HTTP methods are protected and the name of the HTTP
+header.  The value sent in the header is not relevant.  Only the presence of a
+header by that name is required.
+
+Enabling CSRF prevention also sets up the `WebHdfsFileSystem` class to send the
+required header.  This ensures that CLI commands like
+[`hdfs dfs`](./HDFSCommands.html#dfs) and
+[`hadoop distcp`](../../hadoop-distcp/DistCp.html) continue to work correctly
+when used with `webhdfs:` URIs.
+
+Enabling CSRF prevention also sets up the NameNode web UI to send the required
+header.  After enabling CSRF prevention and restarting the NameNode, existing
+users of the NameNode web UI need to refresh the browser to reload the page and
+find the new configuration.
+
+The following properties control CSRF prevention.
+
+| Property | Description | Default Value |
+|:---- |:---- |:----
+| `dfs.webhdfs.rest-csrf.enabled` | If true, then enables WebHDFS protection against cross-site request forgery (CSRF).  The WebHDFS client also uses this property to determine whether or not it needs to send the custom CSRF prevention header in its HTTP requests. | `false` |
+| `dfs.webhdfs.rest-csrf.custom-header` | The name of a custom header that HTTP requests must send when protection against cross-site request forgery (CSRF) is enabled for WebHDFS by setting dfs.webhdfs.rest-csrf.enabled to true.  The WebHDFS client also uses this property to determine whether or not it needs to send the custom CSRF prevention header in its HTTP requests. | `X-XSRF-HEADER` |
+| `dfs.webhdfs.rest-csrf.methods-to-ignore` | A comma-separated list of HTTP methods that do not require HTTP requests to include a custom header when protection against cross-site request forgery (CSRF) is enabled for WebHDFS by setting dfs.webhdfs.rest-csrf.enabled to true.  The WebHDFS client also uses this property to determine whether or not it needs to send the custom CSRF prevention header in its HTTP requests. | `GET,OPTIONS,HEAD,TRACE` |
+| `dfs.webhdfs.rest-csrf.browser-useragents-regex` | A comma-separated list of regular expressions used to match against an HTTP request's User-Agent header when protection against cross-site request forgery (CSRF) is enabled for WebHDFS by setting dfs.webhdfs.reset-csrf.enabled to true.  If the incoming User-Agent matches any of these regular expressions, then the request is considered to be sent by a browser, and therefore CSRF prevention is enforced.  If the request's User-Agent does not match any of these regular expressions, then the request is considered to be sent by something other than a browser, such as scripted automation.  In this case, CSRF is not a potential attack vector, so the prevention is not enforced.  This helps achieve backwards-compatibility with existing automation that has not been updated to send the CSRF prevention header. | `^Mozilla.*,^Opera.*` |
+
+The following is an example `curl` call that uses the `-H` option to include the
+custom header in the request.
+
+        curl -i -L -X PUT -H 'X-XSRF-HEADER: ""' 'http://<HOST>:<PORT>/webhdfs/v1/<PATH>?op=CREATE'
+
+WebHDFS Retry Policy
+-------------------------------------
+
+WebHDFS supports an optional, configurable retry policy for resilient copy of
+large files that could timeout, or copy file between HA clusters that could failover during the copy.
+
+The following properties control WebHDFS retry and failover policy.
+
+| Property | Description | Default Value |
+|:---- |:---- |:----
+| `dfs.http.client.retry.policy.enabled` | If "true", enable the retry policy of WebHDFS client. If "false", retry policy is turned off. | `false` |
+| `dfs.http.client.retry.policy.spec` | Specify a policy of multiple linear random retry for WebHDFS client, e.g. given pairs of number of retries and sleep time (n0, t0), (n1, t1), ..., the first n0 retries sleep t0 milliseconds on average, the following n1 retries sleep t1 milliseconds on average, and so on. | `10000,6,60000,10` |
+| `dfs.http.client.failover.max.attempts` | Specify the max number of failover attempts for WebHDFS client in case of network exception. | `15` |
+| `dfs.http.client.retry.max.attempts` | Specify the max number of retry attempts for WebHDFS client, if the difference between retried attempts and failovered attempts is larger than the max number of retry attempts, there will be no more retries. | `10` |
+| `dfs.http.client.failover.sleep.base.millis` | Specify the base amount of time in milliseconds upon which the exponentially increased sleep time between retries or failovers is calculated for WebHDFS client. | `500` |
+| `dfs.http.client.failover.sleep.max.millis` | Specify the upper bound of sleep time in milliseconds between retries or failovers for WebHDFS client. | `15000` |
 
 File and Directory Operations
 -----------------------------
@@ -1017,7 +1073,7 @@ See also: [`renewer`](#Renewer), [FileSystem](../../api/org/apache/hadoop/fs/Fil
 
         {"long": 1320962673997}           //the new expiration time
 
-See also: [`token`](#Token), [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).renewDelegationToken
+See also: [`token`](#Token), [DelegationTokenAuthenticator](../../api/org/apache/hadoop/security/token/delegation/web/DelegationTokenAuthenticator.html).renewDelegationToken
 
 ### Cancel Delegation Token
 
@@ -1030,7 +1086,7 @@ See also: [`token`](#Token), [FileSystem](../../api/org/apache/hadoop/fs/FileSys
         HTTP/1.1 200 OK
         Content-Length: 0
 
-See also: [`token`](#Token), [FileSystem](../../api/org/apache/hadoop/fs/FileSystem.html).cancelDelegationToken
+See also: [`token`](#Token), [DelegationTokenAuthenticator](../../api/org/apache/hadoop/security/token/delegation/web/DelegationTokenAuthenticator.html).cancelDelegationToken
 
 Error Responses
 ---------------

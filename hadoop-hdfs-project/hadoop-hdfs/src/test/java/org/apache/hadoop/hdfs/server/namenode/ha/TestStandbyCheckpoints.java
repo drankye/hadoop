@@ -291,6 +291,11 @@ public class TestStandbyCheckpoints {
    */
   @Test(timeout=60000)
   public void testCheckpointCancellationDuringUpload() throws Exception {
+    // Set dfs.namenode.checkpoint.txns differently on the first NN to avoid it
+    // doing checkpoint when it becomes a standby
+    cluster.getConfiguration(0).setInt(
+        DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_TXNS_KEY, 1000);
+
     // don't compress, we want a big image
     for (int i = 0; i < NUM_NNS; i++) {
       cluster.getConfiguration(i).setBoolean(
@@ -456,6 +461,48 @@ public class TestStandbyCheckpoints {
         answerer.getFireCount() == 1 && answerer.getResultCount() == 1);
     
     t.join();
+  }
+
+  /**
+   * Test for the case standby NNs can upload FSImage to ANN after
+   * become non-primary standby NN. HDFS-9787
+   */
+  @Test(timeout=300000)
+  public void testNonPrimarySBNUploadFSImage() throws Exception {
+    // Shutdown all standby NNs.
+    for (int i = 1; i < NUM_NNS; i++) {
+      cluster.shutdownNameNode(i);
+
+      // Checkpoint as fast as we can, in a tight loop.
+      cluster.getConfiguration(i).setInt(
+        DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_PERIOD_KEY, 1);
+    }
+
+    doEdits(0, 10);
+    cluster.transitionToStandby(0);
+
+    // Standby NNs do checkpoint without active NN available.
+    for (int i = 1; i < NUM_NNS; i++) {
+      cluster.restartNameNode(i, false);
+    }
+    cluster.waitClusterUp();
+
+    for (int i = 0; i < NUM_NNS; i++) {
+      // Once the standby catches up, it should do a checkpoint
+      // and save to local directories.
+      HATestUtil.waitForCheckpoint(cluster, i, ImmutableList.of(12));
+    }
+
+    cluster.transitionToActive(0);
+
+    // Wait for 2 seconds to expire last upload time.
+    Thread.sleep(2000);
+
+    doEdits(11, 20);
+    nns[0].getRpcServer().rollEditLog();
+
+    // One of standby NNs should also upload it back to the active.
+    HATestUtil.waitForCheckpoint(cluster, 0, ImmutableList.of(23));
   }
 
   private void doEdits(int start, int stop) throws IOException {

@@ -12,29 +12,7 @@
   limitations under the License. See accompanying LICENSE file.
 -->
 
-* [Overview](#Overview)
-* [jvm context](#jvm_context)
-    * [JvmMetrics](#JvmMetrics)
-* [rpc context](#rpc_context)
-    * [rpc](#rpc)
-    * [RetryCache/NameNodeRetryCache](#RetryCacheNameNodeRetryCache)
-* [rpcdetailed context](#rpcdetailed_context)
-    * [rpcdetailed](#rpcdetailed)
-* [dfs context](#dfs_context)
-    * [namenode](#namenode)
-    * [FSNamesystem](#FSNamesystem)
-    * [JournalNode](#JournalNode)
-    * [datanode](#datanode)
-* [yarn context](#yarn_context)
-    * [ClusterMetrics](#ClusterMetrics)
-    * [QueueMetrics](#QueueMetrics)
-    * [NodeManagerMetrics](#NodeManagerMetrics)
-* [ugi context](#ugi_context)
-    * [UgiMetrics](#UgiMetrics)
-* [metricssystem context](#metricssystem_context)
-    * [MetricsSystem](#MetricsSystem)
-* [default context](#default_context)
-    * [StartupProgress](#StartupProgress)
+<!-- MACRO{toc|fromDepth=0|toDepth=3} -->
 
 Overview
 ========
@@ -312,6 +290,10 @@ Each metrics record contains tags such as SessionId and Hostname as additional i
 | `ReplaceBlockOpAvgTime` | Average time of block replace operations in milliseconds |
 | `HeartbeatsNumOps` | Total number of heartbeats |
 | `HeartbeatsAvgTime` | Average heartbeat time in milliseconds |
+| `HeartbeatsTotalNumOps` | Total number of heartbeats which is a duplicate of HeartbeatsNumOps |
+| `HeartbeatsTotalAvgTime` | Average total heartbeat time in milliseconds |
+| `LifelinesNumOps` | Total number of lifeline messages |
+| `LifelinesAvgTime` | Average lifeline message processing time in milliseconds |
 | `BlockReportsNumOps` | Total number of block report operations |
 | `BlockReportsAvgTime` | Average time of block report operations in milliseconds |
 | `IncrementalBlockReportsNumOps` | Total number of incremental block report operations |
@@ -344,10 +326,16 @@ ClusterMetrics shows the metrics of the YARN cluster from the ResourceManager's 
 | Name | Description |
 |:---- |:---- |
 | `NumActiveNMs` | Current number of active NodeManagers |
+| `numDecommissioningNMs` | Current number of NodeManagers being decommissioned|
 | `NumDecommissionedNMs` | Current number of decommissioned NodeManagers |
-| `NumLostNMs` | Current number of lost NodeManagers for not sending heartbeats |
+| `NumShutdownNMs` | Current number of NodeManagers shut down gracefully. Note that this does not count NodeManagers that are forcefully killed. |
+| `NumLostNMs` | Current number of lost NodeManagers for not sending heartbeats. |
 | `NumUnhealthyNMs` | Current number of unhealthy NodeManagers |
 | `NumRebootedNMs` | Current number of rebooted NodeManagers |
+| `AMLaunchDelayNumOps` | Total number of AMs launched |
+| `AMLaunchDelayAvgTime` | Average time in milliseconds RM spends to launch AM containers after the AM container is allocated|
+| `AMRegisterDelayNumOps` | Total number of AMs registered  |
+| `AMRegisterDelayAvgTime` | Average time in milliseconds AM spends to register with RM after the AM container gets launched |
 
 QueueMetrics
 ------------
@@ -372,17 +360,22 @@ In `running_`*num* metrics such as `running_0`, you can set the property `yarn.r
 | `AllocatedVCores` | Current allocated CPU in virtual cores |
 | `AllocatedContainers` | Current number of allocated containers |
 | `AggregateContainersAllocated` | Total number of allocated containers |
+| `aggregateNodeLocalContainersAllocated` | Total number of node local containers allocated  |
+| `aggregateRackLocalContainersAllocated` | Total number of rack local containers allocated  |
+| `aggregateOffSwitchContainersAllocated` | Total number of off switch containers allocated |
 | `AggregateContainersReleased` | Total number of released containers |
 | `AvailableMB` | Current available memory in MB |
 | `AvailableVCores` | Current available CPU in virtual cores |
-| `PendingMB` | Current pending memory resource requests in MB that are not yet fulfilled by the scheduler |
-| `PendingVCores` | Current pending CPU allocation requests in virtual cores that are not yet fulfilled by the scheduler |
-| `PendingContainers` | Current pending resource requests that are not yet fulfilled by the scheduler |
+| `PendingMB` | Current memory requests in MB that are pending to be fulfilled by the scheduler |
+| `PendingVCores` | Current CPU requests in virtual cores that are pending to be fulfilled by the scheduler |
+| `PendingContainers` | Current number of containers that are pending to be fulfilled by the scheduler |
 | `ReservedMB` | Current reserved memory in MB |
 | `ReservedVCores` | Current reserved CPU in virtual cores |
 | `ReservedContainers` | Current number of reserved containers |
 | `ActiveUsers` | Current number of active users |
 | `ActiveApplications` | Current number of active applications |
+| `AppAttemptFirstContainerAllocationDelayNumOps` | Total number of first container allocated for all attempts |
+| `AppAttemptFirstContainerAllocationDelayAvgTime` | Average time RM spends to allocate the first container for all attempts. For managed AM, the first container is AM container. So, this indicates the time duration to allocate AM container. For unmanaged AM, this is the time duration to allocate the first container asked by unmanaged AM. |
 | `FairShareMB` | (FairScheduler only) Current fair share of memory in MB |
 | `FairShareVCores` | (FairScheduler only) Current fair share of CPU in virtual cores |
 | `MinShareMB` | (FairScheduler only) Minimum share of memory in MB |
@@ -406,6 +399,14 @@ NodeManagerMetrics shows the statistics of the containers in the node. Each metr
 | `allocatedContainers` | Current number of allocated containers |
 | `allocatedGB` | Current allocated memory in GB |
 | `availableGB` | Current available memory in GB |
+| `allocatedVcores` | Current used vcores|
+| `availableVcores` | Current available vcores |
+| `containerLaunchDuration` | Average time duration in milliseconds NM takes to launch a container|
+| `badLocalDirs` | Current number of bad local directories. Currently, a disk that cannot be read/written/executed by NM process or A disk being full is considered as bad.|
+| `badLogDirs` | Current number of bad log directories. Currently, a disk that cannot be read/written/executed by NM process or A disk being full is considered as bad. |
+| `goodLocalDirsDiskUtilizationPerc` | Current disk utilization percentage across all good local directories |
+| `goodLogDirsDiskUtilizationPerc` | Current disk utilization percentage across all good log directories |
+
 
 ugi context
 ===========

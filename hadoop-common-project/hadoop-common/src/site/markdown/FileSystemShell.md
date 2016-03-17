@@ -12,55 +12,12 @@
   limitations under the License. See accompanying LICENSE file.
 -->
 
-* [Overview](#Overview)
-    * [appendToFile](#appendToFile)
-    * [cat](#cat)
-    * [checksum](#checksum)
-    * [chgrp](#chgrp)
-    * [chmod](#chmod)
-    * [chown](#chown)
-    * [copyFromLocal](#copyFromLocal)
-    * [copyToLocal](#copyToLocal)
-    * [count](#count)
-    * [cp](#cp)
-    * [createSnapshot](#createSnapshot)
-    * [deleteSnapshot](#deleteSnapshot)
-    * [df](#df)
-    * [du](#du)
-    * [dus](#dus)
-    * [expunge](#expunge)
-    * [find](#find)
-    * [get](#get)
-    * [getfacl](#getfacl)
-    * [getfattr](#getfattr)
-    * [getmerge](#getmerge)
-    * [help](#help)
-    * [ls](#ls)
-    * [lsr](#lsr)
-    * [mkdir](#mkdir)
-    * [moveFromLocal](#moveFromLocal)
-    * [moveToLocal](#moveToLocal)
-    * [mv](#mv)
-    * [put](#put)
-    * [renameSnapshot](#renameSnapshot)
-    * [rm](#rm)
-    * [rmdir](#rmdir)
-    * [rmr](#rmr)
-    * [setfacl](#setfacl)
-    * [setfattr](#setfattr)
-    * [setrep](#setrep)
-    * [stat](#stat)
-    * [tail](#tail)
-    * [test](#test)
-    * [text](#text)
-    * [touchz](#touchz)
-    * [truncate](#truncate)
-    * [usage](#usage)
+<!-- MACRO{toc|fromDepth=0|toDepth=3} -->
 
 Overview
 ========
 
-The File System (FS) shell includes various shell-like commands that directly interact with the Hadoop Distributed File System (HDFS) as well as other file systems that Hadoop supports, such as Local FS, HFTP FS, S3 FS, and others. The FS shell is invoked by:
+The File System (FS) shell includes various shell-like commands that directly interact with the Hadoop Distributed File System (HDFS) as well as other file systems that Hadoop supports, such as Local FS, WebHDFS, S3 FS, and others. The FS shell is invoked by:
 
     bin/hadoop fs <args>
 

@@ -12,35 +12,10 @@
   limitations under the License. See accompanying LICENSE file.
 -->
 
-* [Hadoop Commands Guide](#Hadoop_Commands_Guide)
-    * [Overview](#Overview)
-        * [Shell Options](#Shell_Options)
-        * [Generic Options](#Generic_Options)
-* [Hadoop Common Commands](#Hadoop_Common_Commands)
-    * [User Commands](#User_Commands)
-        * [archive](#archive)
-        * [checknative](#checknative)
-        * [classpath](#classpath)
-        * [credential](#credential)
-        * [distch](#distch)
-        * [distcp](#distcp)
-        * [fs](#fs)
-        * [jar](#jar)
-        * [jnipath](#jnipath)
-        * [kerbname](#kerbname)
-        * [key](#key)
-        * [trace](#trace)
-        * [version](#version)
-        * [CLASSNAME](#CLASSNAME)
-    * [Administration Commands](#Administration_Commands)
-        * [daemonlog](#daemonlog)
-    * [Files](#Files)
-        * [etc/hadoop/hadoop-env.sh](#etchadoophadoop-env.sh)
-        * [etc/hadoop/hadoop-user-functions.sh](#etchadoophadoop-user-functions.sh)
-        * [~/.hadooprc](#a.hadooprc)
-
 Hadoop Commands Guide
 =====================
+
+<!-- MACRO{toc|fromDepth=0|toDepth=3} -->
 
 Overview
 --------
@@ -89,7 +64,7 @@ Many subcommands honor a common set of configuration options to alter their beha
 Hadoop Common Commands
 ======================
 
-All of these commands are executed from the `hadoop` shell command. They have been broken up into [User Commands](#User_Commands) and [Admininistration Commands](#Admininistration_Commands).
+All of these commands are executed from the `hadoop` shell command. They have been broken up into [User Commands](#User_Commands) and [Administration Commands](#Administration_Commands).
 
 User Commands
 -------------
@@ -109,7 +84,7 @@ Usage: `hadoop checknative [-a] [-h] `
 | `-a` | Check all libraries are available. |
 | `-h` | print help |
 
-This command checks the availability of the Hadoop native code. See [\#NativeLibraries.html](#NativeLibraries.html) for more information. By default, this command only checks the availability of libhadoop.
+This command checks the availability of the Hadoop native code. See [Native Libaries](./NativeLibraries.html) for more information. By default, this command only checks the availability of libhadoop.
 
 ### `classpath`
 
@@ -188,7 +163,19 @@ Example: `hadoop kerbname user@EXAMPLE.COM`
 
 ### `key`
 
-Manage keys via the KeyProvider.
+Usage: `hadoop key <subcommand> [options]`
+
+| COMMAND\_OPTION | Description |
+|:---- |:---- |
+| create *keyname* [-cipher *cipher*] [-size *size*] [-description *description*] [-attr *attribute=value*] [-provider *provider*] [-help] | Creates a new key for the name specified by the *keyname* argument within the provider specified by the `-provider` argument. You may specify a cipher with the `-cipher` argument. The default cipher is currently "AES/CTR/NoPadding". The default keysize is 128. You may specify the requested key length using the `-size` argument. Arbitrary attribute=value style attributes may be specified using the `-attr` argument. `-attr` may be specified multiple times, once per attribute. |
+| roll *keyname* [-provider *provider*] [-help] | Creates a new version for the specified key within the provider indicated using the `-provider` argument |
+| delete *keyname* [-provider *provider*] [-f] [-help] | Deletes all versions of the key specified by the *keyname* argument from within the provider specified by `-provider`. The command asks for user confirmation unless `-f` is specified. |
+| list [-provider *provider*] [-metadata] [-help] | Displays the keynames contained within a particular provider as configured in core-site.xml or specified with the `-provider` argument. `-metadata` displays the metadata. |
+| -help | Prints usage of this command |
+
+Manage keys via the KeyProvider. For details on KeyProviders, see the [Transparent Encryption Guide](../hadoop-hdfs/TransparentEncryption.html).
+
+NOTE: Some KeyProviders (e.g. org.apache.hadoop.crypto.key.JavaKeyStoreProvider) does not support uppercase key names.
 
 ### `trace`
 

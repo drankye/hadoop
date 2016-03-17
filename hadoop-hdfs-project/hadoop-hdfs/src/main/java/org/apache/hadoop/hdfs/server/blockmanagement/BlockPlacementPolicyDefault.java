@@ -59,7 +59,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 
   protected boolean considerLoad; 
   protected double considerLoadFactor;
-  private boolean preferLocalNode = true;
+  private boolean preferLocalNode;
   protected NetworkTopology clusterMap;
   protected Host2NodesMap host2datanodeMap;
   private FSClusterStats stats;
@@ -95,6 +95,11 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     this.staleInterval = conf.getLong(
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_KEY, 
         DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_DEFAULT);
+    this.preferLocalNode = conf.getBoolean(
+        DFSConfigKeys.
+            DFS_NAMENODE_BLOCKPLACEMENTPOLICY_DEFAULT_PREFER_LOCAL_NODE_KEY,
+        DFSConfigKeys.
+            DFS_NAMENODE_BLOCKPLACEMENTPOLICY_DEFAULT_PREFER_LOCAL_NODE_DEFAULT);
   }
 
   @Override
@@ -896,7 +901,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       locs = DatanodeDescriptor.EMPTY_ARRAY;
     if (!clusterMap.hasClusterEverBeenMultiRack()) {
       // only one rack
-      return new BlockPlacementStatusDefault(1, 1);
+      return new BlockPlacementStatusDefault(1, 1, 1);
     }
     int minRacks = 2;
     minRacks = Math.min(minRacks, numberOfReplicas);
@@ -905,7 +910,8 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     Set<String> racks = new TreeSet<>();
     for (DatanodeInfo dn : locs)
       racks.add(dn.getNetworkLocation());
-    return new BlockPlacementStatusDefault(racks.size(), minRacks);
+    return new BlockPlacementStatusDefault(racks.size(), minRacks,
+        clusterMap.getNumOfRacks());
   }
   /**
    * Decide whether deleting the specified replica of the block still makes
@@ -966,7 +972,8 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 
   @Override
   public List<DatanodeStorageInfo> chooseReplicasToDelete(
-      Collection<DatanodeStorageInfo> candidates,
+      Collection<DatanodeStorageInfo> availableReplicas,
+      Collection<DatanodeStorageInfo> delCandidates,
       int expectedNumOfReplicas,
       List<StorageType> excessTypes,
       DatanodeDescriptor addedNode,
@@ -979,28 +986,29 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     final List<DatanodeStorageInfo> moreThanOne = new ArrayList<>();
     final List<DatanodeStorageInfo> exactlyOne = new ArrayList<>();
 
-    // split nodes into two sets
+    // split candidate nodes for deletion into two sets
     // moreThanOne contains nodes on rack with more than one replica
     // exactlyOne contains the remaining nodes
-    splitNodesWithRack(candidates, rackMap, moreThanOne, exactlyOne);
+    splitNodesWithRack(availableReplicas, delCandidates, rackMap, moreThanOne,
+        exactlyOne);
 
     // pick one node to delete that favors the delete hint
     // otherwise pick one with least space from priSet if it is not empty
     // otherwise one node with least space from remains
     boolean firstOne = true;
     final DatanodeStorageInfo delNodeHintStorage =
-        DatanodeStorageInfo.getDatanodeStorageInfo(candidates, delNodeHint);
+        DatanodeStorageInfo.getDatanodeStorageInfo(delCandidates, delNodeHint);
     final DatanodeStorageInfo addedNodeStorage =
-        DatanodeStorageInfo.getDatanodeStorageInfo(candidates, addedNode);
+        DatanodeStorageInfo.getDatanodeStorageInfo(delCandidates, addedNode);
 
-    while (candidates.size() - expectedNumOfReplicas > excessReplicas.size()) {
+    while (delCandidates.size() - expectedNumOfReplicas > excessReplicas.size()) {
       final DatanodeStorageInfo cur;
       if (firstOne && useDelHint(delNodeHintStorage, addedNodeStorage,
           moreThanOne, exactlyOne, excessTypes)) {
         cur = delNodeHintStorage;
       } else { // regular excessive replica removal
-        cur = chooseReplicaToDelete(moreThanOne, exactlyOne, excessTypes,
-            rackMap);
+        cur = chooseReplicaToDelete(moreThanOne, exactlyOne,
+            excessTypes, rackMap);
       }
       firstOne = false;
       if (cur == null) {
@@ -1050,7 +1058,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     final Map<String, List<DatanodeInfo>> rackMap = new HashMap<>();
     final List<DatanodeInfo> moreThanOne = new ArrayList<>();
     final List<DatanodeInfo> exactlyOne = new ArrayList<>();
-    splitNodesWithRack(locs, rackMap, moreThanOne, exactlyOne);
+    splitNodesWithRack(locs, locs, rackMap, moreThanOne, exactlyOne);
     return notReduceNumOfGroups(moreThanOne, source, target);
   }
 

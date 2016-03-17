@@ -18,10 +18,9 @@
 package org.apache.hadoop.io.erasurecode.rawcoder;
 
 import org.junit.Before;
-import org.junit.Test;
 
 /**
- * Test raw Reed-solomon coder implemented in Java.
+ * Test the new raw Reed-solomon coder implemented in Java.
  */
 public class TestRSRawCoder extends TestRSRawCoderBase {
 
@@ -29,97 +28,6 @@ public class TestRSRawCoder extends TestRSRawCoderBase {
   public void setup() {
     this.encoderClass = RSRawEncoder.class;
     this.decoderClass = RSRawDecoder.class;
-    setAllowDump(false); // Change to true to allow verbose dump for debugging
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_all_d() {
-    prepare(null, 6, 3, new int[]{0, 1, 2}, new int[0], true);
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d0_d2() {
-    prepare(null, 6, 3, new int[] {0, 2}, new int[]{});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d0() {
-    prepare(null, 6, 3, new int[]{0}, new int[0]);
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d2() {
-    prepare(null, 6, 3, new int[]{2}, new int[]{});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d0_p0() {
-    prepare(null, 6, 3, new int[]{0}, new int[]{0});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_all_p() {
-    prepare(null, 6, 3, new int[0], new int[]{0, 1, 2});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_p0() {
-    prepare(null, 6, 3, new int[0], new int[]{0});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_p2() {
-    prepare(null, 6, 3, new int[0], new int[]{2});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasure_p0_p2() {
-    prepare(null, 6, 3, new int[0], new int[]{0, 2});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d0_p0_p1() {
-    prepare(null, 6, 3, new int[]{0}, new int[]{0, 1});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCoding_6x3_erasing_d0_d2_p2() {
-    prepare(null, 6, 3, new int[]{0, 2}, new int[]{2});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCodingNegative_6x3_erasing_d2_d4() {
-    prepare(null, 6, 3, new int[]{2, 4}, new int[0]);
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCodingNegative_6x3_erasing_too_many() {
-    prepare(null, 6, 3, new int[]{2, 4}, new int[]{0, 1});
-    testCodingWithErasingTooMany();
-  }
-
-  @Test
-  public void testCoding_10x4_erasing_d0_p0() {
-    prepare(null, 10, 4, new int[] {0}, new int[] {0});
-    testCodingDoMixAndTwice();
-  }
-
-  @Test
-  public void testCodingInputBufferPosition() {
-    prepare(null, 6, 3, new int[]{0}, new int[]{0});
-    testInputPosition(false);
-    testInputPosition(true);
+    setAllowDump(false);
   }
 }

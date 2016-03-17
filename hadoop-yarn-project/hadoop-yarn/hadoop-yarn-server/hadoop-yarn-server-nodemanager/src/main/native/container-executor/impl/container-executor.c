@@ -27,7 +27,6 @@
 #include <sys/param.h>
 #define NAME_MAX MAXNAMELEN
 #endif
-#include <ftw.h>
 #include <errno.h>
 #include <grp.h>
 #include <unistd.h>
@@ -60,12 +59,29 @@ FILE* ERRORFILE = NULL;
 static uid_t nm_uid = -1;
 static gid_t nm_gid = -1;
 
+struct configuration executor_cfg = {.size=0, .confdetails=NULL};
+
 char *concatenate(char *concat_pattern, char *return_path_name,
    int numArgs, ...);
 
 void set_nm_uid(uid_t user, gid_t group) {
   nm_uid = user;
   nm_gid = group;
+}
+
+//function used to load the configurations present in the secure config
+void read_executor_config(const char* file_name) {
+    read_config(file_name, &executor_cfg);
+}
+
+//function used to free executor configuration data
+void free_executor_configurations() {
+    free_configurations(&executor_cfg);
+}
+
+//Lookup nodemanager group from container executor configuration.
+char *get_nodemanager_group() {
+    return get_value(NM_GROUP_KEY, &executor_cfg);
 }
 
 /**
@@ -659,7 +675,7 @@ static struct passwd* get_user_info(const char* user) {
 }
 
 int is_whitelisted(const char *user) {
-  char **whitelist = get_values(ALLOWED_SYSTEM_USERS_KEY);
+  char **whitelist = get_values(ALLOWED_SYSTEM_USERS_KEY, &executor_cfg);
   char **users = whitelist;
   if (whitelist != NULL) {
     for(; *users; ++users) {
@@ -687,7 +703,7 @@ struct passwd* check_user(const char *user) {
     fflush(LOGFILE);
     return NULL;
   }
-  char *min_uid_str = get_value(MIN_USERID_KEY);
+  char *min_uid_str = get_value(MIN_USERID_KEY, &executor_cfg);
   int min_uid = DEFAULT_MIN_USERID;
   if (min_uid_str != NULL) {
     char *end_ptr = NULL;
@@ -714,7 +730,7 @@ struct passwd* check_user(const char *user) {
     free(user_info);
     return NULL;
   }
-  char **banned_users = get_values(BANNED_USERS_KEY);
+  char **banned_users = get_values(BANNED_USERS_KEY, &executor_cfg);
   banned_users = banned_users == NULL ?
     (char**) DEFAULT_BANNED_USERS : banned_users;
   char **banned_user = banned_users;
@@ -1063,7 +1079,7 @@ char* parse_docker_command_file(const char* command_file) {
 
 int run_docker(const char *command_file) {
   char* docker_command = parse_docker_command_file(command_file);
-  char* docker_binary = get_value(DOCKER_BINARY_KEY);
+  char* docker_binary = get_value(DOCKER_BINARY_KEY, &executor_cfg);
   char* docker_command_with_binary = calloc(sizeof(char), EXECUTOR_PATH_MAX);
   snprintf(docker_command_with_binary, EXECUTOR_PATH_MAX, "%s %s", docker_binary, docker_command);
   char **args = extract_values_delim(docker_command_with_binary, " ");
@@ -1225,7 +1241,7 @@ int launch_docker_container_as_user(const char * user, const char *app_id,
   char buffer[BUFFER_SIZE];
 
   char *docker_command = parse_docker_command_file(command_file);
-  char *docker_binary = get_value(DOCKER_BINARY_KEY);
+  char *docker_binary = get_value(DOCKER_BINARY_KEY, &executor_cfg);
   if (docker_binary == NULL) {
     docker_binary = "docker";
   }
@@ -1577,75 +1593,188 @@ static int rmdir_as_nm(const char* path) {
   return ret;
 }
 
-/**
- * nftw callback and associated TLS.
- */
+static int open_helper(int dirfd, const char *name) {
+  int fd;
+  if (dirfd >= 0) {
+    fd = openat(dirfd, name, O_RDONLY | O_NOFOLLOW);
+  } else {
+    fd = open(name, O_RDONLY | O_NOFOLLOW);
+  }
+  if (fd >= 0) {
+    return fd;
+  }
+  return -errno;
+}
 
-typedef struct {
-  int errnum;
-  int chmods;
-} nftw_state_t;
-
-static __thread nftw_state_t nftws;
-
-static int nftw_cb(const char *path,
-                   const struct stat *stat,
-                   int type,
-                   struct FTW *ftw) {
-
-  /* Leave the top-level directory to be deleted by the caller. */
-  if (ftw->level == 0) {
+static int chmod_helper(int dirfd, const char *name, mode_t val) {
+  int ret;
+  if (dirfd >= 0) {
+    ret = fchmodat(dirfd, name, val, 0);
+  } else {
+    ret = chmod(name, val);
+  }
+  if (ret >= 0) {
     return 0;
   }
+  return errno;
+}
 
-  switch (type) {
-    /* Directory, post-order. Should be empty so remove the directory. */
-    case FTW_DP:
-      if (rmdir(path) != 0) {
-        /* Record the first errno. */
-        if (errno != ENOENT && nftws.errnum == 0) {
-          nftws.errnum = errno;
-        }
-        fprintf(LOGFILE, "Couldn't delete directory %s - %s\n", path, strerror(errno));
-        /* Read-only filesystem, no point in continuing. */
-        if (errno == EROFS) {
-          return -1;
-        }
-      }
-      break;
-    /* File or symlink. Remove. */
-    case FTW_F:
-    case FTW_SL:
-      if (unlink(path) != 0) {
-        /* Record the first errno. */
-        if (errno != ENOENT && nftws.errnum == 0) {
-          nftws.errnum = errno;
-        }
-        fprintf(LOGFILE, "Couldn't delete file %s - %s\n", path, strerror(errno));
-        /* Read-only filesystem, no point in continuing. */
-        if (errno == EROFS) {
-          return -1;
-        }
-      }
-      break;
-    /* Unreadable file or directory. Attempt to chmod. */
-    case FTW_DNR:
-      if (chmod(path, 0700) == 0) {
-        nftws.chmods++;
-      } else {
-        /* Record the first errno. */
-        if (errno != ENOENT && nftws.errnum == 0) {
-          nftws.errnum = errno;
-        }
-        fprintf(LOGFILE, "Couldn't chmod %s - %s.\n", path, strerror(errno));
-      }
-      break;
-    /* Should never happen. */
-    default:
-      fprintf(LOGFILE, "Internal error deleting %s\n", path);
-      return -1;
+static int unlink_helper(int dirfd, const char *name, int flags) {
+  int ret;
+  if (dirfd >= 0) {
+    ret = unlinkat(dirfd, name, flags);
+  } else {
+    ret = unlink(name);
   }
-  return 0;
+  if (ret >= 0) {
+    return 0;
+  }
+  return errno;
+}
+
+/**
+ * Determine if an entry in a directory is a symlink.
+ *
+ * @param dirfd     The directory file descriptor, or -1 if there is none.
+ * @param name      If dirfd is -1, this is the path to examine.
+ *                  Otherwise, this is the file name in the directory to
+ *                  examine.
+ *
+ * @return          0 if the entry is not a symlink
+ *                  1 if the entry is a symlink
+ *                  A negative errno code if we couldn't access the entry.
+ */
+static int is_symlink_helper(int dirfd, const char *name)
+{
+  struct stat stat;
+
+  if (dirfd < 0) {
+    if (lstat(name, &stat) < 0) {
+      return -errno;
+    }
+  } else {
+    if (fstatat(dirfd, name, &stat, AT_SYMLINK_NOFOLLOW) < 0) {
+      return -errno;
+    }
+  }
+  return !!S_ISLNK(stat.st_mode);
+}
+
+static int recursive_unlink_helper(int dirfd, const char *name,
+                                   const char* fullpath)
+{
+  int fd = -1, ret = 0;
+  DIR *dfd = NULL;
+  struct stat stat;
+
+  // Check to see if the file is a symlink.  If so, delete the symlink rather
+  // than what it points to.
+  ret = is_symlink_helper(dirfd, name);
+  if (ret < 0) {
+    // is_symlink_helper failed.
+    ret = -ret;
+    fprintf(LOGFILE, "is_symlink_helper(%s) failed: %s\n",
+            fullpath, strerror(ret));
+    goto done;
+  } else if (ret == 1) {
+    // is_symlink_helper determined that the path is a symlink.
+    ret = unlink_helper(dirfd, name, 0);
+    if (ret) {
+      fprintf(LOGFILE, "failed to unlink symlink %s: %s\n",
+              fullpath, strerror(ret));
+    }
+    goto done;
+  }
+
+  // Open the file.  We use O_NOFOLLOW here to ensure that we if a symlink was
+  // swapped in by an attacker, we will fail to follow it rather than deleting
+  // something we potentially should not.
+  fd = open_helper(dirfd, name);
+  if (fd == -EACCES) {
+    ret = chmod_helper(dirfd, name, 0700);
+    if (ret) {
+      fprintf(LOGFILE, "chmod(%s) failed: %s\n", fullpath, strerror(ret));
+      goto done;
+    }
+    fd = open_helper(dirfd, name);
+  }
+  if (fd < 0) {
+    ret = -fd;
+    fprintf(LOGFILE, "error opening %s: %s\n", fullpath, strerror(ret));
+    goto done;
+  }
+  if (fstat(fd, &stat) < 0) {
+    ret = errno;
+    fprintf(LOGFILE, "failed to stat %s: %s\n", fullpath, strerror(ret));
+    goto done;
+  }
+  if (!(S_ISDIR(stat.st_mode))) {
+    ret = unlink_helper(dirfd, name, 0);
+    if (ret) {
+      fprintf(LOGFILE, "failed to unlink %s: %s\n", fullpath, strerror(ret));
+      goto done;
+    }
+  } else {
+    dfd = fdopendir(fd);
+    if (!dfd) {
+      ret = errno;
+      fprintf(LOGFILE, "fopendir(%s) failed: %s\n", fullpath, strerror(ret));
+      goto done;
+    }
+    while (1) {
+      struct dirent *de;
+      char *new_fullpath = NULL;
+
+      errno = 0;
+      de = readdir(dfd);
+      if (!de) {
+        ret = errno;
+        if (ret) {
+          fprintf(LOGFILE, "readdir(%s) failed: %s\n", fullpath, strerror(ret));
+          goto done;
+        }
+        break;
+      }
+      if (!strcmp(de->d_name, ".")) {
+        continue;
+      }
+      if (!strcmp(de->d_name, "..")) {
+        continue;
+      }
+      if (asprintf(&new_fullpath, "%s/%s", fullpath, de->d_name) < 0) {
+        fprintf(LOGFILE, "Failed to allocate string for %s/%s.\n",
+                fullpath, de->d_name);
+        ret = ENOMEM;
+        goto done;
+      }
+      ret = recursive_unlink_helper(fd, de->d_name, new_fullpath);
+      free(new_fullpath);
+      if (ret) {
+        goto done;
+      }
+    }
+    if (dirfd != -1) {
+      ret = unlink_helper(dirfd, name, AT_REMOVEDIR);
+      if (ret) {
+        fprintf(LOGFILE, "failed to rmdir %s: %s\n", name, strerror(ret));
+        goto done;
+      }
+    }
+  }
+  ret = 0;
+done:
+  if (fd >= 0) {
+    close(fd);
+  }
+  if (dfd) {
+    closedir(dfd);
+  }
+  return ret;
+}
+
+int recursive_unlink_children(const char *name)
+{
+  return recursive_unlink_helper(-1, name, name);
 }
 
 /**
@@ -1655,29 +1784,22 @@ static int nftw_cb(const char *path,
  */
 static int delete_path(const char *full_path, 
                        int needs_tt_user) {
+  int ret;
 
   /* Return an error if the path is null. */
   if (full_path == NULL) {
     fprintf(LOGFILE, "Path is null\n");
     return UNABLE_TO_BUILD_PATH;
   }
-  /* If the path doesn't exist there is nothing to do, so return success. */
-  if (access(full_path, F_OK) != 0) {
-    if (errno == ENOENT) {
-        return 0;
-    }
+  ret = recursive_unlink_children(full_path);
+  if (ret == ENOENT) {
+    return 0;
   }
-
-  /* Recursively delete the tree with nftw. */
-  nftws.errnum = 0;
-  int ret = 0;
-  do {
-    nftws.chmods = 0;
-    ret = nftw(full_path, &nftw_cb, 20, FTW_PHYS | FTW_MOUNT | FTW_DEPTH);
-    if (ret != 0) {
-      fprintf(LOGFILE, "Error in nftw while deleting %s\n", full_path);
-    }
-  } while (nftws.chmods != 0);
+  if (ret != 0) {
+    fprintf(LOGFILE, "Error while deleting %s: %d (%s)\n",
+            full_path, ret, strerror(ret));
+    return -1;
+  }
 
   /*
    * If required, do the final rmdir as root on the top level.
@@ -1685,24 +1807,18 @@ static int delete_path(const char *full_path,
    * owned by the node manager.
    */
   if (needs_tt_user) {
-    ret = rmdir_as_nm(full_path);
+    return rmdir_as_nm(full_path);
+  }
   /* Otherwise rmdir the top level as the current user. */
-  } else {
-    if (rmdir(full_path) != 0) {
-      /* Record the first errno. */
-      if (errno != ENOENT && nftws.errnum == 0) {
-        nftws.errnum = errno;
-      }
-      fprintf(LOGFILE, "Couldn't delete directory %s - %s\n", full_path, strerror(errno));
+  if (rmdir(full_path) != 0) {
+    ret = errno;
+    if (ret != ENOENT) {
+      fprintf(LOGFILE, "Couldn't delete directory %s - %s\n",
+              full_path, strerror(ret));
+      return -1;
     }
   }
-
-  /* If there was an error, set errno to the first observed value. */
-  errno = nftws.errnum;
-  if (nftws.errnum != 0) {
-    ret = -1;
-  }
-  return ret;
+  return 0;
 }
 
 /**

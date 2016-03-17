@@ -633,6 +633,11 @@ public class FilterFileSystem extends FileSystem {
   }
 
   @Override
+  public void unsetStoragePolicy(Path src) throws IOException {
+    fs.unsetStoragePolicy(src);
+  }
+
+  @Override
   public BlockStoragePolicySpi getStoragePolicy(final Path src)
       throws IOException {
     return fs.getStoragePolicy(src);
@@ -645,13 +650,12 @@ public class FilterFileSystem extends FileSystem {
   }
 
   @Override
-  public Path getTrashRoot(Path path) throws IOException {
+  public Path getTrashRoot(Path path) {
     return fs.getTrashRoot(path);
   }
 
   @Override
-  public Collection<FileStatus> getTrashRoots(boolean allUsers)
-      throws IOException {
+  public Collection<FileStatus> getTrashRoots(boolean allUsers) {
     return fs.getTrashRoots(allUsers);
   }
 }

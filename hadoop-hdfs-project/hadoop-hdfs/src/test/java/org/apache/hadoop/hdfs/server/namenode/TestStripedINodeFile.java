@@ -33,7 +33,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.StripedFileTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
@@ -43,7 +42,9 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoStriped;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 /**
  * This class tests INodeFile with striped feature.
@@ -59,8 +60,12 @@ public class TestStripedINodeFile {
   private final BlockStoragePolicy defaultPolicy =
       defaultSuite.getDefaultPolicy();
 
+  // use hard coded policy - see HDFS-9816
   private static final ErasureCodingPolicy testECPolicy
-      = ErasureCodingPolicyManager.getSystemDefaultPolicy();
+      = ErasureCodingPolicyManager.getSystemPolicies()[0];
+
+  @Rule
+  public Timeout globalTimeout = new Timeout(300000);
 
   private static INodeFile createStripedINodeFile() {
     return new INodeFile(HdfsConstants.GRANDFATHER_INODE_ID, null, perm, 0L, 0L,
@@ -223,8 +228,8 @@ public class TestStripedINodeFile {
       final Path contiguousFile = new Path(parentDir, "someFile");
       final DistributedFileSystem dfs;
       final Configuration conf = new Configuration();
-      final short GROUP_SIZE = (short) (StripedFileTestUtil.NUM_DATA_BLOCKS
-          + StripedFileTestUtil.NUM_PARITY_BLOCKS);
+      final short GROUP_SIZE = (short) (testECPolicy.getNumDataUnits() +
+          testECPolicy.getNumParityUnits());
       conf.setInt(DFSConfigKeys.DFS_NAMENODE_MAX_XATTRS_PER_INODE_KEY, 2);
 
       cluster = new MiniDFSCluster.Builder(conf).numDataNodes(GROUP_SIZE)

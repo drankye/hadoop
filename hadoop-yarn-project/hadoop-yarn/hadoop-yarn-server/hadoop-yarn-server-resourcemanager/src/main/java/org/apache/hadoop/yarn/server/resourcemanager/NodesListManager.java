@@ -166,17 +166,8 @@ public class NodesListManager extends CompositeService implements
       UnknownNodeId nodeId = new UnknownNodeId(host);
       RMNodeImpl rmNode = new RMNodeImpl(nodeId,
           rmContext, host, -1, -1, new UnknownNode(host), null, null);
-
-      RMNode prevRMNode =
-          rmContext.getRMNodes().putIfAbsent(nodeId, rmNode);
-      if (prevRMNode != null) {
-        this.rmContext.getDispatcher().getEventHandler().handle(
-            new RMNodeEvent(prevRMNode.getNodeID(),
-                RMNodeEventType.DECOMMISSION));
-      } else {
-        this.rmContext.getDispatcher().getEventHandler().handle(
-            new RMNodeEvent(nodeId, RMNodeEventType.DECOMMISSION));
-      }
+      rmContext.getInactiveRMNodes().put(nodeId, rmNode);
+      rmNode.handle(new RMNodeEvent(nodeId, RMNodeEventType.DECOMMISSION));
     }
   }
 
@@ -400,8 +391,7 @@ public class NodesListManager extends CompositeService implements
             new RMNodeEvent(nodeId, RMNodeEventType.GRACEFUL_DECOMMISSION));
       } else {
         // Recommissioning the nodes
-        if (entry.getValue().getState() == NodeState.DECOMMISSIONING
-            || entry.getValue().getState() == NodeState.DECOMMISSIONED) {
+        if (entry.getValue().getState() == NodeState.DECOMMISSIONING) {
           this.rmContext.getDispatcher().getEventHandler()
               .handle(new RMNodeEvent(nodeId, RMNodeEventType.RECOMMISSION));
         }
