@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.security.Permission;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -89,7 +90,9 @@ public class TestDFSShell {
 
   static Path writeFile(FileSystem fs, Path f) throws IOException {
     DataOutputStream out = fs.create(f);
-    out.writeBytes("dhruba: " + f);
+    //out.writeBytes("dhruba: " + f);
+    ByteBuffer buf = ByteBuffer.allocate(("dhruba: " + f).length());
+    buf.put(("dhruba: " + f).getBytes());
     out.close();
     assertTrue(fs.exists(f));
     return f;

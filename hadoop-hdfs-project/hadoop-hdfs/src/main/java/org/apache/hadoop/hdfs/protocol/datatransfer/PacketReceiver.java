@@ -109,6 +109,90 @@ public class PacketReceiver implements Closeable {
     doRead(null, in);
   }
 
+  public int receiveNextPacketNew(InputStream in) throws IOException {
+    curPacketBuf.clear();
+    curPacketBuf.limit(4);
+    doReadFully(null, in, curPacketBuf);
+    curPacketBuf.flip();
+    int payloadLen = curPacketBuf.getInt();
+
+    if (payloadLen < 0) {
+      throw new IOException("Invalid header length " + payloadLen);
+    }
+
+    int totalLen = 4 + payloadLen;
+    if (payloadLen > 0 ) {
+      // Make sure we have space for the whole packet, and read it.
+      reallocPacketBuf(totalLen);
+      curPacketBuf.clear();
+      curPacketBuf.position(4);
+      curPacketBuf.limit(totalLen);
+      doReadFully(null, in, curPacketBuf);
+      curPacketBuf.flip();
+
+      // Slice the data.
+      curPacketBuf.position(4);
+      curPacketBuf.limit(totalLen);
+      curDataSlice = curPacketBuf.slice();
+    } else {
+      curDataSlice = null;
+    }
+
+    // Reset buffer to point to the entirety of the packet (including
+    // length prefixes)
+    curPacketBuf.position(0);
+    curPacketBuf.limit(totalLen);
+
+    return payloadLen;
+  }
+
+  public int receiveNextPacketNew2(InputStream in) throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(1024);
+
+    buffer.limit(4);
+    doReadFully(null, in, buffer);
+    buffer.flip();
+    int payloadLen = buffer.getInt();
+
+    if (payloadLen < 0) {
+      throw new IOException("Invalid header length " + payloadLen);
+    }
+
+    buffer.clear();
+    buffer.limit(payloadLen);
+    doReadFully(null, in, buffer);
+
+
+
+    buffer.clear();
+    buffer.limit(4);
+    doReadFully(null, in, buffer);
+    buffer.flip();
+    payloadLen = buffer.getInt();
+
+    if (payloadLen < 0) {
+      throw new IOException("Invalid header length " + payloadLen);
+    }
+
+    buffer.clear();
+    buffer.limit(payloadLen);
+    doReadFully(null, in, buffer);
+
+
+    buffer.clear();
+    buffer.limit(4);
+    doReadFully(null, in, buffer);
+    buffer.flip();
+    payloadLen = buffer.getInt();
+
+    if (payloadLen < 0) {
+      throw new IOException("Invalid header length " + payloadLen);
+    }
+
+
+    return payloadLen;
+  }
+
   private void doRead(ReadableByteChannel ch, InputStream in)
       throws IOException {
     // Each packet looks like:

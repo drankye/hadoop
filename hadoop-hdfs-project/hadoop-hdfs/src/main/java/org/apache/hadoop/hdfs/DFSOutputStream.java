@@ -1,3 +1,5 @@
+
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -30,7 +32,9 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -45,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
+import org.apache.hadoop.fs.ByteBufferWritable;
 import org.apache.hadoop.fs.CanSetDropBehind;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSOutputSummer;
@@ -90,11 +95,8 @@ import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.Daemon;
-import org.apache.hadoop.util.DataChecksum;
+import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.DataChecksum.Type;
-import org.apache.hadoop.util.Progressable;
-import org.apache.hadoop.util.Time;
 import org.apache.htrace.NullScope;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Span;
@@ -135,7 +137,7 @@ import com.google.common.cache.RemovalNotification;
 ****************************************************************/
 @InterfaceAudience.Private
 public class DFSOutputStream extends FSOutputSummer
-    implements Syncable, CanSetDropBehind {
+    implements Syncable, CanSetDropBehind, ByteBufferWritable {
   private final long dfsclientSlowLogThresholdMs;
   /**
    * Number of times to retry creating a file when there are transient 
@@ -455,7 +457,7 @@ public class DFSOutputStream extends FSOutputSummer
             setupPipelineForAppendOrRecovery();
             initDataStreaming();
           }
-
+/*
           long lastByteOffsetInBlock = one.getLastByteOffsetBlock();
           if (lastByteOffsetInBlock > blockSize) {
             throw new IOException("BlockSize " + blockSize +
@@ -551,7 +553,7 @@ public class DFSOutputStream extends FSOutputSummer
           // This is used by unit test to trigger race conditions.
           if (artificialSlowdown != 0 && dfsClient.clientRunning) {
             Thread.sleep(artificialSlowdown); 
-          }
+          }*/
         } catch (Throwable e) {
           // Log warning if there was a real error.
           if (restartingNodeIndex.get() == -1) {
@@ -1311,6 +1313,7 @@ public class DFSOutputStream extends FSOutputSummer
           assert null == s : "Previous socket unclosed";
           assert null == blockReplyStream : "Previous blockReplyStream unclosed";
           s = createSocketForPipeline(nodes[0], nodes.length, dfsClient);
+          channel = s.getChannel();
           long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
           
           OutputStream unbufOut = NetUtils.getOutputStream(s, writeTimeout);
@@ -2167,7 +2170,12 @@ public class DFSOutputStream extends FSOutputSummer
   }
 
   private synchronized void start() {
-    streamer.start();
+    //streamer.start();
+    try {
+      streamer.setPipeline(streamer.nextBlockOutputStream());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
   
   /**
@@ -2381,4 +2389,59 @@ public class DFSOutputStream extends FSOutputSummer
     System.arraycopy(srcs, 0, dsts, 0, skipIndex);
     System.arraycopy(srcs, skipIndex+1, dsts, skipIndex, dsts.length-skipIndex);
   }
+  private volatile SocketChannel channel;
+  @Override
+  public void write(ByteBuffer buf) throws IOException {
+    //TODO
+    ByteBuffer lenbuf = ByteBuffer.allocate(4);
+    lenbuf.putInt(buf.remaining());
+    lenbuf.flip();
+
+    while (lenbuf.hasRemaining()){
+      channel.write(lenbuf);
+    }
+
+    while(buf.hasRemaining()){
+      channel.write(buf);
+    }
+
+    byte[] strbyte = "123".getBytes();
+    lenbuf.clear();
+    lenbuf.putInt(strbyte.length);
+    lenbuf.flip();
+    while(lenbuf.hasRemaining()){
+      channel.write(lenbuf);
+    }
+
+    buf.clear();
+    buf.put(strbyte);
+    buf.flip();
+    while(buf.hasRemaining()){
+      channel.write(buf);
+    }
+
+    lenbuf.clear();
+    lenbuf.putInt(0);
+    lenbuf.flip();
+    while(lenbuf.hasRemaining()){
+      channel.write(lenbuf);
+    }
+
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+  @Override
+  public void closeFile() throws IOException{
+
+    /*try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }*/
+    close();
+  }
+
 }

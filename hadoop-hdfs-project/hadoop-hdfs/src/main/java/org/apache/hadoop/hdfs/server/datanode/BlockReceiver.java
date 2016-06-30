@@ -492,6 +492,78 @@ class BlockReceiver implements Closeable {
     return (mirrorOut == null || isDatanode || needsChecksumTranslation);
   }
 
+
+  private void finalizeBlock(long startTime) throws IOException {
+    long endTime = 0;
+    // Hold a volume reference to finalize block.
+    try (ReplicaHandler handler = BlockReceiver.this.claimReplicaHandler()) {
+      BlockReceiver.this.close();
+      endTime = ClientTraceLog.isInfoEnabled() ? System.nanoTime() : 0;
+      block.setNumBytes(replicaInfo.getNumBytes());
+      datanode.data.finalizeBlock(block);
+    }
+
+    if (pinning) {
+      datanode.data.setPinning(block);
+    }
+
+    datanode.closeBlock(
+        block, DataNode.EMPTY_DEL_HINT, replicaInfo.getStorageUuid());
+    if (ClientTraceLog.isInfoEnabled() && isClient) {
+      long offset = 0;
+      DatanodeRegistration dnR = datanode.getDNRegistrationForBP(block
+          .getBlockPoolId());
+      ClientTraceLog.info(String.format(DN_CLIENTTRACE_FORMAT, inAddr,
+          myAddr, block.getNumBytes(), "HDFS_WRITE", clientname, offset,
+          dnR.getDatanodeUuid(), block, endTime - startTime));
+    } else {
+      LOG.info("Received " + block + " size " + block.getNumBytes()
+          + " from " + inAddr);
+    }
+  }
+
+  private int receivePacketNew(int offset) throws IOException {
+    int dataLen = packetReceiver.receiveNextPacketNew(in);
+
+    //First write the packet to the mirror:
+    if (mirrorOut != null && !mirrorError) {
+
+        long begin = Time.monotonicNow();
+        packetReceiver.mirrorPacketTo(mirrorOut);
+        mirrorOut.flush();
+        long now = Time.monotonicNow();
+        setLastSentTime(now);
+        long duration = now - begin;
+        if (duration > datanodeSlowLogThresholdMs) {
+          LOG.warn("Slow BlockReceiver write packet to mirror took " + duration
+              + "ms (threshold=" + datanodeSlowLogThresholdMs + "ms)");
+        }
+
+    }
+
+    if (dataLen > 0) {
+
+      ByteBuffer dataBuf = packetReceiver.getDataSlice();
+
+      out.write(dataBuf.array(), 0, dataBuf.limit());  // TODO: channel
+
+
+      replicaInfo.setLastChecksumAndDataLen(offset + dataLen, null);
+
+      datanode.metrics.incrBytesWritten(dataLen);
+      datanode.metrics.incrTotalWriteTime(1);
+
+      manageWriterOsCache(offset + dataLen);
+    } else {
+      flushOrSync(true);
+
+      long stTime = ClientTraceLog.isInfoEnabled() ? System.nanoTime() : 0;
+      finalizeBlock(stTime);
+    }
+
+    return dataLen;
+  }
+
   /** 
    * Receives and processes a packet. It can contain many chunks.
    * returns the number of data bytes that the packet has.
@@ -886,13 +958,18 @@ class BlockReceiver implements Closeable {
       this.isReplaceBlock = isReplaceBlock;
 
     try {
-      if (isClient && !isTransfer) {
+      if (false && isClient && !isTransfer) {
         responder = new Daemon(datanode.threadGroup, 
             new PacketResponder(replyOut, mirrIn, downstreams));
         responder.start(); // start thread to processes responses
       }
 
-      while (receivePacket() >= 0) { /* Receive until the last packet */ }
+      int szOff = 0;
+      int oneWrite;
+      while ((oneWrite = receivePacketNew(szOff)) > 0) {
+      /* Receive until the last packet */
+        szOff += oneWrite;
+      }
 
       // wait for all outstanding packet responses. And then
       // indicate responder to gracefully shutdown.
