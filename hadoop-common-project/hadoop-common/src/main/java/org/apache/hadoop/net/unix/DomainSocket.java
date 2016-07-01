@@ -513,6 +513,8 @@ public class DomainSocket implements Closeable {
 
   private static native void write0(int fd, int b) throws IOException;
 
+  private static native void writeBuffer0(int fd, ByteBuffer buffer, int length) throws IOException;
+
   private static native void writeArray0(int fd, byte b[], int offset, int length)
       throws IOException;
 
@@ -631,9 +633,7 @@ public class DomainSocket implements Closeable {
                   dst.remaining());
           dst.position(dst.position() + dst.limit());
         } else {
-          throw new AssertionError("we don't support " +
-                  "using ByteBuffers that aren't either direct or backed by " +
-                  "arrays");
+
         }
         exc = false;
         return 0;
