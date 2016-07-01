@@ -468,7 +468,7 @@ public class DFSOutputStream extends FSOutputSummer
             setupPipelineForAppendOrRecovery();
             initDataStreaming();
           }
-/*
+
           long lastByteOffsetInBlock = one.getLastByteOffsetBlock();
           if (lastByteOffsetInBlock > blockSize) {
             throw new IOException("BlockSize " + blockSize +
@@ -564,7 +564,7 @@ public class DFSOutputStream extends FSOutputSummer
           // This is used by unit test to trigger race conditions.
           if (artificialSlowdown != 0 && dfsClient.clientRunning) {
             Thread.sleep(artificialSlowdown); 
-          }*/
+          }
         } catch (Throwable e) {
           // Log warning if there was a real error.
           if (restartingNodeIndex.get() == -1) {
@@ -1321,22 +1321,26 @@ public class DFSOutputStream extends FSOutputSummer
         boolean result = false;
         DataOutputStream out = null;
         try {
-          /*assert null == s : "Previous socket unclosed";
-          assert null == blockReplyStream : "Previous blockReplyStream unclosed";
-          s = createSocketForPipeline(nodes[0], nodes.length, dfsClient);
-          channel = s.getChannel();
-          long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
-          
-          OutputStream unbufOut = NetUtils.getOutputStream(s, writeTimeout);
-          InputStream unbufIn = NetUtils.getInputStream(s);*/
-          assert null == ds : "Previous socket unclosed";
-          assert null == blockReplyStream : "Previous blockReplyStream unclosed";
-          ds = createDomainSocketForPipeline(nodes[0], nodes.length, dfsClient);
-          domainChannel = ds.getChannel();
-          long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
+          OutputStream unbufOut=null;
+          InputStream unbufIn=null;
+          long writeTimeout;
+          if(!useDomainSocket){
+            assert null == s : "Previous socket unclosed";
+            assert null == blockReplyStream : "Previous blockReplyStream unclosed";
+            s = createSocketForPipeline(nodes[0], nodes.length, dfsClient);
+            tcpChannel = s.getChannel();
+            writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
 
-          OutputStream unbufOut =ds.getOutputStream();
-          InputStream unbufIn = ds.getInputStream();
+            unbufOut = NetUtils.getOutputStream(s, writeTimeout);
+            unbufIn = NetUtils.getInputStream(s);
+          }else {
+            assert null == ds : "Previous socket unclosed";
+            assert null == blockReplyStream : "Previous blockReplyStream unclosed";
+            ds = createDomainSocketForPipeline(nodes[0], nodes.length, dfsClient);
+            domainChannel = ds.getChannel();
+            unbufOut = ds.getOutputStream();
+            unbufIn = ds.getInputStream();
+          }
 
 
 
@@ -2454,13 +2458,17 @@ public class DFSOutputStream extends FSOutputSummer
     return sock;
   }
 
-  private volatile SocketChannel channel;
+  private volatile SocketChannel tcpChannel;
 
   private volatile DomainSocket.DomainChannel domainChannel;
   private static InetAddress ia;
   private DomainSocket ds;
 
+  //set to use Domain Socket or not.
   private boolean useDomainSocket = false;
+  public void setUseDomainSocket(boolean useDomainSocket){
+    this.useDomainSocket = useDomainSocket;
+  }
 
   @Override
   public void write(ByteBuffer buf) throws IOException {
@@ -2476,7 +2484,7 @@ public class DFSOutputStream extends FSOutputSummer
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(buf.remaining());
     lenbuf.flip();
-
+    assert null != domainChannel : "domain socket not set yet, null value found.";
     while (lenbuf.hasRemaining()){
       domainChannel.write(lenbuf);
     }
@@ -2494,13 +2502,13 @@ public class DFSOutputStream extends FSOutputSummer
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(buf.remaining());
     lenbuf.flip();
-
+    assert null != tcpChannel : "tcp socket not set yet, null value found.";
     while (lenbuf.hasRemaining()){
-      domainChannel.write(lenbuf);
+      tcpChannel.write(lenbuf);
     }
 
     while(buf.hasRemaining()){
-      domainChannel.write(buf);
+      tcpChannel.write(buf);
     }
 
     ExtendedBlock b = streamer.getBlock();
@@ -2513,18 +2521,14 @@ public class DFSOutputStream extends FSOutputSummer
     lenbuf.putInt(0);
     lenbuf.flip();
     while(lenbuf.hasRemaining()){
-      domainChannel.write(lenbuf);
+      if(useDomainSocket){
+        assert null != domainChannel : "domain socket not set yet, null value found.";
+        domainChannel.write(lenbuf);
+      }else {
+        assert null != tcpChannel : "tcp socket not set yet, null value found.";
+        tcpChannel.write(lenbuf);
+      }
     }
-    closeOrigin();
-  }
-
-  public void closeFile() throws IOException {
-
-    ByteBuffer lenbuf = ByteBuffer.allocate(4);
-    OutputStream out = ds.getOutputStream();
-    byte[] len = lenbuf.array();
-    out.write(len,0,len.length);
-    out.flush();
     closeOrigin();
   }
 
