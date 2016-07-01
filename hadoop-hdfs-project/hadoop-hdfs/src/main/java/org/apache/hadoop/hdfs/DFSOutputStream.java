@@ -2275,7 +2275,7 @@ public class DFSOutputStream extends FSOutputSummer
   }
 
   @Override
-    public void write(int b) throws IOException {
+  public synchronized void write(int b) throws IOException {
     ByteBuffer buf = ByteBuffer.allocate(1);
     buf.put((byte) (b & 0xFF));
     buf.flip();
