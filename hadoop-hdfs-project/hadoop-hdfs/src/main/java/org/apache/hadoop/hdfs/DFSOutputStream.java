@@ -88,11 +88,13 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.RetryStartFileException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
+import org.apache.hadoop.hdfs.shortcircuit.DomainSocketFactory;
 import org.apache.hadoop.hdfs.util.ByteArrayManager;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.net.unix.DomainSocket;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.*;
@@ -216,6 +218,15 @@ public class DFSOutputStream extends FSOutputSummer
     final byte[] buf = new byte[PacketHeader.PKT_MAX_HEADER_LEN];
     return new DFSPacket(buf, 0, 0, DFSPacket.HEART_BEAT_SEQNO,
                          getChecksumSize(), false);
+  }
+
+  class DomainSocketDataStreamer extends DataStreamer{
+
+    private DomainSocketDataStreamer(HdfsFileStatus stat, ExtendedBlock block) {
+      super(stat, block);
+    }
+
+
   }
 
   //
@@ -1310,15 +1321,26 @@ public class DFSOutputStream extends FSOutputSummer
         boolean result = false;
         DataOutputStream out = null;
         try {
-          assert null == s : "Previous socket unclosed";
+          /*assert null == s : "Previous socket unclosed";
           assert null == blockReplyStream : "Previous blockReplyStream unclosed";
           s = createSocketForPipeline(nodes[0], nodes.length, dfsClient);
           channel = s.getChannel();
           long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
           
           OutputStream unbufOut = NetUtils.getOutputStream(s, writeTimeout);
-          InputStream unbufIn = NetUtils.getInputStream(s);
-          IOStreamPair saslStreams = dfsClient.saslClient.socketSend(s,
+          InputStream unbufIn = NetUtils.getInputStream(s);*/
+          assert null == ds : "Previous socket unclosed";
+          assert null == blockReplyStream : "Previous blockReplyStream unclosed";
+          ds = createDomainSocketForPipeline(nodes[0], nodes.length, dfsClient);
+          domainChannel = ds.getChannel();
+          long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
+
+          OutputStream unbufOut =ds.getOutputStream();
+          InputStream unbufIn = ds.getInputStream();
+
+
+
+          IOStreamPair saslStreams = dfsClient.saslClient.domainSocketSend(ia,
             unbufOut, unbufIn, dfsClient, accessToken, nodes[0]);
           unbufOut = saslStreams.out;
           unbufIn = saslStreams.in;
@@ -2389,7 +2411,41 @@ public class DFSOutputStream extends FSOutputSummer
     System.arraycopy(srcs, 0, dsts, 0, skipIndex);
     System.arraycopy(srcs, skipIndex+1, dsts, skipIndex, dsts.length-skipIndex);
   }
+
+
+
+  /**
+   * Create a Domain socket for a write pipeline
+   * @param first the first datanode
+   * @param length the pipeline length
+   * @param client client
+   * @return the socket connected to the first datanode
+   */
+  static DomainSocket createDomainSocketForPipeline(final DatanodeInfo first,
+                                                    final int length, final DFSClient client) throws IOException {
+    String dnAddr = first.getXferAddr(
+            client.getConf().connectToDnViaHostname);
+    String[] splits = dnAddr.split(":");
+    dnAddr=splits[0]+":"+(Integer.valueOf("7788"));
+    DFSClient.LOG.info("Domain Socket Addr is:" +dnAddr);
+    if (DFSClient.LOG.isDebugEnabled()) {
+      DFSClient.LOG.debug("Connecting to datanode " + dnAddr);
+    }
+    final InetSocketAddress isa = NetUtils.createSocketAddr(dnAddr);
+    ia = isa.getAddress();
+    final DomainSocketFactory dsf = client.getClientContext().getDomainSocketFactory();
+    final DomainSocketFactory.PathInfo pathInfo = dsf.getPathInfo(isa,client.getConf());
+    final int timeout = client.getDatanodeReadTimeout(length);
+    final DomainSocket sock = dsf.createSocket(pathInfo,timeout);
+    DFSClient.LOG.info("create Domain Socket for write bytebuffer block success.");
+    return sock;
+  }
+
   private volatile SocketChannel channel;
+
+  private volatile DomainSocket.DomainChannel domainChannel;
+  private static InetAddress ia;
+  private DomainSocket ds;
   @Override
   public void write(ByteBuffer buf) throws IOException {
     //TODO
@@ -2405,42 +2461,47 @@ public class DFSOutputStream extends FSOutputSummer
       channel.write(buf);
     }
 
-    byte[] strbyte = "123".getBytes();
-    lenbuf.clear();
-    lenbuf.putInt(strbyte.length);
+  }
+
+  @Override
+  public void writeDS(ByteBuffer buf) throws IOException {
+    ByteBuffer lenbuf = ByteBuffer.allocate(4);
+    lenbuf.putInt(buf.remaining());
     lenbuf.flip();
-    while(lenbuf.hasRemaining()){
-      channel.write(lenbuf);
+
+    while (lenbuf.hasRemaining()){
+      domainChannel.write(lenbuf);
     }
 
-    buf.clear();
-    buf.put(strbyte);
-    buf.flip();
     while(buf.hasRemaining()){
-      channel.write(buf);
-    }
+      domainChannel.write(buf);
+    }/*
+    OutputStream out = ds.getOutputStream();
+    byte[] len = lenbuf.array();
+    out.write(len,0,len.length);
+    byte[] b = buf.array();
+    out.write(b,0,b.length);*/
+  }
 
-    lenbuf.clear();
+  @Override
+  public void closeDSFile() throws IOException {
+    ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(0);
     lenbuf.flip();
     while(lenbuf.hasRemaining()){
-      channel.write(lenbuf);
+      domainChannel.write(lenbuf);
     }
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    close();
   }
+
   @Override
   public void closeFile() throws IOException{
 
-    /*try {
-      Thread.sleep(10000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }*/
+    ByteBuffer lenbuf = ByteBuffer.allocate(4);
+    OutputStream out = ds.getOutputStream();
+    byte[] len = lenbuf.array();
+    out.write(len,0,len.length);
+    out.flush();
     close();
   }
 

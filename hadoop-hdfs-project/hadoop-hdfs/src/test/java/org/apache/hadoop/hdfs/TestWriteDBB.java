@@ -30,22 +30,25 @@ public class TestWriteDBB {
         LOG.info("Begin to create new File.");
         FSDataOutputStream out = fs.create(f, (short)2);
 //        out.writeBytes("dhruba: " + f);
-        ByteBuffer buf = ByteBuffer.allocate(("dhruba: " + f).length());
-        buf.put(("dhruba: " + f).getBytes());
+        ByteBuffer buf = ByteBuffer.allocate(("ABCDEFGHIJKLMNOPQRSTUVWXYZ").length());
+        buf.put(("ABCDEFGHIJKLMNOPQRSTUVWXYZ").getBytes());
         buf.flip();
         LOG.info("Begin to write ByteBuffer.");
-        out.write(buf);
+        out.writeDS(buf);
 //        out.close();
         LOG.info("Begin to close the File.");
-        out.closeFile();
+        out.closeDSFile();
         LOG.info("End File");
         assertTrue(fs.exists(f));
-        Long len = fs.getLength(f);
+        Long len = fs.getFileStatus(f).getLen();
+        LOG.info("File Length is :" +len);
         return f;
     }
     @Test
     public void testDu() throws IOException {
         Configuration conf = new HdfsConfiguration();
+        conf.set("dfs.client.read.shortcircuit","true");
+        conf.set("dfs.domain.socket.path","/home/cuixuan/dn_socket");
         MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
         DistributedFileSystem fs = cluster.getFileSystem();
 

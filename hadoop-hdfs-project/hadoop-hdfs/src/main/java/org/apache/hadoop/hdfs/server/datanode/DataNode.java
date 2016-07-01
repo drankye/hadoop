@@ -292,6 +292,7 @@ public class DataNode extends ReconfigurableBase
   Daemon dataXceiverServer = null;
   DataXceiverServer xserver = null;
   Daemon localDataXceiverServer = null;
+  Daemon localDataXceiverServer1 = null;
   ShortCircuitRegistry shortCircuitRegistry = null;
   ThreadGroup threadGroup = null;
   private DNConf dnConf;
@@ -907,11 +908,19 @@ public class DataNode extends ReconfigurableBase
               DFSConfigKeys.DFS_CLIENT_DOMAIN_SOCKET_DATA_TRAFFIC_DEFAULT)) {
       DomainPeerServer domainPeerServer =
                 getDomainPeerServer(conf, streamingAddr.getPort());
+      DomainPeerServer domainPeerServer1 =
+              getDomainPeerServer(conf, 7788);
       if (domainPeerServer != null) {
         this.localDataXceiverServer = new Daemon(threadGroup,
             new DataXceiverServer(domainPeerServer, conf, this));
         LOG.info("Listening on UNIX domain socket: " +
             domainPeerServer.getBindPath());
+      }
+      if (domainPeerServer1 != null) {
+        this.localDataXceiverServer1 = new Daemon(threadGroup,
+                new DataXceiverServer(domainPeerServer1, conf, this));
+        LOG.info("Listening on UNIX domain socket: " +
+                domainPeerServer1.getBindPath());
       }
     }
     this.shortCircuitRegistry = new ShortCircuitRegistry(conf);
@@ -1669,6 +1678,10 @@ public class DataNode extends ReconfigurableBase
       ((DataXceiverServer) this.localDataXceiverServer.getRunnable()).kill();
       this.localDataXceiverServer.interrupt();
     }
+    if (localDataXceiverServer1 != null) {
+      ((DataXceiverServer) this.localDataXceiverServer1.getRunnable()).kill();
+      this.localDataXceiverServer1.interrupt();
+    }
 
     // Terminate directory scanner and block scanner
     shutdownPeriodicScanners();
@@ -1731,6 +1744,13 @@ public class DataNode extends ReconfigurableBase
       // wait for localDataXceiverServer to terminate
       try {
         this.localDataXceiverServer.join();
+      } catch (InterruptedException ie) {
+      }
+    }
+    if (this.localDataXceiverServer1 != null) {
+      // wait for localDataXceiverServer to terminate
+      try {
+        this.localDataXceiverServer1.join();
       } catch (InterruptedException ie) {
       }
     }
@@ -2206,6 +2226,9 @@ public class DataNode extends ReconfigurableBase
     dataXceiverServer.start();
     if (localDataXceiverServer != null) {
       localDataXceiverServer.start();
+    }
+    if (localDataXceiverServer1 != null) {
+      localDataXceiverServer1.start();
     }
     ipcServer.start();
     startPlugins(conf);

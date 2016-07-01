@@ -147,14 +147,14 @@ public class BlockReaderFactory implements ShortCircuitReplicaCreator {
   private long length = -1;
 
   /**
-   * Caching strategy to use when reading the block.
-   */
-  private CachingStrategy cachingStrategy;
-
-  /**
    * Socket address to use to connect to peer.
    */
   private InetSocketAddress inetSocketAddress;
+
+  /**
+   * Caching strategy to use when reading the block.
+   */
+  private CachingStrategy cachingStrategy;
 
   /**
    * Remote peer factory to use to create a peer, if needed.

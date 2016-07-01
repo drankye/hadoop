@@ -148,6 +148,7 @@ public class DomainSocketFactory {
     if (!DFSClient.isLocalAddress(addr)) return PathInfo.NOT_CONFIGURED;
     String escapedPath = DomainSocket.getEffectivePath(
         conf.getDomainSocketPath(), addr.getPort());
+    DFSClient.LOG.info(escapedPath);
     PathState status = pathMap.getIfPresent(escapedPath);
     if (status == null) {
       return new PathInfo(escapedPath, PathState.VALID);

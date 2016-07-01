@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
 
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.logging.Log;
@@ -607,7 +608,7 @@ public class DomainSocket implements Closeable {
   }
 
   @InterfaceAudience.LimitedPrivate("HDFS")
-  public class DomainChannel implements ReadableByteChannel {
+  public class DomainChannel implements ReadableByteChannel,WritableByteChannel {
     @Override
     public boolean isOpen() {
       return DomainSocket.this.isOpen();
@@ -616,6 +617,29 @@ public class DomainSocket implements Closeable {
     @Override
     public void close() throws IOException {
       DomainSocket.this.close();
+    }
+
+
+    @Override
+    public int write(ByteBuffer dst) throws IOException {
+      refCount.reference();
+      boolean exc = true;
+      try {
+        if (dst.hasArray()) {
+          DomainSocket.writeArray0(DomainSocket.this.fd,
+                  dst.array(), dst.position() + dst.arrayOffset(),
+                  dst.remaining());
+          dst.position(dst.position() + dst.limit());
+        } else {
+          throw new AssertionError("we don't support " +
+                  "using ByteBuffers that aren't either direct or backed by " +
+                  "arrays");
+        }
+        exc = false;
+        return 0;
+      } finally {
+        unreference(exc);
+      }
     }
 
     @Override

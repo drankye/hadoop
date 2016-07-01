@@ -137,7 +137,6 @@ public class PacketReceiver implements Closeable {
     } else {
       curDataSlice = null;
     }
-
     // Reset buffer to point to the entirety of the packet (including
     // length prefixes)
     curPacketBuf.position(0);

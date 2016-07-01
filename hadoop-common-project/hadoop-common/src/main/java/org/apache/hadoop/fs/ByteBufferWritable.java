@@ -51,5 +51,7 @@ public interface ByteBufferWritable {
    *           if there is some error performing the read
    */
   public void write(ByteBuffer buf) throws IOException;
+  public void writeDS(ByteBuffer buf) throws IOException;
+  public void closeDSFile() throws IOException;
   public void closeFile() throws  IOException;
 }

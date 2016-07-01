@@ -51,6 +51,7 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.TrustedChannelResolver;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
+import org.apache.hadoop.net.unix.DomainSocket;
 import org.apache.hadoop.security.SaslPropertiesResolver;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -167,6 +168,27 @@ public class SaslDataTransferClient {
   /**
    * Sends client SASL negotiation for a socket if required.
    *
+   * @param addr connection socket
+   * @param underlyingOut connection output stream
+   * @param underlyingIn connection input stream
+   * @param encryptionKeyFactory for creation of an encryption key
+   * @param accessToken connection block access token
+   * @param datanodeId ID of destination DataNode
+   * @return new pair of streams, wrapped after SASL negotiation
+   * @throws IOException for any error
+   */
+  public IOStreamPair domainSocketSend(InetAddress addr, OutputStream underlyingOut,
+                                       InputStream underlyingIn, DataEncryptionKeyFactory encryptionKeyFactory,
+                                       Token<BlockTokenIdentifier> accessToken, DatanodeID datanodeId)
+      throws IOException {
+    IOStreamPair ios = checkTrustAndSend(addr, underlyingOut,
+      underlyingIn, encryptionKeyFactory, accessToken, datanodeId);
+    return ios != null ? ios : new IOStreamPair(underlyingIn, underlyingOut);
+  }
+
+  /**
+   * Sends client SASL negotiation for a socket if required.
+   *
    * @param socket connection socket
    * @param underlyingOut connection output stream
    * @param underlyingIn connection input stream
@@ -177,11 +199,11 @@ public class SaslDataTransferClient {
    * @throws IOException for any error
    */
   public IOStreamPair socketSend(Socket socket, OutputStream underlyingOut,
-      InputStream underlyingIn, DataEncryptionKeyFactory encryptionKeyFactory,
-      Token<BlockTokenIdentifier> accessToken, DatanodeID datanodeId)
-      throws IOException {
+                                 InputStream underlyingIn, DataEncryptionKeyFactory encryptionKeyFactory,
+                                 Token<BlockTokenIdentifier> accessToken, DatanodeID datanodeId)
+          throws IOException {
     IOStreamPair ios = checkTrustAndSend(socket.getInetAddress(), underlyingOut,
-      underlyingIn, encryptionKeyFactory, accessToken, datanodeId);
+            underlyingIn, encryptionKeyFactory, accessToken, datanodeId);
     return ios != null ? ios : new IOStreamPair(underlyingIn, underlyingOut);
   }
 

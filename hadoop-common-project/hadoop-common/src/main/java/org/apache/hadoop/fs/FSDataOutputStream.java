@@ -128,6 +128,21 @@ public class FSDataOutputStream extends DataOutputStream
       ((ByteBufferWritable) wrappedStream).write(buf);
     }
   }
+
+  @Override
+  public void writeDS(ByteBuffer buf) throws IOException {
+    if (wrappedStream instanceof ByteBufferWritable) {
+      ((ByteBufferWritable) wrappedStream).writeDS(buf);
+    }
+  }
+
+  @Override
+  public void closeDSFile() throws IOException {
+    if (wrappedStream instanceof ByteBufferWritable) {
+      ((ByteBufferWritable) wrappedStream).closeDSFile();
+    }
+  }
+
   @Override
   public void closeFile() throws IOException {
     if (wrappedStream instanceof ByteBufferWritable) {
