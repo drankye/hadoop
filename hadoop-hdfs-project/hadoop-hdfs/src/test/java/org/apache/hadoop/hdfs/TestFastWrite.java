@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,7 +22,7 @@ public class TestFastWrite {
     int fileLen = 10 * 1024 * 1024;
 
     @Before
-    private void setup() throws IOException {
+    public void setup() throws IOException {
         conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/home/dn_socket");
@@ -49,7 +50,7 @@ public class TestFastWrite {
 
             byte[] readBytes = new byte[fileLen];
             FSDataInputStream in = fs.open(myFile);
-            in.read(readBytes);
+            IOUtils.readFully(in, readBytes, 0, readBytes.length);
 
             Assert.assertArrayEquals(toWriteBytes, readBytes);
 
