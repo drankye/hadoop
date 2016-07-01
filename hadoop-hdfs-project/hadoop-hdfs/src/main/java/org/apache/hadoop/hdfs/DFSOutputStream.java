@@ -2257,8 +2257,7 @@ public class DFSOutputStream extends FSOutputSummer
    * Closes this output stream and releases any system 
    * resources associated with this stream.
    */
-  @Override
-  public void close() throws IOException {
+  public void closeOrigin() throws IOException {
     synchronized (this) {
       TraceScope scope = dfsClient.getPathTraceScope("DFSOutputStream#close",
           src);
@@ -2269,6 +2268,20 @@ public class DFSOutputStream extends FSOutputSummer
       }
     }
     dfsClient.endFileLease(fileId);
+  }
+
+  @Override
+    public void write(int b) throws IOException {
+    ByteBuffer buf = ByteBuffer.allocate(1);
+    buf.put((byte) (b & 0xFF));
+    buf.flip();
+    write(buf);
+  }
+
+  @Override
+  public synchronized void write(byte b[], int off, int len)
+        throws IOException {
+    write(ByteBuffer.wrap(b, off, len));
   }
 
   private synchronized void closeImpl() throws IOException {
@@ -2447,8 +2460,9 @@ public class DFSOutputStream extends FSOutputSummer
   private static InetAddress ia;
   private DomainSocket ds;
   @Override
-  public void write(ByteBuffer buf) throws IOException {
+  public void writeDS(ByteBuffer buf) throws IOException {
     //TODO
+    int currLen = buf.remaining();
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(buf.remaining());
     lenbuf.flip();
@@ -2461,10 +2475,14 @@ public class DFSOutputStream extends FSOutputSummer
       channel.write(buf);
     }
 
+    ExtendedBlock b = streamer.getBlock();
+    b.setNumBytes(b.getNumBytes() + currLen);
+
   }
 
   @Override
-  public void writeDS(ByteBuffer buf) throws IOException {
+  public void write(ByteBuffer buf) throws IOException {
+    int currLen = buf.remaining();
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(buf.remaining());
     lenbuf.flip();
@@ -2475,7 +2493,10 @@ public class DFSOutputStream extends FSOutputSummer
 
     while(buf.hasRemaining()){
       domainChannel.write(buf);
-    }/*
+    }
+    ExtendedBlock b = streamer.getBlock();
+    b.setNumBytes(b.getNumBytes() + currLen);
+    /*
     OutputStream out = ds.getOutputStream();
     byte[] len = lenbuf.array();
     out.write(len,0,len.length);
@@ -2491,10 +2512,15 @@ public class DFSOutputStream extends FSOutputSummer
     while(lenbuf.hasRemaining()){
       domainChannel.write(lenbuf);
     }
-    close();
+    closeOrigin();
   }
 
   @Override
+  public void close() throws IOException{
+    closeFile();
+  }
+
+
   public void closeFile() throws IOException{
 
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
@@ -2502,7 +2528,7 @@ public class DFSOutputStream extends FSOutputSummer
     byte[] len = lenbuf.array();
     out.write(len,0,len.length);
     out.flush();
-    close();
+    closeOrigin();
   }
 
 }

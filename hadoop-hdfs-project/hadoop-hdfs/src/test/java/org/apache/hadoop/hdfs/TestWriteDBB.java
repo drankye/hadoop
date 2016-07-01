@@ -28,7 +28,7 @@ public class TestWriteDBB {
     private static final Log LOG = LogFactory.getLog(TestWriteDBB.class);
     static Path writeFile(FileSystem fs, Path f) throws IOException {
         LOG.info("Begin to create new File.");
-        FSDataOutputStream out = fs.create(f, (short)2);
+        FSDataOutputStream out = fs.create(f, (short)1);
 //        out.writeBytes("dhruba: " + f);
         ByteBuffer buf = ByteBuffer.allocate(("ABCDEFGHIJKLMNOPQRSTUVWXYZ").length());
         buf.put(("ABCDEFGHIJKLMNOPQRSTUVWXYZ").getBytes());

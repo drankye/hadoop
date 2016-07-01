@@ -545,8 +545,10 @@ class BlockReceiver implements Closeable {
 
       ByteBuffer dataBuf = packetReceiver.getDataSlice();
 
-      out.write(dataBuf.array(), 0, dataBuf.limit());  // TODO: channel
+      //out.write(dataBuf.array(), 0, dataBuf.limit());  // TODO: channel
+      ((FileOutputStream) out).getChannel().write(dataBuf);
 
+      replicaInfo.setNumBytes(offset + dataLen);
 
       replicaInfo.setLastChecksumAndDataLen(offset + dataLen, null);
 
