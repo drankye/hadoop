@@ -942,6 +942,24 @@ done:
 }
 
 JNIEXPORT void JNICALL
+Java_org_apache_hadoop_net_unix_DomainSocket_writeBuffer0(
+JNIEnv *env, jclass clazz, jint fd, jobject buffer, jint length)
+{
+  jthrowable jthr;
+
+  int8_t *buf = (unsigned char *)((*env)->GetDirectBufferAddress(env, buffer));
+  jthr = write_fully(env, fd, buf, length);
+  if (jthr) {
+    goto done;
+  }
+
+done:
+  if (jthr) {
+    (*env)->Throw(env, jthr);
+  }
+}
+
+JNIEXPORT void JNICALL
 Java_org_apache_hadoop_net_unix_DomainSocket_writeArray0(
 JNIEnv *env, jclass clazz, jint fd, jarray b, jint offset, jint length)
 {

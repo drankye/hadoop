@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -14,16 +15,23 @@ import static org.junit.Assert.assertTrue;
 
 public class TestFastWrite {
 
-    @Test
-    public void testFastWrite() throws IOException {
-        Configuration conf = new HdfsConfiguration();
+    Configuration conf;
+    MiniDFSCluster cluster;
+    DistributedFileSystem fs;
+    int fileLen = 10 * 1024 * 1024;
+
+    @Before
+    private void setup() throws IOException {
+        conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/home/dn_socket");
         conf.set("dfs.checksum.type","NULL");
-        MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
-        DistributedFileSystem fs = cluster.getFileSystem();
+        cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+        fs = cluster.getFileSystem();
+    }
 
-        int fileLen = 10 * 1024 * 1024;
+    @Test
+    public void testFastWrite() throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(fileLen);
         byte[] toWriteBytes = generateBytes(fileLen);
         buffer.put(toWriteBytes);
@@ -48,6 +56,10 @@ public class TestFastWrite {
         } finally {
             cluster.shutdown();
         }
+    }
+
+    @Test
+    public void testFastWriteMultipleTimes() throws IOException {
 
     }
 
