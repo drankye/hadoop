@@ -630,11 +630,12 @@ public class DomainSocket implements Closeable {
         if (dst.hasArray()) {
           DomainSocket.writeArray0(DomainSocket.this.fd,
                   dst.array(), dst.position() + dst.arrayOffset(),
-                  dst.remaining());
-          dst.position(dst.position() + dst.limit());
+              dst.remaining());
         } else {
-
+          DomainSocket.writeBuffer0(DomainSocket.this.fd, dst, dst.remaining());
         }
+        dst.position(dst.position() + dst.limit());
+
         exc = false;
         return 0;
       } finally {

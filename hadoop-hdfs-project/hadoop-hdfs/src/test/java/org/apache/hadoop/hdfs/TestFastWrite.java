@@ -21,7 +21,7 @@ public class TestFastWrite {
     int fileLen = 10 * 1024 * 1024;
 
     @Before
-    private void setup() throws IOException {
+    public void setup() throws IOException {
         conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/home/dn_socket");
