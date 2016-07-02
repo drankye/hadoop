@@ -2467,6 +2467,8 @@ public class DFSOutputStream extends FSOutputSummer
   //set to use Domain Socket or not.
   private boolean useDomainSocket = true;
 
+  private DirectBufferPool bufferPool = new DirectBufferPool();
+
   public void setUseDomainSocket(boolean useDomainSocket){
     this.useDomainSocket = useDomainSocket;
   }
@@ -2482,17 +2484,14 @@ public class DFSOutputStream extends FSOutputSummer
 
   private void writeWithDomainSocket(ByteBuffer buf) throws IOException {
     int currLen = buf.remaining();
-    ByteBuffer lenbuf = ByteBuffer.allocate(4);
-    lenbuf.putInt(buf.remaining());
-    lenbuf.flip();
+    ByteBuffer lenBuf = bufferPool.getBuffer(4);
+    lenBuf.putInt(buf.remaining());
+    lenBuf.flip();
     assert null != domainChannel : "domain socket not set yet, null value found.";
-    while (lenbuf.hasRemaining()){
-      domainChannel.write(lenbuf);
-    }
+    domainChannel.write(lenBuf);
+    bufferPool.returnBuffer(lenBuf);
 
-    while(buf.hasRemaining()){
-      domainChannel.write(buf);
-    }
+    domainChannel.write(buf);
 
     ExtendedBlock b = streamer.getBlock();
     b.setNumBytes(b.getNumBytes() + currLen);
@@ -2500,13 +2499,14 @@ public class DFSOutputStream extends FSOutputSummer
 
   private void writeWithTcpSocket(ByteBuffer buf) throws IOException {
     int currLen = buf.remaining();
-    ByteBuffer lenbuf = ByteBuffer.allocate(4);
-    lenbuf.putInt(buf.remaining());
-    lenbuf.flip();
+    ByteBuffer lenBuf = bufferPool.getBuffer(4);
+    lenBuf.putInt(buf.remaining());
+    lenBuf.flip();
     assert null != tcpChannel : "tcp socket not set yet, null value found.";
-    while (lenbuf.hasRemaining()){
-      tcpChannel.write(lenbuf);
+    while (lenBuf.hasRemaining()){
+      tcpChannel.write(lenBuf);
     }
+    bufferPool.returnBuffer(lenBuf);
 
     while(buf.hasRemaining()){
       tcpChannel.write(buf);

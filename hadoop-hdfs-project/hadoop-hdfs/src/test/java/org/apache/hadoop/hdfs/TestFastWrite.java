@@ -19,8 +19,9 @@ public class TestFastWrite {
     Configuration conf;
     MiniDFSCluster cluster;
     DistributedFileSystem fs;
-    int fileLen = 10 * 1024 * 1024;
-    int times = 10;
+    int factor = 10;
+    int bufferLen = 1024 * 1024;
+    int fileLen = factor * bufferLen;
 
     @Before
     public void setup() throws IOException {
@@ -62,21 +63,15 @@ public class TestFastWrite {
 
     @Test
     public void testFastWriteMultipleTimes() throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(fileLen);
-        assert 0 == fileLen/times : "fileLen must can be divided by times";
-        int fileLenEach = fileLen/times;
+        ByteBuffer buffer = ByteBuffer.allocate(bufferLen);
 
         try {
             Path myFile = new Path("/test/dir/file");
             FSDataOutputStream out = fs.create(myFile, (short)1);
             byte[] toWriteBytesEach;
-            byte[] toWriteBytes = new byte[fileLen];
-            int start =0;
-            for(int i=0;i<times;i++){
+            for(int i = 0; i < factor;i++){
                 buffer.clear();
-                toWriteBytesEach = generateBytes(fileLenEach);
-                System.arraycopy(toWriteBytesEach,0,toWriteBytes,start,toWriteBytesEach.length);
-                start += toWriteBytesEach.length;
+                toWriteBytesEach = generateBytes(bufferLen);
                 buffer.put(toWriteBytesEach);
                 buffer.flip();
                 out.write(buffer);
@@ -86,13 +81,6 @@ public class TestFastWrite {
 
             long writenFileLen = fs.getFileStatus(myFile).getLen();
             Assert.assertEquals(fileLen, writenFileLen);
-
-            byte[] readBytes = new byte[fileLen];
-            FSDataInputStream in = fs.open(myFile);
-            in.read(readBytes);
-
-//            Assert.assertArrayEquals(toWriteBytes, readBytes);
-
         } finally {
             cluster.shutdown();
         }
