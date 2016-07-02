@@ -40,6 +40,8 @@ public class TestWriteDBB {
         out.closeDSFile();
         LOG.info("End File");
         assertTrue(fs.exists(f));
+
+        fs.copyToLocalFile(f,new Path("/home/cuixuan/A"));
         Long len = fs.getFileStatus(f).getLen();
         LOG.info("File Length is :" +len);
         return f;
@@ -49,6 +51,7 @@ public class TestWriteDBB {
         Configuration conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/home/cuixuan/dn_socket");
+        conf.set("dfs.checksum.type","NULL");
         MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
         DistributedFileSystem fs = cluster.getFileSystem();
 

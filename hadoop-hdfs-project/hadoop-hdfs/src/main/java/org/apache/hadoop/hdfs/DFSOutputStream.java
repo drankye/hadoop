@@ -2460,7 +2460,7 @@ public class DFSOutputStream extends FSOutputSummer
   private static InetAddress ia;
   private DomainSocket ds;
   @Override
-  public void writeDS(ByteBuffer buf) throws IOException {
+  public void write(ByteBuffer buf) throws IOException {
     //TODO
     int currLen = buf.remaining();
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
@@ -2481,7 +2481,7 @@ public class DFSOutputStream extends FSOutputSummer
   }
 
   @Override
-  public void write(ByteBuffer buf) throws IOException {
+  public void writeDS(ByteBuffer buf) throws IOException {
     int currLen = buf.remaining();
     ByteBuffer lenbuf = ByteBuffer.allocate(4);
     lenbuf.putInt(buf.remaining());
