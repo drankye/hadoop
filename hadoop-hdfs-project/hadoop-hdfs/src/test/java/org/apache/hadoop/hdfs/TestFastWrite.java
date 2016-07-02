@@ -53,7 +53,7 @@ public class TestFastWrite {
             FSDataInputStream in = fs.open(myFile);
             IOUtils.readFully(in, readBytes, 0, readBytes.length);
 
-//            Assert.assertArrayEquals(toWriteBytes, readBytes);
+            Assert.assertArrayEquals(toWriteBytes, readBytes);
 
         } finally {
             cluster.shutdown();

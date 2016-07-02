@@ -2465,7 +2465,8 @@ public class DFSOutputStream extends FSOutputSummer
   private DomainSocket ds;
 
   //set to use Domain Socket or not.
-  private boolean useDomainSocket = false;
+  private boolean useDomainSocket = true;
+
   public void setUseDomainSocket(boolean useDomainSocket){
     this.useDomainSocket = useDomainSocket;
   }
