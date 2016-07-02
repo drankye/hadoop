@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,7 +50,7 @@ public class TestFastWrite {
 
             byte[] readBytes = new byte[fileLen];
             FSDataInputStream in = fs.open(myFile);
-            in.read(readBytes);
+            IOUtils.readFully(in, readBytes, 0, readBytes.length);
 
             Assert.assertArrayEquals(toWriteBytes, readBytes);
 
