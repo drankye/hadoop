@@ -527,6 +527,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String DFS_CLIENT_READ_SHORTCIRCUIT_KEY = "dfs.client.read.shortcircuit";
   public static final boolean DFS_CLIENT_READ_SHORTCIRCUIT_DEFAULT = false;
   public static final String DFS_CLIENT_READ_SHORTCIRCUIT_SKIP_CHECKSUM_KEY = "dfs.client.read.shortcircuit.skip.checksum";
+  public static final String DFS_CLIENT_LOCALWRITE_USE_DOMAIN_SOCKET_KEY = "dfs.client.localwrite.use.domain.socket";
+  public static final boolean DFS_CLIENT_LOCALWRITE_USE_DOMAIN_SOCKET_DEFAULT = false;
   public static final boolean DFS_CLIENT_READ_SHORTCIRCUIT_SKIP_CHECKSUM_DEFAULT = false;
   public static final String DFS_CLIENT_READ_SHORTCIRCUIT_BUFFER_SIZE_KEY = "dfs.client.read.shortcircuit.buffer.size";
   public static final int DFS_CLIENT_READ_SHORTCIRCUIT_BUFFER_SIZE_DEFAULT = 1024 * 1024;
