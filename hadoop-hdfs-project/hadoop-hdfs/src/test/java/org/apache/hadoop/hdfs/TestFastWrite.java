@@ -27,7 +27,7 @@ public class TestFastWrite {
     public void setup() throws IOException {
         conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
-        conf.set("dfs.domain.socket.path","/home/dn_socket");
+        conf.set("dfs.domain.socket.path","/home/cuixuan/dn_socket_PORT");
         conf.set("dfs.checksum.type","NULL");
         cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
         fs = cluster.getFileSystem();

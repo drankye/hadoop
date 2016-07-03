@@ -1629,7 +1629,7 @@ public class DFSOutputStream extends FSOutputSummer
       DFSClient.LOG.debug(
           "Set non-null progress callback on DFSOutputStream " + src);
     }
-    this.useDomainSocket = dfsClient.getConf().useDomainSocket;
+    
     this.bytesPerChecksum = checksum.getBytesPerChecksum();
     if (bytesPerChecksum <= 0) {
       throw new HadoopIllegalArgumentException(
@@ -2274,6 +2274,20 @@ public class DFSOutputStream extends FSOutputSummer
     dfsClient.endFileLease(fileId);
   }
 
+  @Override
+  public synchronized void write(int b) throws IOException {
+    ByteBuffer buf = ByteBuffer.allocate(1);
+    buf.put((byte) (b & 0xFF));
+    buf.flip();
+    write(buf);
+  }
+
+  @Override
+  public synchronized void write(byte b[], int off, int len)
+        throws IOException {
+    write(ByteBuffer.wrap(b, off, len));
+  }
+
   private synchronized void closeImpl() throws IOException {
     if (isClosed()) {
       IOException e = lastException.getAndSet(null);
@@ -2451,24 +2465,17 @@ public class DFSOutputStream extends FSOutputSummer
   private DomainSocket ds;
 
   //set to use Domain Socket or not.
-  private boolean useDomainSocket;
+  private boolean useDomainSocket = true;
 
   private DirectBufferPool bufferPool = new DirectBufferPool();
 
-  @Override
-  public synchronized void write(int b) throws IOException {
-    byte[] tmp = new byte[] {(byte) b};
-    write(tmp, 0, 1);
-  }
-
-  @Override
-  public synchronized void write(byte b[], int off, int len)
-      throws IOException {
-    write(ByteBuffer.wrap(b, off, len));
+  public void setUseDomainSocket(boolean useDomainSocket){
+    this.useDomainSocket = useDomainSocket;
   }
 
   @Override
   public void write(ByteBuffer buf) throws IOException {
+    DFSClient.LOG.info("==========(*_*)=============Client Send Socket Message in Bytes:"+buf.remaining()+"\t Using Domain Socket:"+useDomainSocket);
     if (useDomainSocket) {
       writeWithDomainSocket(buf);
     } else {
