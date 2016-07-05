@@ -115,7 +115,7 @@ public class PacketReceiver implements Closeable {
     doReadFully(null, in, curPacketBuf);
     curPacketBuf.flip();
     int payloadLen = curPacketBuf.getInt();
-    LOG.info("=========(*_*)=========Expected Receive Length:"+payloadLen);
+//    LOG.info("=========(*_*)=========Expected Receive Length:"+payloadLen);
 
     if (payloadLen < 0) {
       throw new IOException("Invalid header length " + payloadLen);

@@ -220,15 +220,6 @@ public class DFSOutputStream extends FSOutputSummer
                          getChecksumSize(), false);
   }
 
-  class DomainSocketDataStreamer extends DataStreamer{
-
-    private DomainSocketDataStreamer(HdfsFileStatus stat, ExtendedBlock block) {
-      super(stat, block);
-    }
-
-
-  }
-
   //
   // The DataStreamer class is responsible for sending data packets to the
   // datanodes in the pipeline. It retrieves a new blockid and block locations
@@ -1324,6 +1315,12 @@ public class DFSOutputStream extends FSOutputSummer
           OutputStream unbufOut=null;
           InputStream unbufIn=null;
           long writeTimeout;
+          String host = nodes[0].getHostName();
+          /*if(!"127.0.0.1".equals(host)){
+            DFSClient.LOG.warn("DataNode[0]:"+host+" is not Localhost Address, Must Not Use Domain Socket.");
+            useDomainSocket = false;
+          }*/
+          IOStreamPair saslStreams;
           if(!useDomainSocket){
             assert null == s : "Previous socket unclosed";
             assert null == blockReplyStream : "Previous blockReplyStream unclosed";
@@ -1333,19 +1330,21 @@ public class DFSOutputStream extends FSOutputSummer
 
             unbufOut = NetUtils.getOutputStream(s, writeTimeout);
             unbufIn = NetUtils.getInputStream(s);
+            saslStreams = dfsClient.saslClient.socketSend(s,
+                    unbufOut, unbufIn, dfsClient, accessToken, nodes[0]);
           }else {
             assert null == ds : "Previous socket unclosed";
             assert null == blockReplyStream : "Previous blockReplyStream unclosed";
-            ds = createDomainSocketForPipeline(nodes[0], nodes.length, dfsClient);
+            RetPair<DomainSocket,InetAddress> pair = createDomainSocketForPipeline(nodes[0], nodes.length, dfsClient);
+            ds = pair.getT();
+            InetAddress ia = pair.getE();
             domainChannel = ds.getChannel();
             unbufOut = ds.getOutputStream();
             unbufIn = ds.getInputStream();
+            saslStreams = dfsClient.saslClient.domainSocketSend(ia,
+                    unbufOut, unbufIn, dfsClient, accessToken, nodes[0]);
           }
 
-
-
-          IOStreamPair saslStreams = dfsClient.saslClient.domainSocketSend(ia,
-            unbufOut, unbufIn, dfsClient, accessToken, nodes[0]);
           unbufOut = saslStreams.out;
           unbufIn = saslStreams.in;
           out = new DataOutputStream(new BufferedOutputStream(unbufOut,
@@ -1711,6 +1710,8 @@ public class DFSOutputStream extends FSOutputSummer
       Preconditions.checkNotNull(stat, "HdfsFileStatus should not be null!");
       final DFSOutputStream out = new DFSOutputStream(dfsClient, src, stat,
           flag, progress, checksum, favoredNodes);
+      out.setUseDomainSocket(dfsClient.getConf().useDomainSocket);
+      DFSClient.LOG.info("set useDomainSocket to :"+out.useDomainSocket);
       out.start();
       return out;
     } finally {
@@ -1754,6 +1755,8 @@ public class DFSOutputStream extends FSOutputSummer
       if (favoredNodes != null && favoredNodes.length != 0) {
         out.streamer.setFavoredNodes(favoredNodes);
       }
+      out.setUseDomainSocket(dfsClient.getConf().useDomainSocket);
+      DFSClient.LOG.info("set useDomainSocket to :"+out.useDomainSocket);
       out.start();
       return out;
     } finally {
@@ -2438,7 +2441,7 @@ public class DFSOutputStream extends FSOutputSummer
    * @param client client
    * @return the socket connected to the first datanode
    */
-  static DomainSocket createDomainSocketForPipeline(final DatanodeInfo first,
+  private RetPair<DomainSocket,InetAddress> createDomainSocketForPipeline(final DatanodeInfo first,
                                                     final int length, final DFSClient client) throws IOException {
     String dnAddr = first.getXferAddr(
             client.getConf().connectToDnViaHostname);
@@ -2449,20 +2452,29 @@ public class DFSOutputStream extends FSOutputSummer
       DFSClient.LOG.debug("Connecting to datanode " + dnAddr);
     }
     final InetSocketAddress isa = NetUtils.createSocketAddr(dnAddr);
-    ia = isa.getAddress();
     final DomainSocketFactory dsf = client.getClientContext().getDomainSocketFactory();
     final DomainSocketFactory.PathInfo pathInfo = dsf.getPathInfo(isa,client.getConf());
     final int timeout = client.getDatanodeReadTimeout(length);
     final DomainSocket sock = dsf.createSocket(pathInfo,timeout);
     DFSClient.LOG.info("create Domain Socket for write bytebuffer block success.");
-    return sock;
+    RetPair<DomainSocket,InetAddress> pair = new RetPair<>(sock,isa.getAddress());
+    return pair;
   }
 
   private volatile SocketChannel tcpChannel;
 
   private volatile DomainSocket.DomainChannel domainChannel;
-  private static InetAddress ia;
   private DomainSocket ds;
+  class RetPair<T,E> {
+    T t;
+    E e;
+    RetPair(T t,E e){
+      this.t = t;
+      this.e = e;
+    }
+    T getT(){return t;}
+    E getE(){return e;}
+  }
 
   //set to use Domain Socket or not.
   private boolean useDomainSocket = true;
@@ -2475,7 +2487,7 @@ public class DFSOutputStream extends FSOutputSummer
 
   @Override
   public void write(ByteBuffer buf) throws IOException {
-    DFSClient.LOG.info("==========(*_*)=============Client Send Socket Message in Bytes:"+buf.remaining()+"\t Using Domain Socket:"+useDomainSocket);
+//    DFSClient.LOG.info("==========(*_*)=============Client Send Socket Message in Bytes:"+buf.remaining()+"\t Using Domain Socket:"+useDomainSocket);
     if (useDomainSocket) {
       writeWithDomainSocket(buf);
     } else {
