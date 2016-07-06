@@ -338,6 +338,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     final long shortCircuitMmapCacheRetryTimeout;
     final long shortCircuitCacheStaleThresholdMs;
     final boolean useDomainSocket;
+    final int byteBufferQueueSize;
+    final int byteBufferPerSize;
 
     final long keyProviderCacheExpiryMs;
     public BlockReaderFactory.FailureInjector brfFailureInjector =
@@ -475,6 +477,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       useDomainSocket = conf.getBoolean(
           DFSConfigKeys.DFS_CLIENT_LOCALWRITE_USE_DOMAIN_SOCKET_KEY,
           DFSConfigKeys.DFS_CLIENT_LOCALWRITE_USE_DOMAIN_SOCKET_DEFAULT);
+      byteBufferQueueSize = conf.getInt(
+              DFSConfigKeys.DFS_CLIENT_LOCALWRITE_BYTEBUFFER_QUEUE_SIZE_KEY,
+              DFSConfigKeys.DFS_CLIENT_LOCALWRITE_BYTEBUFFER_QUEUE_SIZE_DEFAULT);
+      byteBufferPerSize = conf.getInt(
+              DFSConfigKeys.DFS_CLIENT_LOCALWRITE_BYTEBUFFER_PER_SIZE_KEY,
+              DFSConfigKeys.DFS_CLIENT_LOCALWRITE_BYTEBUFFER_PER_SIZE_DEFAULT);
       shortCircuitBufferSize = conf.getInt(
           DFSConfigKeys.DFS_CLIENT_READ_SHORTCIRCUIT_BUFFER_SIZE_KEY,
           DFSConfigKeys.DFS_CLIENT_READ_SHORTCIRCUIT_BUFFER_SIZE_DEFAULT);
