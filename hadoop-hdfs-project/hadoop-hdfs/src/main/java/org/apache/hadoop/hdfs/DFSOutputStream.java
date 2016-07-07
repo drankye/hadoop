@@ -2231,7 +2231,8 @@ public class DFSOutputStream extends FSOutputSummer
             streamer.setPipeline(streamer.nextBlockOutputStream());
             maxQueueSize = dfsClient.getConf().byteBufferQueueSize;
             perQueueSize = dfsClient.getConf().byteBufferPerSize;
-            currentByteBuffer = bufferPool.getBuffer(perQueueSize);
+            currentByteBuffer = bufferPool.getBuffer(perQueueSize + 4);
+            currentByteBuffer.putInt(perQueueSize);
             byteBufferStreamer = new DataByteBufferStreamer(dfsClient);
             byteBufferStreamer.setDaemon(true);
             byteBufferStreamer.start();
@@ -2471,6 +2472,8 @@ public class DFSOutputStream extends FSOutputSummer
         private final LinkedList<ByteBuffer> dataQueue = new LinkedList<ByteBuffer>();
         private volatile boolean streamerClosed = false;
         private DFSClient dfsClient = null;
+//        private int timeWait = 0;
+//        private int writeTimes = 0;
         private volatile boolean finished = false;
 
         private DataByteBufferStreamer(DFSClient dfsClient) {
@@ -2520,6 +2523,7 @@ public class DFSOutputStream extends FSOutputSummer
                     // write out data to remote datanode
                     try {
                         writeByteBufferImpl(one);
+//                        writeTimes++;
                     } catch (IOException e) {
                         throw e;
                     }
@@ -2541,6 +2545,7 @@ public class DFSOutputStream extends FSOutputSummer
                         DFSClient.LOG.warn("Caught exception ", e);
                     }
                 }
+//                dfsClient.LOG.info("Total Times Wait:" + timeWait + "\tTotal Times Write:" + writeTimes);
                 closeByteBufferImpl();
             }
         }
@@ -2558,6 +2563,7 @@ public class DFSOutputStream extends FSOutputSummer
                     // If queue is full, then wait till we have enough space
                     while (!isClosed() && dataQueue.size() >= maxQueueSize) {
                         try {
+//                            timeWait++;
                             dataQueue.wait();
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
@@ -2643,26 +2649,31 @@ public class DFSOutputStream extends FSOutputSummer
     public void write(ByteBuffer buf) throws IOException {
 //        DFSClient.LOG.info("==========(*_*)=============Client Send Socket Message in Bytes:" + buf.remaining() + "\t Using Domain Socket:" + useDomainSocket);
 //        byteBufferStreamer.waitAndQueueCurrentByteBuffer(buf);
-        while(buf.hasRemaining()){
-            if(buf.remaining() <= currentByteBuffer.remaining() ){
+        while (buf.hasRemaining()) {
+            if (buf.remaining() <= currentByteBuffer.remaining()) {
                 currentByteBuffer.put(buf);
-            }else{
+            } else {
                 int lentocopy = currentByteBuffer.remaining();
-                currentByteBuffer.put(buf.array(),buf.position(),lentocopy);
-                buf.position(buf.position()+lentocopy);
+                currentByteBuffer.put(buf.array(), buf.position(), lentocopy);
+                buf.position(buf.position() + lentocopy);
             }
-            if(currentByteBuffer.hasRemaining())break;
+            if (currentByteBuffer.hasRemaining()) break;
             currentByteBuffer.flip();
             byteBufferStreamer.waitAndQueueCurrentByteBuffer(currentByteBuffer);
-            currentByteBuffer = bufferPool.getBuffer(perQueueSize);
+            currentByteBuffer = bufferPool.getBuffer(perQueueSize + 4);
+            currentByteBuffer.putInt(perQueueSize);
         }
 //        writeByteBufferImpl(buf);
     }
 
     @Override
     public void close() throws IOException {
-        currentByteBuffer.flip();
-        if(currentByteBuffer.hasRemaining()){
+        int position_index = currentByteBuffer.position();
+        if (position_index > 4) {
+            currentByteBuffer.position(0);
+            currentByteBuffer.putInt(position_index - 4);
+            currentByteBuffer.position(position_index);
+            currentByteBuffer.flip();
             byteBufferStreamer.waitAndQueueCurrentByteBuffer(currentByteBuffer);
         }
         byteBufferStreamer.closeStreamer();
@@ -2681,35 +2692,18 @@ public class DFSOutputStream extends FSOutputSummer
 
     private void writeWithDomainSocket(ByteBuffer buf) throws IOException {
         int currLen = buf.remaining();
-        ByteBuffer lenBuf = bufferPool.getBuffer(4);
-        lenBuf.putInt(buf.remaining());
-        lenBuf.flip();
         assert null != domainChannel : "domain socket not set yet, null value found.";
-        domainChannel.write(lenBuf);
-        bufferPool.returnBuffer(lenBuf);
-
         domainChannel.write(buf);
-
         ExtendedBlock b = streamer.getBlock();
-        b.setNumBytes(b.getNumBytes() + currLen);
+        b.setNumBytes(b.getNumBytes() + currLen - 4);
     }
 
     private void writeWithTcpSocket(ByteBuffer buf) throws IOException {
         int currLen = buf.remaining();
-        ByteBuffer lenBuf = bufferPool.getBuffer(4);
-        lenBuf.putInt(buf.remaining());
-        lenBuf.flip();
         assert null != tcpChannel : "tcp socket not set yet, null value found.";
-        while (lenBuf.hasRemaining()) {
-            tcpChannel.write(lenBuf);
-        }
-        bufferPool.returnBuffer(lenBuf);
-
-        while (buf.hasRemaining()) {
-            tcpChannel.write(buf);
-        }
+        tcpChannel.write(buf);
         ExtendedBlock b = streamer.getBlock();
-        b.setNumBytes(b.getNumBytes() + currLen);
+        b.setNumBytes(b.getNumBytes() + currLen-4);
 
     }
 
@@ -2728,8 +2722,8 @@ public class DFSOutputStream extends FSOutputSummer
         }
         bufferPool.returnBuffer(lenbuf);
         closeOrigin();
-        ds=null;
-        s=null;
+        ds = null;
+        s = null;
     }
 
 }

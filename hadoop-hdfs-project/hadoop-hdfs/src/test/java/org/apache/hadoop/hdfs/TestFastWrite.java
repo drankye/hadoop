@@ -21,7 +21,7 @@ public class TestFastWrite {
     MiniDFSCluster cluster;
     DistributedFileSystem fs;
     int factor = 50000;
-    int bufferLen = 1024;
+    int bufferLen = 1043;
     int fileLen = factor * bufferLen;
 
     @Before
