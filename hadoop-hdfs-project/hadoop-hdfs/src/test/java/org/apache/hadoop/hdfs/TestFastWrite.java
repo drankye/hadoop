@@ -20,8 +20,8 @@ public class TestFastWrite {
     Configuration conf;
     MiniDFSCluster cluster;
     DistributedFileSystem fs;
-    int factor = 50000;
-    int bufferLen = 1043;
+    int factor = 500;
+    int bufferLen = 1024 * 1024;
     int fileLen = factor * bufferLen;
 
     @Before
@@ -29,7 +29,7 @@ public class TestFastWrite {
         conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/root/dn_socket_PORT");
-        conf.set("dfs.client.localwrite.use.domain.socket","true");
+        conf.set("dfs.client.localwrite.use.domain.socket","false");
         conf.set("dfs.client.localwrite.bytebuffer.queue.size","1000");
         conf.set("dfs.client.localwrite.bytebuffer.per.size","102400");
         conf.set("dfs.checksum.type","NULL");

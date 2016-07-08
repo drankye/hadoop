@@ -2232,6 +2232,7 @@ public class DFSOutputStream extends FSOutputSummer
             maxQueueSize = dfsClient.getConf().byteBufferQueueSize;
             perQueueSize = dfsClient.getConf().byteBufferPerSize;
             currentByteBuffer = bufferPool.getBuffer(perQueueSize + 4);
+            currentByteBuffer.clear();
             currentByteBuffer.putInt(perQueueSize);
             byteBufferStreamer = new DataByteBufferStreamer(dfsClient);
             byteBufferStreamer.setDaemon(true);
@@ -2661,6 +2662,7 @@ public class DFSOutputStream extends FSOutputSummer
             currentByteBuffer.flip();
             byteBufferStreamer.waitAndQueueCurrentByteBuffer(currentByteBuffer);
             currentByteBuffer = bufferPool.getBuffer(perQueueSize + 4);
+            currentByteBuffer.clear();
             currentByteBuffer.putInt(perQueueSize);
         }
 //        writeByteBufferImpl(buf);
@@ -2693,7 +2695,9 @@ public class DFSOutputStream extends FSOutputSummer
     private void writeWithDomainSocket(ByteBuffer buf) throws IOException {
         int currLen = buf.remaining();
         assert null != domainChannel : "domain socket not set yet, null value found.";
-        domainChannel.write(buf);
+        while(buf.hasRemaining()){
+            domainChannel.write(buf);
+        }
         ExtendedBlock b = streamer.getBlock();
         b.setNumBytes(b.getNumBytes() + currLen - 4);
     }
@@ -2701,7 +2705,9 @@ public class DFSOutputStream extends FSOutputSummer
     private void writeWithTcpSocket(ByteBuffer buf) throws IOException {
         int currLen = buf.remaining();
         assert null != tcpChannel : "tcp socket not set yet, null value found.";
-        tcpChannel.write(buf);
+        while(buf.hasRemaining()){
+            tcpChannel.write(buf);
+        }
         ExtendedBlock b = streamer.getBlock();
         b.setNumBytes(b.getNumBytes() + currLen-4);
 
