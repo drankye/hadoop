@@ -19,8 +19,8 @@ public class TestFastWrite {
     Configuration conf;
     MiniDFSCluster cluster;
     DistributedFileSystem fs;
-    int factor = 10;
-    int bufferLen = 1024 * 1024;
+    int factor = 50000;
+    int bufferLen = 1024;
     int fileLen = factor * bufferLen;
 
     @Before
@@ -28,6 +28,7 @@ public class TestFastWrite {
         conf = new HdfsConfiguration();
         conf.set("dfs.client.read.shortcircuit","true");
         conf.set("dfs.domain.socket.path","/home/cuixuan/dn_socket_PORT");
+        conf.set("dfs.client.localwrite.use.domain.socket","true");
         conf.set("dfs.checksum.type","NULL");
         cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
         fs = cluster.getFileSystem();
@@ -42,7 +43,7 @@ public class TestFastWrite {
 
         try {
             Path myFile = new Path("/test/dir/file");
-            FSDataOutputStream out = fs.create(myFile, (short)1);
+            FSDataOutputStream out = fs.create(myFile, (short)2);
             out.write(buffer);
             out.close();
             assertTrue(fs.exists(myFile));
@@ -63,11 +64,12 @@ public class TestFastWrite {
 
     @Test
     public void testFastWriteMultipleTimes() throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(bufferLen);
+        ByteBuffer buffer = ByteBuffer.allocate(bufferLen+factor);
 
         try {
             Path myFile = new Path("/test/dir/file");
             FSDataOutputStream out = fs.create(myFile, (short)1);
+            fileLen=0;
             byte[] toWriteBytesEach;
             for(int i = 0; i < factor;i++){
                 buffer.clear();
@@ -75,6 +77,8 @@ public class TestFastWrite {
                 buffer.put(toWriteBytesEach);
                 buffer.flip();
                 out.write(buffer);
+                fileLen+=bufferLen;
+                bufferLen++;
             }
             out.close();
             assertTrue(fs.exists(myFile));
