@@ -1876,7 +1876,7 @@ public class DFSOutputStream extends FSOutputSummer
       }
 
       if (!appendChunk) {
-        int psize = Math.min((int)(blockSize-bytesCurBlock), dfsClient.getConf().writePacketSize);
+        int psize = (int)Math.min((long)(blockSize-bytesCurBlock), dfsClient.getConf().writePacketSize);
         computePacketChunkSize(psize, bytesPerChecksum);
       }
       //
