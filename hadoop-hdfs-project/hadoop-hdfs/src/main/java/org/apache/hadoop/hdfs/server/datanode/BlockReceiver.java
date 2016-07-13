@@ -522,7 +522,7 @@ class BlockReceiver implements Closeable {
     }
   }
 
-  private int receivePacketNew(int offset) throws IOException {
+  private int receivePacketNew(long offset) throws IOException {
     int dataLen = packetReceiver.receiveNextPacketNew(in);
 
     //First write the packet to the mirror:
@@ -966,7 +966,7 @@ class BlockReceiver implements Closeable {
         responder.start(); // start thread to processes responses
       }
 
-      int szOff = 0;
+      long szOff = 0;
       int oneWrite;
       while ((oneWrite = receivePacketNew(szOff)) > 0) {
       /* Receive until the last packet */
