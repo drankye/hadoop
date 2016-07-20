@@ -39,6 +39,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>net.smacke</groupId>
+      <artifactId>jaydio</artifactId>
+      <version>0.1</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <scope>compile</scope>

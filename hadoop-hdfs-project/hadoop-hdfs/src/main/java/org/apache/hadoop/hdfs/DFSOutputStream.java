@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.sun.org.apache.xalan.internal.lib.NodeInfo;
+import net.smacke.jaydio.DirectRandomAccessFile;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
@@ -2505,7 +2506,8 @@ public class DFSOutputStream extends FSOutputSummer
 
   //###################split line:This is added.########################################
   private SocketChannel socketChannel = null;//this is for local write.
-  private BufferedOutputStream out = null;
+//  private BufferedOutputStream out = null;
+  private DirectRandomAccessFile out = null;
   private SocketChannel sChannel = null;//this is for remote write to transfer data to second Node.
   private ExtendedBlock block = null;
 
@@ -2545,9 +2547,10 @@ public class DFSOutputStream extends FSOutputSummer
     CharBuffer  charBuffer = decoder.decode(buf.asReadOnlyBuffer());
     String pathName = charBuffer.toString();
     File f = new File(pathName);
-    f.createNewFile();
-    OutputStream outputStream = new FileOutputStream(f);
-    out = new BufferedOutputStream(outputStream,perQueueSize);
+    out = new DirectRandomAccessFile(f,"rw",perQueueSize);
+//    f.createNewFile();
+//    OutputStream outputStream = new FileOutputStream(f);
+//    out = new BufferedOutputStream(outputStream,perQueueSize);
   }
   private static void readChannelFully(ReadableByteChannel ch, ByteBuffer buf,int n)
           throws IOException {
