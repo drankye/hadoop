@@ -2720,10 +2720,14 @@ public class DFSOutputStream extends FSOutputSummer
         while (lenbuf.hasRemaining()) {
             if (useDomainSocket) {
                 assert null != domainChannel : "domain socket not set yet, null value found.";
-                domainChannel.write(lenbuf);
+                while(lenbuf.hasRemaining()){
+                    domainChannel.write(lenbuf);
+                }
             } else {
                 assert null != tcpChannel : "tcp socket not set yet, null value found.";
-                tcpChannel.write(lenbuf);
+                while(lenbuf.hasRemaining()){
+                    tcpChannel.write(lenbuf);
+                }
             }
         }
         bufferPool.returnBuffer(lenbuf);
