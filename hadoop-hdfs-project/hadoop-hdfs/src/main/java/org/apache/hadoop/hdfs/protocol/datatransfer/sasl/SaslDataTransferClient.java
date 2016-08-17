@@ -186,6 +186,27 @@ public class SaslDataTransferClient {
   }
 
   /**
+   * Sends client SASL negotiation for a socket if required.
+   *
+   * @param addr connection address
+   * @param underlyingOut connection output stream
+   * @param underlyingIn connection input stream
+   * @param encryptionKeyFactory for creation of an encryption key
+   * @param accessToken connection block access token
+   * @param datanodeId ID of destination DataNode
+   * @return new pair of streams, wrapped after SASL negotiation
+   * @throws IOException for any error
+   */
+  public IOStreamPair socketSend(InetAddress addr, OutputStream underlyingOut,
+                                 InputStream underlyingIn, DataEncryptionKeyFactory encryptionKeyFactory,
+                                 Token<BlockTokenIdentifier> accessToken, DatanodeID datanodeId)
+          throws IOException {
+    IOStreamPair ios = checkTrustAndSend(addr, underlyingOut,
+            underlyingIn, encryptionKeyFactory, accessToken, datanodeId);
+    return ios != null ? ios : new IOStreamPair(underlyingIn, underlyingOut);
+  }
+
+  /**
    * Checks if an address is already trusted and then sends client SASL
    * negotiation if required.
    *

@@ -83,11 +83,13 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.RetryStartFileException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
+import org.apache.hadoop.hdfs.shortcircuit.DomainSocketFactory;
 import org.apache.hadoop.hdfs.util.ByteArrayManager;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.net.unix.DomainSocket;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.Daemon;
@@ -149,7 +151,8 @@ public class DFSOutputStream extends FSOutputSummer
 
   private final DFSClient dfsClient;
   private final ByteArrayManager byteArrayManager;
-  private Socket s;
+  private PeerSocket ps;
+  private boolean useDomainSocket;
   // closed is accessed by different threads under different locks.
   private volatile boolean closed = false;
 
@@ -214,6 +217,76 @@ public class DFSOutputStream extends FSOutputSummer
     final byte[] buf = new byte[PacketHeader.PKT_MAX_HEADER_LEN];
     return new DFSPacket(buf, 0, 0, DFSPacket.HEART_BEAT_SEQNO,
                          getChecksumSize(), false);
+  }
+
+  static class PeerSocket{
+    private boolean useDomainSocket;
+    private DomainSocket ds;
+    private Socket sock;
+    private InetSocketAddress addr;
+    private DFSClient client;
+    private int timeout;
+    private int sendBufferSize;
+    PeerSocket(boolean useDomainSocket, InetSocketAddress addr,int timeout, DFSClient client){
+      this.useDomainSocket = useDomainSocket;
+      this.addr = addr;
+      this.timeout = timeout;
+      this.client = client;
+    }
+    public void connect() throws IOException {
+      this.sendBufferSize = HdfsConstants.DEFAULT_DATA_SOCKET_SIZE;
+      if(useDomainSocket){
+        DomainSocketFactory factory = client.getClientContext().getDomainSocketFactory();
+        DomainSocketFactory.PathInfo pathInfo = factory.getPathInfo(addr,client.getConf());
+        ds= factory.createSocket(pathInfo,timeout);
+        ds.setAttribute(DomainSocket.SEND_BUFFER_SIZE, sendBufferSize);
+      }else{
+        sock = client.socketFactory.createSocket();
+        NetUtils.connect(sock, addr, client.getRandomLocalInterfaceAddr(), client.getConf().socketTimeout);
+        sock.setSoTimeout(timeout);
+        sock.setSendBufferSize(HdfsConstants.DEFAULT_DATA_SOCKET_SIZE);
+      }
+    }
+    public int getSendBufferSize(){
+      return sendBufferSize;
+    }
+    public OutputStream getOutputStream(long timeout) throws IOException {
+      if(useDomainSocket){
+        ds.setAttribute(DomainSocket.SEND_TIMEOUT,(int)timeout);
+        return ds.getOutputStream();
+      }else{
+        return NetUtils.getOutputStream(sock,timeout);
+      }
+    }
+    public InputStream getInputStream() throws IOException {
+      if(useDomainSocket){
+        return ds.getInputStream();
+      }else{
+        return NetUtils.getInputStream(sock);
+      }
+    }
+    public InetAddress getInetAddress(){
+      return addr.getAddress();
+    }
+    public DomainSocket getDomainSocket() throws Exception {
+      if(!useDomainSocket){
+        throw new Exception("not support domain socket, please check your configuration.");
+      }
+      return ds;
+    }
+    public Socket getTcpSocket() throws Exception {
+      if(useDomainSocket){
+        throw new Exception("not support tcp socket, please check your configuration.");
+      }
+      return sock;
+    }
+    public void close() throws IOException {
+      if(useDomainSocket){
+        ds.close();
+      }else{
+        sock.close();
+      }
+    }
   }
 
   //
@@ -635,13 +708,13 @@ public class DFSOutputStream extends FSOutputSummer
           blockReplyStream = null;
         }
       }
-      if (null != s) {
+      if (null != ps) {
         try {
-          s.close();
+          ps.close();
         } catch (IOException e) {
           setLastException(e);
         } finally {
-          s = null;
+          ps = null;
         }
       }
     }
@@ -1308,14 +1381,14 @@ public class DFSOutputStream extends FSOutputSummer
         boolean result = false;
         DataOutputStream out = null;
         try {
-          assert null == s : "Previous socket unclosed";
+          assert null == ps : "Previous socket unclosed";
           assert null == blockReplyStream : "Previous blockReplyStream unclosed";
-          s = createSocketForPipeline(nodes[0], nodes.length, dfsClient);
+          ps = creatPeerSocketForPipeline(nodes[0], nodes.length, dfsClient,useDomainSocket);
           long writeTimeout = dfsClient.getDatanodeWriteTimeout(nodes.length);
-          
-          OutputStream unbufOut = NetUtils.getOutputStream(s, writeTimeout);
-          InputStream unbufIn = NetUtils.getInputStream(s);
-          IOStreamPair saslStreams = dfsClient.saslClient.socketSend(s,
+
+          OutputStream unbufOut = ps.getOutputStream(writeTimeout);
+          InputStream unbufIn = ps.getInputStream();
+          IOStreamPair saslStreams = dfsClient.saslClient.socketSend(ps.getInetAddress(),
             unbufOut, unbufIn, dfsClient, accessToken, nodes[0]);
           unbufOut = saslStreams.out;
           unbufIn = saslStreams.in;
@@ -1410,8 +1483,13 @@ public class DFSOutputStream extends FSOutputSummer
           result =  false;  // error
         } finally {
           if (!result) {
-            IOUtils.closeSocket(s);
-            s = null;
+            if (ps != null) {
+              try {
+                ps.close();
+              } catch (IOException ignored) {
+              }
+            }
+            ps = null;
             IOUtils.closeStream(out);
             out = null;
             IOUtils.closeStream(blockReplyStream);
@@ -1543,6 +1621,30 @@ public class DFSOutputStream extends FSOutputSummer
     return sock;
   }
 
+  /**
+   * Create a DomainSocket for a write pipeline
+   * @param first the first datanode
+   * @param length the pipeline length
+   * @param client client
+   * @return the domain socket connected to the first datanode
+   */
+  static PeerSocket creatPeerSocketForPipeline(final DatanodeInfo first,
+                                        final int length, final DFSClient client,final boolean useDomainSocket) throws IOException {
+    final String dnAddr = first.getXferAddr(
+            client.getConf().connectToDnViaHostname);
+    if (DFSClient.LOG.isDebugEnabled()) {
+      DFSClient.LOG.debug("Connecting to datanode " + dnAddr);
+    }
+    final InetSocketAddress isa = NetUtils.createSocketAddr(dnAddr);
+    final int timeout = client.getDatanodeReadTimeout(length);
+    final PeerSocket peerSocket = new PeerSocket(useDomainSocket,isa,timeout,client);
+    peerSocket.connect();
+    if(DFSClient.LOG.isDebugEnabled()) {
+      DFSClient.LOG.debug("Send buf size " + peerSocket.getSendBufferSize());
+    }
+    return peerSocket;
+  }
+
   @Override
   protected void checkClosed() throws IOException {
     if (isClosed()) {
@@ -1616,6 +1718,7 @@ public class DFSOutputStream extends FSOutputSummer
     this.dfsclientSlowLogThresholdMs =
       dfsClient.getConf().dfsclientSlowIoWarningThresholdMs;
     this.byteArrayManager = dfsClient.getClientContext().getByteArrayManager();
+    this.useDomainSocket = dfsClient.getConf().useDomainSocket;
   }
 
   /** Construct a new output stream for creating a file. */
@@ -2211,14 +2314,14 @@ public class DFSOutputStream extends FSOutputSummer
     try {
       streamer.close(force);
       streamer.join();
-      if (s != null) {
-        s.close();
+      if (ps != null) {
+        ps.close();
       }
     } catch (InterruptedException e) {
       throw new IOException("Failed to shutdown streamer");
     } finally {
       streamer = null;
-      s = null;
+      ps = null;
       setClosed();
     }
   }
