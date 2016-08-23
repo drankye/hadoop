@@ -190,6 +190,9 @@ public class DFSOutputStream extends FSOutputSummer
   private static final BlockStoragePolicySuite blockStoragePolicySuite =
       BlockStoragePolicySuite.createDefaultSuite();
 
+  // total time for write
+  private static long totalWriteTime = 0;
+
   /** Use {@link ByteArrayManager} to create buffer for non-heartbeat packets.*/
   private DFSPacket createPacket(int packetSize, int chunksPerPkt, long offsetInBlock,
       long seqno, boolean lastPacketInBlock) throws InterruptedIOException {
@@ -268,6 +271,7 @@ public class DFSOutputStream extends FSOutputSummer
     public InetAddress getInetAddress(){
       return addr.getAddress();
     }
+
     public DomainSocket getDomainSocket() throws Exception {
       if(!useDomainSocket){
         throw new Exception("not support domain socket, please check your configuration.");
@@ -578,8 +582,11 @@ public class DFSOutputStream extends FSOutputSummer
           // write out data to remote datanode
           TraceScope writeScope = Trace.startSpan("writeTo", span);
           try {
+            long startTime = System.currentTimeMillis();
             one.writeTo(blockStream);
-            blockStream.flush();   
+            blockStream.flush();
+	    long endTime = System.currentTimeMillis();
+	    totalWriteTime += endTime - startTime;   
           } catch (IOException e) {
             // HDFS-3398 treat primary DN is down since client is unable to 
             // write to primary DN. If a failed or restarting node has already
@@ -2342,6 +2349,7 @@ public class DFSOutputStream extends FSOutputSummer
       }
     }
     dfsClient.endFileLease(fileId);
+    dfsClient.LOG.info("Total write time is: " + totalWriteTime + " ms");
   }
 
   private synchronized void closeImpl() throws IOException {
