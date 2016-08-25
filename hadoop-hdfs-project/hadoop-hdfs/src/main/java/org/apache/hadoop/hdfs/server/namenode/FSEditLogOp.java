@@ -416,7 +416,7 @@ public abstract class FSEditLogOp {
   }
 
   @SuppressWarnings("unchecked")
-  static abstract class AddCloseOp extends FSEditLogOp implements BlockListUpdatingOp {
+  public static abstract class AddCloseOp extends FSEditLogOp implements BlockListUpdatingOp {
     int length;
     long inodeId;
     String path;
@@ -1468,9 +1468,9 @@ public abstract class FSEditLogOp {
   }
 
   /** {@literal @AtMostOnce} for {@link ClientProtocol#delete} */
-  static class DeleteOp extends FSEditLogOp {
+  public static class DeleteOp extends FSEditLogOp {
     int length;
-    String path;
+    public String path;
     long timestamp;
 
     private DeleteOp() {
@@ -1565,10 +1565,10 @@ public abstract class FSEditLogOp {
   }
 
   /** {@literal @Idempotent} for {@link ClientProtocol#mkdirs} */
-  static class MkdirOp extends FSEditLogOp {
+  public static class MkdirOp extends FSEditLogOp {
     int length;
     long inodeId;
-    String path;
+    public String path;
     long timestamp;
     PermissionStatus permissions;
     List<AclEntry> aclEntries;
@@ -2623,10 +2623,10 @@ public abstract class FSEditLogOp {
   }
 
   /** {@literal @AtMostOnce} for {@link ClientProtocol#rename2} */
-  static class RenameOp extends FSEditLogOp {
+  public static class RenameOp extends FSEditLogOp {
     int length;
-    String src;
-    String dst;
+    public String src;
+    public String dst;
     long timestamp;
     Rename[] options;
 

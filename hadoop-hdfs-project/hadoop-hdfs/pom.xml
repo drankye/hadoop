@@ -213,6 +213,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>bcprov-jdk16</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.rocksdb/rocksdbjni -->
+    <dependency>
+      <groupId>org.rocksdb</groupId>
+      <artifactId>rocksdbjni</artifactId>
+      <version>4.8.0</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -342,6 +348,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                   <include>hdfs.proto</include>
                   <include>encryption.proto</include>
                   <include>inotify.proto</include>
+                  <include>FileSystemProtocol.proto</include>
                 </includes>
               </source>
               <output>${project.build.directory}/generated-sources/java</output>

@@ -1,0 +1,18 @@
+option java_package = "org.apache.statenode.protocols";
+option java_outer_classname = "FileSystemProtocolProtocs";
+option java_generic_services = true;
+option java_generate_equals_and_hash = true;
+package statenode.filesystem;
+
+enum IsDir{
+    DIRECTORY = 0;
+    NORMAL_FILE = 1;
+}
+message Node{
+    required string path = 1;
+    required IsDir isdir = 2;
+}
+
+message NodeList{
+    repeated Node paths = 1;
+}
