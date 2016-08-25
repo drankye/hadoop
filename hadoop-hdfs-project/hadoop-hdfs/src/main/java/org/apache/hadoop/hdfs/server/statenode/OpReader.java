@@ -55,11 +55,13 @@ public class OpReader extends Thread {
                 FSEditLogOp.MkdirOp mkdirOp = (FSEditLogOp.MkdirOp) op;
                 final String src = mkdirOp.path;
                 fs.createDirectory(src);
+                break;
             }
             case OP_DELETE:{
                 FSEditLogOp.DeleteOp deleteOp = (FSEditLogOp.DeleteOp)op;
                 final String src = deleteOp.path;
                 fs.deleteDirectory(src);
+                break;
             }
         }
     }

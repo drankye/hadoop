@@ -4,6 +4,8 @@ package org.apache.hadoop.hdfs.server.statenode;
 import org.apache.hadoop.hdfs.server.statenode.namesystem.FileNameSystem;
 import org.rocksdb.RocksDBException;
 
+import java.io.IOException;
+
 /**
  * Created by root on 8/23/16.
  */
@@ -33,9 +35,12 @@ public class StateNode {
     private void init() {
         try {
             fs = new FileNameSystem();
+            fs.format();
         } catch (RocksDBException e) {
             e.printStackTrace();
-        }finally {
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
             isRunning = true;
         }
     }

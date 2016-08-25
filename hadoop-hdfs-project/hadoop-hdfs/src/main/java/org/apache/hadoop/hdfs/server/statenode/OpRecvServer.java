@@ -17,7 +17,7 @@ public class OpRecvServer extends Thread{
         this.fs = fs;
     }
     private void init(){
-        editLogPath=new File("/tmp/edits_0000000000000002617-0000000000000002927");
+        editLogPath=new File("/tmp/edits_0000000000000000001-0000000000000000008");
     }
     @Override
     public void run(){
