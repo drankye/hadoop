@@ -1,0 +1,22 @@
+#!/bin/bash
+
+NMON_OUT_DIR=/root/nmon-output
+
+if [ $# -gt 0 ];then
+NMON_OUT_DIR=$1
+fi
+
+clean="rm -f ${NMON_OUT_DIR}/*.nmon"
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  ssh $slave "mkdir -p $NMON_OUT_DIR;$clean"
+done
+
+#nmon runs permanently, use stop-nmon to kill the process
+cmd="nmon -f -s 2 -c -1 -m $NMON_OUT_DIR"
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  ssh $slave "$cmd"
+done

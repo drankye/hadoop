@@ -1,0 +1,4 @@
+#!/bin/bash
+# this file is to get slave hostnames from the given file slaves
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+cat $SCRIPT_DIR/slaves

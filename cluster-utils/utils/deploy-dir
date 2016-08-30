@@ -1,0 +1,18 @@
+#!/bin/bash
+
+path=`pwd`
+self=`hostname`
+tar cf ${1}.tgz $1
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  if [ $slave != $self ]; then
+    ssh $slave "rm -rf $path/${1}"
+    scp ${1}.tgz root@${slave}:$path
+    ssh $slave "cd $path;tar xf $path/${1}.tgz"
+    ssh $slave "rm -f $path/${1}.tgz"
+  fi
+done
+
+rm -f ${1}.tgz
