@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -rf /tmp/root/*
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+for file in `$SCRIPT_DIR/get-files`
+do
+  echo "Deleting file $file/*"
+  $SCRIPT_DIR/exec-cmd "rm -rf $file/*"
+done

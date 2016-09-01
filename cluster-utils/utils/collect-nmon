@@ -1,0 +1,16 @@
+#!/bin/bash
+
+NMON_OUT_DIR=/root/nmon-output
+
+if [ $# -gt 0 ];then
+NMON_OUT_DIR=$1
+fi
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+self=`hostname`
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  if [ $slave != $self ]; then
+    scp root@${slave}:${NMON_OUT_DIR}/*.nmon $NMON_OUT_DIR/
+  fi
+done

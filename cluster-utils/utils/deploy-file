@@ -1,0 +1,12 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+path=`pwd`
+self=`hostname`
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  if [ $slave != $self ]; then
+    scp $1 root@${slave}:$path
+  fi
+done

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+for slave in `$SCRIPT_DIR/get-slaves`
+do
+  echo "###########SERVER:$slave############"
+  for file in `$SCRIPT_DIR/get-files`
+  do
+    ssh $slave "if [ -e $file ] && [ -d $file ]; then echo '$file exists.'; else echo '$file not exists.'; fi"
+  done
+done
