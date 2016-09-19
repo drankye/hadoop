@@ -72,7 +72,7 @@ public class ExternalDatasetImpl implements FsDatasetSpi<ExternalVolumeImpl> {
   @Override
   public StorageReport[] getStorageReports(String bpid) throws IOException {
     StorageReport[] result = new StorageReport[1];
-    result[0] = new StorageReport(storage, false, 0, 0, 0, 0);
+    result[0] = new StorageReport(storage, false, 0, 0, 0, 0, 0);
     return result;
   }
 
@@ -87,12 +87,12 @@ public class ExternalDatasetImpl implements FsDatasetSpi<ExternalVolumeImpl> {
   }
 
   @Override
-  public List<FinalizedReplica> getFinalizedBlocks(String bpid) {
+  public List<ReplicaInfo> getFinalizedBlocks(String bpid) {
     return null;
   }
 
   @Override
-  public List<FinalizedReplica> getFinalizedBlocksOnPersistentStorage(String bpid) {
+  public List<ReplicaInfo> getFinalizedBlocksOnPersistentStorage(String bpid) {
     return null;
   }
 
@@ -159,7 +159,7 @@ public class ExternalDatasetImpl implements FsDatasetSpi<ExternalVolumeImpl> {
   }
 
   @Override
-  public ReplicaInPipelineInterface convertTemporaryToRbw(
+  public ReplicaInPipeline convertTemporaryToRbw(
       ExtendedBlock temporary) throws IOException {
     return new ExternalReplicaInPipeline();
   }

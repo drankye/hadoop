@@ -96,6 +96,16 @@ public class JsonUtil {
     if (status == null) {
       return null;
     }
+    final Map<String, Object> m = toJsonMap(status);
+    try {
+      return includeType ?
+          toJsonString(FileStatus.class, m) : MAPPER.writeValueAsString(m);
+    } catch (IOException ignored) {
+    }
+    return null;
+  }
+
+  private static Map<String, Object> toJsonMap(HdfsFileStatus status) {
     final Map<String, Object> m = new TreeMap<String, Object>();
     m.put("pathSuffix", status.getLocalName());
     m.put("type", WebHdfsConstants.PathType.valueOf(status));
@@ -121,12 +131,7 @@ public class JsonUtil {
     m.put("fileId", status.getFileId());
     m.put("childrenNum", status.getChildrenNum());
     m.put("storagePolicy", status.getStoragePolicy());
-    try {
-      return includeType ?
-          toJsonString(FileStatus.class, m) : MAPPER.writeValueAsString(m);
-    } catch (IOException ignored) {
-    }
-    return null;
+    return m;
   }
 
   /** Convert an ExtendedBlock to a Json map. */
@@ -225,6 +230,44 @@ public class JsonUtil {
     m.put("locations", toJsonArray(locatedblock.getLocations()));
     m.put("cachedLocations", toJsonArray(locatedblock.getCachedLocations()));
     return m;
+  }
+
+  private static Map<String, Object> toJson(final DirectoryListing listing)
+      throws IOException {
+    final Map<String, Object> m = new TreeMap<>();
+    // Serialize FileStatus[] to a FileStatuses map
+    m.put("partialListing", toJsonMap(listing.getPartialListing()));
+    // Simple int
+    m.put("remainingEntries", listing.getRemainingEntries());
+
+    return m;
+  }
+
+  public static String toJsonString(final DirectoryListing listing) throws
+      IOException {
+
+    if (listing == null) {
+      return null;
+    }
+    return toJsonString(DirectoryListing.class, toJson(listing));
+  }
+
+  private static Map<String, Object> toJsonMap(HdfsFileStatus[] statuses) throws
+      IOException {
+    if (statuses == null) {
+      return null;
+    }
+
+    final Map<String, Object> fileStatuses = new TreeMap<>();
+    final Map<String, Object> fileStatus = new TreeMap<>();
+    fileStatuses.put("FileStatuses", fileStatus);
+    final Object[] array = new Object[statuses.length];
+    fileStatus.put("FileStatus", array);
+    for (int i = 0; i < statuses.length; i++) {
+      array[i] = toJsonMap(statuses[i]);
+    }
+
+    return fileStatuses;
   }
 
   /** Convert a LocatedBlock[] to a Json array. */

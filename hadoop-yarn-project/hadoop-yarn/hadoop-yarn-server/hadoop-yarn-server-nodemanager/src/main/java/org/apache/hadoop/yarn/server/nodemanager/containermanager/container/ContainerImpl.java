@@ -18,18 +18,16 @@
 
 package org.apache.hadoop.yarn.server.nodemanager.containermanager.container;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -65,6 +63,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.application.Ap
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.launcher.ContainersLauncherEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.launcher.ContainersLauncherEventType;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.LocalResourceRequest;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.ResourceSet;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.event.ContainerLocalizationCleanupEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.event.ContainerLocalizationEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.event.ContainerLocalizationRequestEvent;
@@ -92,13 +91,24 @@ import org.apache.hadoop.yarn.util.resource.Resources;
 
 public class ContainerImpl implements Container {
 
+  private final static class ReInitializationContext {
+    private final ResourceSet resourceSet;
+    private final ContainerLaunchContext newLaunchContext;
+
+    private ReInitializationContext(ContainerLaunchContext newLaunchContext,
+        ResourceSet resourceSet) {
+      this.newLaunchContext = newLaunchContext;
+      this.resourceSet = resourceSet;
+    }
+  }
+
   private final Lock readLock;
   private final Lock writeLock;
   private final Dispatcher dispatcher;
   private final NMStateStoreService stateStore;
   private final Credentials credentials;
   private final NodeManagerMetrics metrics;
-  private final ContainerLaunchContext launchContext;
+  private volatile ContainerLaunchContext launchContext;
   private final ContainerTokenIdentifier containerTokenIdentifier;
   private final ContainerId containerId;
   private volatile Resource resource;
@@ -112,32 +122,21 @@ public class ContainerImpl implements Container {
   private long containerLaunchStartTime;
   private ContainerMetrics containerMetrics;
   private static Clock clock = SystemClock.getInstance();
-  private final ContainerRetryContext containerRetryContext;
+  private ContainerRetryContext containerRetryContext;
   // remaining retries to relaunch container if needed
   private int remainingRetryAttempts;
   private String workDir;
   private String logDir;
   private String host;
   private String ips;
+  private ReInitializationContext reInitContext;
+  private volatile boolean isReInitializing = false;
 
   /** The NM-wide configuration - not specific to this container */
   private final Configuration daemonConf;
 
   private static final Log LOG = LogFactory.getLog(ContainerImpl.class);
-  private final Map<LocalResourceRequest,List<String>> pendingResources =
-    new HashMap<LocalResourceRequest,List<String>>();
-  private final Map<Path,List<String>> localizedResources =
-    new HashMap<Path,List<String>>();
-  private final List<LocalResourceRequest> publicRsrcs =
-    new ArrayList<LocalResourceRequest>();
-  private final List<LocalResourceRequest> privateRsrcs =
-    new ArrayList<LocalResourceRequest>();
-  private final List<LocalResourceRequest> appRsrcs =
-    new ArrayList<LocalResourceRequest>();
-  private final Map<LocalResourceRequest, Path> resourcesToBeUploaded =
-      new ConcurrentHashMap<LocalResourceRequest, Path>();
-  private final Map<LocalResourceRequest, Boolean> resourcesUploadPolicies =
-      new ConcurrentHashMap<LocalResourceRequest, Boolean>();
+
 
   // whether container has been recovered after a restart
   private RecoveredContainerStatus recoveredStatus =
@@ -145,6 +144,7 @@ public class ContainerImpl implements Container {
   // whether container was marked as killed after recovery
   private boolean recoveredAsKilled = false;
   private Context context;
+  private ResourceSet resourceSet;
 
   public ContainerImpl(Configuration conf, Dispatcher dispatcher,
       ContainerLaunchContext launchContext, Credentials creds,
@@ -155,23 +155,7 @@ public class ContainerImpl implements Container {
     this.stateStore = context.getNMStateStore();
     this.version = containerTokenIdentifier.getVersion();
     this.launchContext = launchContext;
-    if (launchContext != null
-        && launchContext.getContainerRetryContext() != null) {
-      this.containerRetryContext = launchContext.getContainerRetryContext();
-    } else {
-      this.containerRetryContext = ContainerRetryContext.NEVER_RETRY_CONTEXT;
-    }
-    this.remainingRetryAttempts = containerRetryContext.getMaxRetries();
-    int minimumRestartInterval = conf.getInt(
-        YarnConfiguration.NM_CONTAINER_RETRY_MINIMUM_INTERVAL_MS,
-        YarnConfiguration.DEFAULT_NM_CONTAINER_RETRY_MINIMUM_INTERVAL_MS);
-    if (containerRetryContext.getRetryPolicy()
-        != ContainerRetryPolicy.NEVER_RETRY
-        && containerRetryContext.getRetryInterval() < minimumRestartInterval) {
-      LOG.info("Set restart interval to minimum value " + minimumRestartInterval
-          + "ms for container " + containerTokenIdentifier.getContainerID());
-      this.containerRetryContext.setRetryInterval(minimumRestartInterval);
-    }
+
     this.diagnosticsMaxSize = conf.getInt(
         YarnConfiguration.NM_CONTAINER_DIAGNOSTICS_MAXIMUM_SIZE,
         YarnConfiguration.DEFAULT_NM_CONTAINER_DIAGNOSTICS_MAXIMUM_SIZE);
@@ -202,8 +186,35 @@ public class ContainerImpl implements Container {
       containerMetrics.recordStartTime(clock.getTime());
     }
 
+    // Configure the Retry Context
+    this.containerRetryContext =
+        configureRetryContext(conf, launchContext, this.containerId);
+    this.remainingRetryAttempts = this.containerRetryContext.getMaxRetries();
     stateMachine = stateMachineFactory.make(this);
     this.context = context;
+    this.resourceSet = new ResourceSet();
+  }
+
+  private static ContainerRetryContext configureRetryContext(
+      Configuration conf, ContainerLaunchContext launchContext,
+      ContainerId containerId) {
+    ContainerRetryContext context;
+    if (launchContext != null
+        && launchContext.getContainerRetryContext() != null) {
+      context = launchContext.getContainerRetryContext();
+    } else {
+      context = ContainerRetryContext.NEVER_RETRY_CONTEXT;
+    }
+    int minimumRestartInterval = conf.getInt(
+        YarnConfiguration.NM_CONTAINER_RETRY_MINIMUM_INTERVAL_MS,
+        YarnConfiguration.DEFAULT_NM_CONTAINER_RETRY_MINIMUM_INTERVAL_MS);
+    if (context.getRetryPolicy() != ContainerRetryPolicy.NEVER_RETRY
+        && context.getRetryInterval() < minimumRestartInterval) {
+      LOG.info("Set restart interval to minimum value " + minimumRestartInterval
+          + "ms for container " + containerId);
+      context.setRetryInterval(minimumRestartInterval);
+    }
+    return context;
   }
 
   // constructor for a recovered container
@@ -312,14 +323,51 @@ public class ContainerImpl implements Container {
             ContainerState.EXITED_WITH_FAILURE),
         ContainerEventType.CONTAINER_EXITED_WITH_FAILURE,
         new RetryFailureTransition())
+    .addTransition(ContainerState.RUNNING, ContainerState.REINITIALIZING,
+        ContainerEventType.REINITIALIZE_CONTAINER,
+        new ReInitializeContainerTransition())
+    .addTransition(ContainerState.RUNNING, ContainerState.RUNNING,
+        ContainerEventType.RESOURCE_LOCALIZED,
+        new ResourceLocalizedWhileRunningTransition())
+    .addTransition(ContainerState.RUNNING, ContainerState.RUNNING,
+        ContainerEventType.RESOURCE_FAILED,
+        new ResourceLocalizationFailedWhileRunningTransition())
     .addTransition(ContainerState.RUNNING, ContainerState.RUNNING,
        ContainerEventType.UPDATE_DIAGNOSTICS_MSG,
        UPDATE_DIAGNOSTICS_TRANSITION)
     .addTransition(ContainerState.RUNNING, ContainerState.KILLING,
         ContainerEventType.KILL_CONTAINER, new KillTransition())
-    .addTransition(ContainerState.RUNNING, ContainerState.EXITED_WITH_FAILURE,
+    .addTransition(ContainerState.RUNNING,
+        ContainerState.EXITED_WITH_FAILURE,
         ContainerEventType.CONTAINER_KILLED_ON_REQUEST,
         new KilledExternallyTransition())
+
+    // From REINITIALIZING State
+    .addTransition(ContainerState.REINITIALIZING,
+        ContainerState.EXITED_WITH_SUCCESS,
+        ContainerEventType.CONTAINER_EXITED_WITH_SUCCESS,
+        new ExitedWithSuccessTransition(true))
+    .addTransition(ContainerState.REINITIALIZING,
+        ContainerState.EXITED_WITH_FAILURE,
+        ContainerEventType.CONTAINER_EXITED_WITH_FAILURE,
+        new ExitedWithFailureTransition(true))
+    .addTransition(ContainerState.REINITIALIZING,
+        ContainerState.REINITIALIZING,
+        ContainerEventType.RESOURCE_LOCALIZED,
+        new ResourceLocalizedWhileReInitTransition())
+    .addTransition(ContainerState.REINITIALIZING, ContainerState.RUNNING,
+        ContainerEventType.RESOURCE_FAILED,
+        new ResourceLocalizationFailedWhileReInitTransition())
+    .addTransition(ContainerState.REINITIALIZING,
+        ContainerState.REINITIALIZING,
+        ContainerEventType.UPDATE_DIAGNOSTICS_MSG,
+        UPDATE_DIAGNOSTICS_TRANSITION)
+    .addTransition(ContainerState.REINITIALIZING, ContainerState.KILLING,
+        ContainerEventType.KILL_CONTAINER, new KillTransition())
+    .addTransition(ContainerState.REINITIALIZING,
+        ContainerState.LOCALIZED,
+        ContainerEventType.CONTAINER_KILLED_ON_REQUEST,
+        new KilledForReInitializationTransition())
 
     // From RELAUNCHING State
     .addTransition(ContainerState.RELAUNCHING, ContainerState.RUNNING,
@@ -465,12 +513,12 @@ public class ContainerImpl implements Container {
   }
 
   @Override
-  public Map<Path,List<String>> getLocalizedResources() {
+  public Map<Path, List<String>> getLocalizedResources() {
     this.readLock.lock();
     try {
       if (ContainerState.LOCALIZED == getContainerState()
           || ContainerState.RELAUNCHING == getContainerState()) {
-        return localizedResources;
+        return resourceSet.getLocalizedResources();
       } else {
         return null;
       }
@@ -591,6 +639,11 @@ public class ContainerImpl implements Container {
     this.logDir = logDir;
   }
 
+  @Override
+  public ResourceSet getResourceSet() {
+    return this.resourceSet;
+  }
+
   @SuppressWarnings("unchecked")
   private void sendFinishedEvents() {
     // Inform the application
@@ -653,7 +706,7 @@ public class ContainerImpl implements Container {
     for (String s : diags) {
       this.diagnostics.append(s);
     }
-    if (isRetryContextSet() && diagnostics.length() > diagnosticsMaxSize) {
+    if (diagnostics.length() > diagnosticsMaxSize) {
       diagnostics.delete(0, diagnostics.length() - diagnosticsMaxSize);
     }
     try {
@@ -667,17 +720,7 @@ public class ContainerImpl implements Container {
   @SuppressWarnings("unchecked") // dispatcher not typed
   public void cleanup() {
     Map<LocalResourceVisibility, Collection<LocalResourceRequest>> rsrc =
-      new HashMap<LocalResourceVisibility, 
-                  Collection<LocalResourceRequest>>();
-    if (!publicRsrcs.isEmpty()) {
-      rsrc.put(LocalResourceVisibility.PUBLIC, publicRsrcs);
-    }
-    if (!privateRsrcs.isEmpty()) {
-      rsrc.put(LocalResourceVisibility.PRIVATE, privateRsrcs);
-    }
-    if (!appRsrcs.isEmpty()) {
-      rsrc.put(LocalResourceVisibility.APPLICATION, appRsrcs);
-    }
+        resourceSet.getAllResourcesByVisibility();
     dispatcher.getEventHandler().handle(
         new ContainerLocalizationCleanupEvent(this, rsrc));
   }
@@ -697,7 +740,7 @@ public class ContainerImpl implements Container {
    * message.
    * 
    * If there are resources to localize, sends a
-   * ContainerLocalizationRequest (INIT_CONTAINER_RESOURCES) 
+   * ContainerLocalizationRequest (LOCALIZE_CONTAINER_RESOURCES)
    * to the ResourceLocalizationManager and enters LOCALIZING state.
    * 
    * If there are no resources to localize, sends LAUNCH_CONTAINER event
@@ -749,39 +792,15 @@ public class ContainerImpl implements Container {
       }
 
       container.containerLocalizationStartTime = clock.getTime();
+
       // Send requests for public, private resources
       Map<String,LocalResource> cntrRsrc = ctxt.getLocalResources();
       if (!cntrRsrc.isEmpty()) {
         try {
-          for (Map.Entry<String,LocalResource> rsrc : cntrRsrc.entrySet()) {
-            try {
-              LocalResourceRequest req =
-                  new LocalResourceRequest(rsrc.getValue());
-              List<String> links = container.pendingResources.get(req);
-              if (links == null) {
-                links = new ArrayList<String>();
-                container.pendingResources.put(req, links);
-              }
-              links.add(rsrc.getKey());
-              storeSharedCacheUploadPolicy(container, req, rsrc.getValue()
-                  .getShouldBeUploadedToSharedCache());
-              switch (rsrc.getValue().getVisibility()) {
-              case PUBLIC:
-                container.publicRsrcs.add(req);
-                break;
-              case PRIVATE:
-                container.privateRsrcs.add(req);
-                break;
-              case APPLICATION:
-                container.appRsrcs.add(req);
-                break;
-              }
-            } catch (URISyntaxException e) {
-              LOG.info("Got exception parsing " + rsrc.getKey()
-                  + " and value " + rsrc.getValue());
-              throw e;
-            }
-          }
+          Map<LocalResourceVisibility, Collection<LocalResourceRequest>> req =
+              container.resourceSet.addResources(ctxt.getLocalResources());
+          container.dispatcher.getEventHandler().handle(
+              new ContainerLocalizationRequestEvent(container, req));
         } catch (URISyntaxException e) {
           // malformed resource; abort container launch
           LOG.warn("Failed to parse resource-request", e);
@@ -789,48 +808,12 @@ public class ContainerImpl implements Container {
           container.metrics.endInitingContainer();
           return ContainerState.LOCALIZATION_FAILED;
         }
-        Map<LocalResourceVisibility, Collection<LocalResourceRequest>> req =
-            new LinkedHashMap<LocalResourceVisibility,
-                        Collection<LocalResourceRequest>>();
-        if (!container.publicRsrcs.isEmpty()) {
-          req.put(LocalResourceVisibility.PUBLIC, container.publicRsrcs);
-        }
-        if (!container.privateRsrcs.isEmpty()) {
-          req.put(LocalResourceVisibility.PRIVATE, container.privateRsrcs);
-        }
-        if (!container.appRsrcs.isEmpty()) {
-          req.put(LocalResourceVisibility.APPLICATION, container.appRsrcs);
-        }
-        
-        container.dispatcher.getEventHandler().handle(
-              new ContainerLocalizationRequestEvent(container, req));
         return ContainerState.LOCALIZING;
       } else {
         container.sendLaunchEvent();
         container.metrics.endInitingContainer();
         return ContainerState.LOCALIZED;
       }
-    }
-  }
-
-  /**
-   * Store the resource's shared cache upload policies
-   * Given LocalResourceRequest can be shared across containers in
-   * LocalResourcesTrackerImpl, we preserve the upload policies here.
-   * In addition, it is possible for the application to create several
-   * "identical" LocalResources as part of
-   * ContainerLaunchContext.setLocalResources with different symlinks.
-   * There is a corner case where these "identical" local resources have
-   * different upload policies. For that scenario, upload policy will be set to
-   * true as long as there is at least one LocalResource entry with
-   * upload policy set to true.
-   */
-  private static void storeSharedCacheUploadPolicy(ContainerImpl container,
-      LocalResourceRequest resourceRequest, Boolean uploadPolicy) {
-    Boolean storedUploadPolicy =
-        container.resourcesUploadPolicies.get(resourceRequest);
-    if (storedUploadPolicy == null || (!storedUploadPolicy && uploadPolicy)) {
-      container.resourcesUploadPolicies.put(resourceRequest, uploadPolicy);
     }
   }
 
@@ -847,22 +830,21 @@ public class ContainerImpl implements Container {
       ContainerResourceLocalizedEvent rsrcEvent = (ContainerResourceLocalizedEvent) event;
       LocalResourceRequest resourceRequest = rsrcEvent.getResource();
       Path location = rsrcEvent.getLocation();
-      List<String> syms = container.pendingResources.remove(resourceRequest);
+      Set<String> syms =
+          container.resourceSet.resourceLocalized(resourceRequest, location);
       if (null == syms) {
-        LOG.warn("Localized unknown resource " + resourceRequest +
-                 " for container " + container.containerId);
-        assert false;
-        // fail container?
+        LOG.info("Localized resource " + resourceRequest +
+            " for container " + container.containerId);
         return ContainerState.LOCALIZING;
       }
-      container.localizedResources.put(location, syms);
 
       // check to see if this resource should be uploaded to the shared cache
       // as well
       if (shouldBeUploadedToSharedCache(container, resourceRequest)) {
-        container.resourcesToBeUploaded.put(resourceRequest, location);
+        container.resourceSet.getResourcesToBeUploaded()
+            .put(resourceRequest, location);
       }
-      if (!container.pendingResources.isEmpty()) {
+      if (!container.resourceSet.getPendingResources().isEmpty()) {
         return ContainerState.LOCALIZING;
       }
 
@@ -884,7 +866,8 @@ public class ContainerImpl implements Container {
           && container.recoveredStatus != RecoveredContainerStatus.COMPLETED) {
         // kick off uploads to the shared cache
         container.dispatcher.getEventHandler().handle(
-            new SharedCacheUploadEvent(container.resourcesToBeUploaded, container
+            new SharedCacheUploadEvent(
+                container.resourceSet.getResourcesToBeUploaded(), container
                 .getLaunchContext(), container.getUser(),
                 SharedCacheUploadEventType.UPLOAD));
       }
@@ -894,8 +877,148 @@ public class ContainerImpl implements Container {
   }
 
   /**
+   * Transition to start the Re-Initialization process.
+   */
+  static class ReInitializeContainerTransition extends ContainerTransition {
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void transition(ContainerImpl container, ContainerEvent event) {
+      container.reInitContext = createReInitContext(event);
+      try {
+        Map<LocalResourceVisibility, Collection<LocalResourceRequest>>
+            pendingResources =
+            container.reInitContext.resourceSet.getAllResourcesByVisibility();
+        if (!pendingResources.isEmpty()) {
+          container.dispatcher.getEventHandler().handle(
+              new ContainerLocalizationRequestEvent(
+                  container, pendingResources));
+        } else {
+          // We are not waiting on any resources, so...
+          // Kill the current container.
+          container.dispatcher.getEventHandler().handle(
+              new ContainersLauncherEvent(container,
+                  ContainersLauncherEventType.CLEANUP_CONTAINER_FOR_REINIT));
+        }
+      } catch (Exception e) {
+        LOG.error("Container [" + container.getContainerId() + "]" +
+            " re-initialization failure..", e);
+        container.addDiagnostics("Error re-initializing due to" +
+            "[" + e.getMessage() + "]");
+      }
+    }
+
+    protected ReInitializationContext createReInitContext(
+        ContainerEvent event) {
+      ContainerReInitEvent rEvent = (ContainerReInitEvent)event;
+      return new ReInitializationContext(rEvent.getReInitLaunchContext(),
+          rEvent.getResourceSet());
+    }
+  }
+
+  /**
+   * Resource requested for Container Re-initialization has been localized.
+   * If all dependencies are met, then restart Container with new bits.
+   */
+  static class ResourceLocalizedWhileReInitTransition
+      extends ContainerTransition {
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void transition(ContainerImpl container, ContainerEvent event) {
+      ContainerResourceLocalizedEvent rsrcEvent =
+          (ContainerResourceLocalizedEvent) event;
+      container.reInitContext.resourceSet.resourceLocalized(
+          rsrcEvent.getResource(), rsrcEvent.getLocation());
+      // Check if all ResourceLocalization has completed
+      if (container.reInitContext.resourceSet.getPendingResources()
+          .isEmpty()) {
+        // Kill the current container.
+        container.dispatcher.getEventHandler().handle(
+            new ContainersLauncherEvent(container,
+                ContainersLauncherEventType.CLEANUP_CONTAINER_FOR_REINIT));
+      }
+    }
+  }
+
+  /**
+   * Resource is localized while the container is running - create symlinks.
+   */
+  static class ResourceLocalizedWhileRunningTransition
+      extends ContainerTransition {
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void transition(ContainerImpl container, ContainerEvent event) {
+      ContainerResourceLocalizedEvent rsrcEvent =
+          (ContainerResourceLocalizedEvent) event;
+      Set<String> links = container.resourceSet.resourceLocalized(
+          rsrcEvent.getResource(), rsrcEvent.getLocation());
+      if (links == null) {
+        return;
+      }
+      // creating symlinks.
+      for (String link : links) {
+        try {
+          String linkFile = new Path(container.workDir, link).toString();
+          if (new File(linkFile).exists()) {
+            LOG.info("Symlink file already exists: " + linkFile);
+          } else {
+            container.context.getContainerExecutor()
+                .symLink(rsrcEvent.getLocation().toString(), linkFile);
+            LOG.info("Created symlink: " + linkFile + " -> " + rsrcEvent
+                .getLocation());
+          }
+        } catch (IOException e) {
+          String message = String
+              .format("Error when creating symlink %s -> %s", link,
+                  rsrcEvent.getLocation());
+          LOG.error(message, e);
+        }
+      }
+    }
+  }
+
+  /**
+   * Resource localization failed while the container is running.
+   */
+  static class ResourceLocalizationFailedWhileRunningTransition
+      extends ContainerTransition {
+
+    @Override
+    public void transition(ContainerImpl container, ContainerEvent event) {
+      ContainerResourceFailedEvent failedEvent =
+          (ContainerResourceFailedEvent) event;
+      container.resourceSet
+          .resourceLocalizationFailed(failedEvent.getResource());
+      container.addDiagnostics(failedEvent.getDiagnosticMessage());
+    }
+  }
+
+  /**
+   * Resource localization failed while the container is reinitializing.
+   */
+  static class ResourceLocalizationFailedWhileReInitTransition
+      extends ContainerTransition {
+
+    @Override
+    public void transition(ContainerImpl container, ContainerEvent event) {
+      ContainerResourceFailedEvent failedEvent =
+          (ContainerResourceFailedEvent) event;
+      container.resourceSet.resourceLocalizationFailed(
+          failedEvent.getResource());
+      container.addDiagnostics("Container aborting re-initialization.. "
+          + failedEvent.getDiagnosticMessage());
+      LOG.error("Container [" + container.getContainerId() + "] Re-init" +
+          " failed !! Resource [" + failedEvent.getResource() + "] could" +
+          " not be localized !!");
+      container.reInitContext = null;
+    }
+  }
+
+  /**
    * Transition from LOCALIZED state to RUNNING state upon receiving
-   * a CONTAINER_LAUNCHED event
+   * a CONTAINER_LAUNCHED event.
    */
   static class LaunchTransition extends ContainerTransition {
     @SuppressWarnings("unchecked")
@@ -904,6 +1027,12 @@ public class ContainerImpl implements Container {
       container.sendContainerMonitorStartEvent();
       container.metrics.runningContainer();
       container.wasLaunched  = true;
+
+      if (container.reInitContext != null) {
+        container.reInitContext = null;
+        // Set rollback context here..
+        container.setIsReInitializing(false);
+      }
 
       if (container.recoveredAsKilled) {
         LOG.info("Killing " + container.containerId
@@ -917,8 +1046,8 @@ public class ContainerImpl implements Container {
   }
 
   /**
-   * Transition from RUNNING or KILLING state to EXITED_WITH_SUCCESS state
-   * upon EXITED_WITH_SUCCESS message.
+   * Transition from RUNNING or KILLING state to
+   * EXITED_WITH_SUCCESS state upon EXITED_WITH_SUCCESS message.
    */
   @SuppressWarnings("unchecked")  // dispatcher not typed
   static class ExitedWithSuccessTransition extends ContainerTransition {
@@ -931,6 +1060,8 @@ public class ContainerImpl implements Container {
 
     @Override
     public void transition(ContainerImpl container, ContainerEvent event) {
+
+      container.setIsReInitializing(false);
       // Set exit code to 0 on success    	
       container.exitCode = 0;
     	
@@ -961,6 +1092,7 @@ public class ContainerImpl implements Container {
 
     @Override
     public void transition(ContainerImpl container, ContainerEvent event) {
+      container.setIsReInitializing(false);
       ContainerExitEvent exitEvent = (ContainerExitEvent) event;
       container.exitCode = exitEvent.getExitCode();
       if (exitEvent.getDiagnosticInfo() != null) {
@@ -981,7 +1113,7 @@ public class ContainerImpl implements Container {
   }
 
   /**
-   * Transition to EXITED_WITH_FAILURE or LOCALIZED state upon
+   * Transition to EXITED_WITH_FAILURE or RELAUNCHING state upon
    * CONTAINER_EXITED_WITH_FAILURE state.
    **/
   @SuppressWarnings("unchecked")  // dispatcher not typed
@@ -1013,7 +1145,7 @@ public class ContainerImpl implements Container {
           } catch (IOException e) {
             LOG.warn(
                 "Unable to update remainingRetryAttempts in state store for "
-                + container.getContainerId(), e);
+                    + container.getContainerId(), e);
           }
         }
         LOG.info("Relaunching Container " + container.getContainerId()
@@ -1075,7 +1207,7 @@ public class ContainerImpl implements Container {
   }
 
   /**
-   * Transition to EXITED_WITH_FAILURE upon receiving KILLED_ON_REQUEST
+   * Transition to EXITED_WITH_FAILURE
    */
   static class KilledExternallyTransition extends ExitedWithFailureTransition {
     KilledExternallyTransition() {
@@ -1083,9 +1215,40 @@ public class ContainerImpl implements Container {
     }
 
     @Override
-    public void transition(ContainerImpl container, ContainerEvent event) {
+    public void transition(ContainerImpl container,
+        ContainerEvent event) {
       super.transition(container, event);
       container.addDiagnostics("Killed by external signal\n");
+    }
+  }
+
+  /**
+   * Transition to LOCALIZED and wait for RE-LAUNCH
+   */
+  static class KilledForReInitializationTransition extends ContainerTransition {
+
+    @Override
+    public void transition(ContainerImpl container,
+        ContainerEvent event) {
+      LOG.info("Relaunching Container [" + container.getContainerId()
+          + "] for upgrade !!");
+      container.wasLaunched  = false;
+      container.metrics.endRunningContainer();
+
+      container.launchContext = container.reInitContext.newLaunchContext;
+
+      // Re configure the Retry Context
+      container.containerRetryContext =
+          configureRetryContext(container.context.getConf(),
+          container.launchContext, container.containerId);
+      // Reset the retry attempts since its a fresh start
+      container.remainingRetryAttempts =
+          container.containerRetryContext.getMaxRetries();
+
+      container.resourceSet = ResourceSet.merge(
+          container.resourceSet, container.reInitContext.resourceSet);
+
+      container.sendLaunchEvent();
     }
   }
 
@@ -1136,31 +1299,28 @@ public class ContainerImpl implements Container {
       SingleArcTransition<ContainerImpl, ContainerEvent> {
     @Override
     public void transition(ContainerImpl container, ContainerEvent event) {
-      ContainerResourceLocalizedEvent rsrcEvent = (ContainerResourceLocalizedEvent) event;
-      List<String> syms =
-          container.pendingResources.remove(rsrcEvent.getResource());
-      if (null == syms) {
-        LOG.warn("Localized unknown resource " + rsrcEvent.getResource() +
-                 " for container " + container.containerId);
-        assert false;
-        // fail container?
-        return;
-      }
-      container.localizedResources.put(rsrcEvent.getLocation(), syms);
+      ContainerResourceLocalizedEvent rsrcEvent =
+          (ContainerResourceLocalizedEvent) event;
+      container.resourceSet
+          .resourceLocalized(rsrcEvent.getResource(), rsrcEvent.getLocation());
     }
   }
 
   /**
-   * Transitions upon receiving KILL_CONTAINER:
-   * - LOCALIZED -> KILLING
-   * - RUNNING -> KILLING
+   * Transitions upon receiving KILL_CONTAINER.
+   * - LOCALIZED -> KILLING.
+   * - RUNNING -> KILLING.
+   * - REINITIALIZING -> KILLING.
    */
   @SuppressWarnings("unchecked") // dispatcher not typed
   static class KillTransition implements
       SingleArcTransition<ContainerImpl, ContainerEvent> {
+
+    @SuppressWarnings("unchecked")
     @Override
     public void transition(ContainerImpl container, ContainerEvent event) {
       // Kill the process/process-grp
+      container.setIsReInitializing(false);
       container.dispatcher.getEventHandler().handle(
           new ContainersLauncherEvent(container,
               ContainersLauncherEventType.CLEANUP_CONTAINER));
@@ -1402,7 +1562,7 @@ public class ContainerImpl implements Container {
    */
   private static boolean shouldBeUploadedToSharedCache(ContainerImpl container,
       LocalResourceRequest resource) {
-    return container.resourcesUploadPolicies.get(resource);
+    return container.resourceSet.getResourcesUploadPolicies().get(resource);
   }
 
   @VisibleForTesting
@@ -1413,5 +1573,20 @@ public class ContainerImpl implements Container {
   @Override
   public Priority getPriority() {
     return containerTokenIdentifier.getPriority();
+  }
+
+  @Override
+  public boolean isRunning() {
+    return getContainerState() == ContainerState.RUNNING;
+  }
+
+  @Override
+  public void setIsReInitializing(boolean isReInitializing) {
+    this.isReInitializing = isReInitializing;
+  }
+
+  @Override
+  public boolean isReInitializing() {
+    return this.isReInitializing;
   }
 }

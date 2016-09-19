@@ -131,7 +131,18 @@ public class TestContainerManagerWithLCE extends TestContainerManager {
     LOG.info("Running testContainerLaunchAndExitFailure");
     super.testContainerLaunchAndExitFailure();
   }
-  
+
+  @Override
+  public void testLocalingResourceWhileContainerRunning()
+      throws Exception {
+    // Don't run the test if the binary is not available.
+    if (!shouldRunTest()) {
+      LOG.info("LCE binary path is not passed. Not running the test");
+      return;
+    }
+    super.testLocalingResourceWhileContainerRunning();
+  }
+
   @Override
   public void testLocalFilesCleanup() throws InterruptedException,
       IOException, YarnException {
@@ -256,6 +267,42 @@ public class TestContainerManagerWithLCE extends TestContainerManager {
     }
     LOG.info("Running testForcefulShutdownSignal");
     super.testForcefulShutdownSignal();
+  }
+
+  @Override
+  public void testContainerUpgradeSuccess() throws IOException,
+      InterruptedException, YarnException {
+    // Don't run the test if the binary is not available.
+    if (!shouldRunTest()) {
+      LOG.info("LCE binary path is not passed. Not running the test");
+      return;
+    }
+    LOG.info("Running testContainerUpgradeSuccess");
+    super.testContainerUpgradeSuccess();
+  }
+
+  @Override
+  public void testContainerUpgradeLocalizationFailure() throws IOException,
+      InterruptedException, YarnException {
+    // Don't run the test if the binary is not available.
+    if (!shouldRunTest()) {
+      LOG.info("LCE binary path is not passed. Not running the test");
+      return;
+    }
+    LOG.info("Running testContainerUpgradeLocalizationFailure");
+    super.testContainerUpgradeLocalizationFailure();
+  }
+
+  @Override
+  public void testContainerUpgradeProcessFailure() throws IOException,
+      InterruptedException, YarnException {
+    // Don't run the test if the binary is not available.
+    if (!shouldRunTest()) {
+      LOG.info("LCE binary path is not passed. Not running the test");
+      return;
+    }
+    LOG.info("Running testContainerUpgradeProcessFailure");
+    super.testContainerUpgradeProcessFailure();
   }
 
   private boolean shouldRunTest() {

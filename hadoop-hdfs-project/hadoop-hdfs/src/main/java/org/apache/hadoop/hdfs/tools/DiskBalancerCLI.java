@@ -50,7 +50,7 @@ import java.io.PrintStream;
  * At very high level diskbalancer computes a set of moves that will make disk
  * utilization equal and then those moves are executed by the datanode.
  */
-public class DiskBalancer extends Configured implements Tool {
+public class DiskBalancerCLI extends Configured implements Tool {
   /**
    * Computes a plan for a given set of nodes.
    */
@@ -126,7 +126,7 @@ public class DiskBalancer extends Configured implements Tool {
    */
   public static final String PLAN_TEMPLATE = "%s.plan.json";
   private static final Logger LOG =
-      LoggerFactory.getLogger(DiskBalancer.class);
+      LoggerFactory.getLogger(DiskBalancerCLI.class);
 
   private static final Options PLAN_OPTIONS = new Options();
   private static final Options EXECUTE_OPTIONS = new Options();
@@ -135,13 +135,20 @@ public class DiskBalancer extends Configured implements Tool {
   private static final Options CANCEL_OPTIONS = new Options();
   private static final Options REPORT_OPTIONS = new Options();
 
+  private final PrintStream printStream;
+
   /**
    * Construct a DiskBalancer.
    *
    * @param conf
    */
-  public DiskBalancer(Configuration conf) {
+  public DiskBalancerCLI(Configuration conf) {
+    this(conf, System.out);
+  }
+
+  public DiskBalancerCLI(Configuration conf, final PrintStream printStream) {
     super(conf);
+    this.printStream = printStream;
   }
 
   /**
@@ -151,7 +158,7 @@ public class DiskBalancer extends Configured implements Tool {
    * @throws Exception
    */
   public static void main(String[] argv) throws Exception {
-    DiskBalancer shell = new DiskBalancer(new HdfsConfiguration());
+    DiskBalancerCLI shell = new DiskBalancerCLI(new HdfsConfiguration());
     int res = 0;
     try {
       res = ToolRunner.run(shell, argv);
@@ -171,21 +178,9 @@ public class DiskBalancer extends Configured implements Tool {
    */
   @Override
   public int run(String[] args) throws Exception {
-    return run(args, System.out);
-  }
-
-  /**
-   * Execute the command with the given arguments.
-   *
-   * @param args command specific arguments.
-   * @param out  the output stream used for printing
-   * @return exit code.
-   * @throws Exception
-   */
-  public int run(String[] args, final PrintStream out) throws Exception {
     Options opts = getOpts();
     CommandLine cmd = parseArgs(args, opts);
-    return dispatch(cmd, opts, out);
+    return dispatch(cmd, opts);
   }
 
   /**
@@ -443,30 +438,30 @@ public class DiskBalancer extends Configured implements Tool {
    * @param opts options of command line
    * @param out  the output stream used for printing
    */
-  private int dispatch(CommandLine cmd, Options opts, final PrintStream out)
+  private int dispatch(CommandLine cmd, Options opts)
       throws Exception {
     Command currentCommand = null;
-    if (cmd.hasOption(DiskBalancer.PLAN)) {
+    if (cmd.hasOption(DiskBalancerCLI.PLAN)) {
       currentCommand = new PlanCommand(getConf());
     }
 
-    if (cmd.hasOption(DiskBalancer.EXECUTE)) {
+    if (cmd.hasOption(DiskBalancerCLI.EXECUTE)) {
       currentCommand = new ExecuteCommand(getConf());
     }
 
-    if (cmd.hasOption(DiskBalancer.QUERY)) {
+    if (cmd.hasOption(DiskBalancerCLI.QUERY)) {
       currentCommand = new QueryCommand(getConf());
     }
 
-    if (cmd.hasOption(DiskBalancer.CANCEL)) {
+    if (cmd.hasOption(DiskBalancerCLI.CANCEL)) {
       currentCommand = new CancelCommand(getConf());
     }
 
-    if (cmd.hasOption(DiskBalancer.REPORT)) {
-      currentCommand = new ReportCommand(getConf(), out);
+    if (cmd.hasOption(DiskBalancerCLI.REPORT)) {
+      currentCommand = new ReportCommand(getConf(), this.printStream);
     }
 
-    if (cmd.hasOption(DiskBalancer.HELP)) {
+    if (cmd.hasOption(DiskBalancerCLI.HELP)) {
       currentCommand = new HelpCommand(getConf());
     }
 

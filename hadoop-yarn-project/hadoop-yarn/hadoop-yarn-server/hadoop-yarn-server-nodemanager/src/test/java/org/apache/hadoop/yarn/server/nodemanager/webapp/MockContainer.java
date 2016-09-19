@@ -1,3 +1,4 @@
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,11 +19,6 @@
 
 package org.apache.hadoop.yarn.server.nodemanager.webapp;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.Credentials;
@@ -41,7 +37,13 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.NMContainerStatus;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerState;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.ResourceSet;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MockContainer implements Container {
 
@@ -119,6 +121,11 @@ public class MockContainer implements Container {
   }
 
   @Override
+  public ResourceSet getResourceSet() {
+    return null;
+  }
+
+  @Override
   public void handle(ContainerEvent event) {
   }
 
@@ -182,5 +189,20 @@ public class MockContainer implements Container {
   @Override
   public void setIpAndHost(String[] ipAndHost) {
 
+  }
+
+  @Override
+  public boolean isRunning() {
+    return false;
+  }
+
+  @Override
+  public void setIsReInitializing(boolean isReInitializing) {
+
+  }
+
+  @Override
+  public boolean isReInitializing() {
+    return false;
   }
 }

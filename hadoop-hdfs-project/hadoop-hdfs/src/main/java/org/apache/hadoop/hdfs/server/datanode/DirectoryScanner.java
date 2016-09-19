@@ -414,8 +414,10 @@ public class DirectoryScanner implements Runnable {
   DirectoryScanner(DataNode datanode, FsDatasetSpi<?> dataset, Configuration conf) {
     this.datanode = datanode;
     this.dataset = dataset;
-    int interval = conf.getInt(DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_KEY,
-        DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_DEFAULT);
+    int interval = (int) conf.getTimeDuration(
+        DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_KEY,
+        DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_DEFAULT,
+        TimeUnit.SECONDS);
     scanPeriodMsecs = interval * MILLIS_PER_SECOND; //msec
 
     int throttle =
@@ -595,14 +597,14 @@ public class DirectoryScanner implements Runnable {
         diffs.put(bpid, diffRecord);
         
         statsRecord.totalBlocks = blockpoolReport.length;
-        List<FinalizedReplica> bl = dataset.getFinalizedBlocks(bpid);
-        FinalizedReplica[] memReport = bl.toArray(new FinalizedReplica[bl.size()]);
+        List<ReplicaInfo> bl = dataset.getFinalizedBlocks(bpid);
+        ReplicaInfo[] memReport = bl.toArray(new ReplicaInfo[bl.size()]);
         Arrays.sort(memReport); // Sort based on blockId
   
         int d = 0; // index for blockpoolReport
         int m = 0; // index for memReprot
         while (m < memReport.length && d < blockpoolReport.length) {
-          FinalizedReplica memBlock = memReport[m];
+          ReplicaInfo memBlock = memReport[m];
           ScanInfo info = blockpoolReport[d];
           if (info.getBlockId() < memBlock.getBlockId()) {
             if (!dataset.isDeletingBlock(bpid, info.getBlockId())) {
@@ -631,7 +633,7 @@ public class DirectoryScanner implements Runnable {
             // or block file length is different than expected
             statsRecord.mismatchBlocks++;
             addDifference(diffRecord, statsRecord, info);
-          } else if (info.getBlockFile().compareTo(memBlock.getBlockFile()) != 0) {
+          } else if (memBlock.compareWith(info) != 0) {
             // volumeMap record and on-disk files don't match.
             statsRecord.duplicateBlocks++;
             addDifference(diffRecord, statsRecord, info);
@@ -650,7 +652,7 @@ public class DirectoryScanner implements Runnable {
           }
         }
         while (m < memReport.length) {
-          FinalizedReplica current = memReport[m++];
+          ReplicaInfo current = memReport[m++];
           addDifference(diffRecord, statsRecord,
                         current.getBlockId(), current.getVolume());
         }
