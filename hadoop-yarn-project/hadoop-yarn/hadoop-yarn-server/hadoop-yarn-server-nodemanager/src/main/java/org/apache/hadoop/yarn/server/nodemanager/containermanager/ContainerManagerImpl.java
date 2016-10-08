@@ -38,12 +38,17 @@ import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.service.Service;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ContainerManagementProtocol;
+import org.apache.hadoop.yarn.api.protocolrecords.CommitResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetContainerStatusesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetContainerStatusesResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.IncreaseContainersResourceRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.IncreaseContainersResourceResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.ReInitializeContainerRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.ReInitializeContainerResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.ResourceLocalizationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.ResourceLocalizationResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.RestartContainerResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.RollbackResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.SignalContainerRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.SignalContainerResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.StartContainerRequest;
@@ -165,8 +170,8 @@ import static org.apache.hadoop.service.Service.STATE.STARTED;
 public class ContainerManagerImpl extends CompositeService implements
     ContainerManager {
 
-  private enum ReinitOp {
-    UPGRADE, COMMIT, ROLLBACK, LOCALIZE;
+  private enum ReInitOp {
+    RE_INIT, COMMIT, ROLLBACK, LOCALIZE;
   }
   /**
    * Extra duration to wait for applications to be killed on shutdown.
@@ -1534,8 +1539,8 @@ public class ContainerManagerImpl extends CompositeService implements
       ResourceLocalizationRequest request) throws YarnException, IOException {
 
     ContainerId containerId = request.getContainerId();
-    Container container = preUpgradeOrLocalizeCheck(containerId,
-        ReinitOp.LOCALIZE);
+    Container container = preReInitializeOrLocalizeCheck(containerId,
+        ReInitOp.LOCALIZE);
     try {
       Map<LocalResourceVisibility, Collection<LocalResourceRequest>> req =
           container.getResourceSet().addResources(request.getLocalResources());
@@ -1551,16 +1556,48 @@ public class ContainerManagerImpl extends CompositeService implements
     return ResourceLocalizationResponse.newInstance();
   }
 
-  public void upgradeContainer(ContainerId containerId,
-      ContainerLaunchContext upgradeLaunchContext) throws YarnException {
-    Container container = preUpgradeOrLocalizeCheck(containerId,
-        ReinitOp.UPGRADE);
+  @Override
+  public ReInitializeContainerResponse reInitializeContainer(
+      ReInitializeContainerRequest request) throws YarnException, IOException {
+    reInitializeContainer(request.getContainerId(),
+        request.getContainerLaunchContext(), request.getAutoCommit());
+    return ReInitializeContainerResponse.newInstance();
+  }
+
+  @Override
+  public RestartContainerResponse restartContainer(ContainerId containerId)
+      throws YarnException, IOException {
+    reInitializeContainer(containerId, null, true);
+    return RestartContainerResponse.newInstance();
+  }
+
+  /**
+   * ReInitialize a container using a new Launch Context. If the
+   * retryFailureContext is not provided, The container is
+   * terminated on Failure.
+   *
+   * NOTE: Auto-Commit is true by default. This also means that the rollback
+   *       context is purged as soon as the command to start the new process
+   *       is sent. (The Container moves to RUNNING state)
+   *
+   * @param containerId Container Id.
+   * @param autoCommit Auto Commit flag.
+   * @param reInitLaunchContext Target Launch Context.
+   * @throws YarnException Yarn Exception.
+   */
+  public void reInitializeContainer(ContainerId containerId,
+      ContainerLaunchContext reInitLaunchContext, boolean autoCommit)
+      throws YarnException {
+    Container container = preReInitializeOrLocalizeCheck(containerId,
+        ReInitOp.RE_INIT);
     ResourceSet resourceSet = new ResourceSet();
     try {
-      resourceSet.addResources(upgradeLaunchContext.getLocalResources());
+      if (reInitLaunchContext != null) {
+        resourceSet.addResources(reInitLaunchContext.getLocalResources());
+      }
       dispatcher.getEventHandler().handle(
-          new ContainerReInitEvent(containerId, upgradeLaunchContext,
-              resourceSet));
+          new ContainerReInitEvent(containerId, reInitLaunchContext,
+              resourceSet, autoCommit));
       container.setIsReInitializing(true);
     } catch (URISyntaxException e) {
       LOG.info("Error when parsing local resource URI for upgrade of" +
@@ -1569,8 +1606,56 @@ public class ContainerManagerImpl extends CompositeService implements
     }
   }
 
-  private Container preUpgradeOrLocalizeCheck(ContainerId containerId,
-      ReinitOp op) throws YarnException {
+  /**
+   * Rollback the last reInitialization, if possible.
+   * @param containerId Container ID.
+   * @return Rollback Response.
+   * @throws YarnException Yarn Exception.
+   */
+  @Override
+  public RollbackResponse rollbackLastReInitialization(ContainerId containerId)
+      throws YarnException {
+    Container container = preReInitializeOrLocalizeCheck(containerId,
+        ReInitOp.ROLLBACK);
+    if (container.canRollback()) {
+      dispatcher.getEventHandler().handle(
+          new ContainerEvent(containerId, ContainerEventType.ROLLBACK_REINIT));
+      container.setIsReInitializing(true);
+    } else {
+      throw new YarnException("Nothing to rollback to !!");
+    }
+    return RollbackResponse.newInstance();
+  }
+
+  /**
+   * Commit last reInitialization after which no rollback will be possible.
+   * @param containerId Container ID.
+   * @return Commit Response.
+   * @throws YarnException Yarn Exception.
+   */
+  @Override
+  public CommitResponse commitLastReInitialization(ContainerId containerId)
+      throws YarnException {
+    Container container = preReInitializeOrLocalizeCheck(containerId,
+        ReInitOp.COMMIT);
+    if (container.canRollback()) {
+      container.commitUpgrade();
+    } else {
+      throw new YarnException("Nothing to Commit !!");
+    }
+    return CommitResponse.newInstance();
+  }
+
+  private Container preReInitializeOrLocalizeCheck(ContainerId containerId,
+      ReInitOp op) throws YarnException {
+    UserGroupInformation remoteUgi = getRemoteUgi();
+    NMTokenIdentifier nmTokenIdentifier = selectNMTokenIdentifier(remoteUgi);
+    authorizeUser(remoteUgi, nmTokenIdentifier);
+    if (!nmTokenIdentifier.getApplicationAttemptId().getApplicationId()
+        .equals(containerId.getApplicationAttemptId().getApplicationId())) {
+      throw new YarnException("ApplicationMaster not autorized to perform " +
+          "["+ op + "] on Container [" + containerId + "]!!");
+    }
     Container container = context.getContainers().get(containerId);
     if (container == null) {
       throw new YarnException("Specified " + containerId + " does not exist!");
