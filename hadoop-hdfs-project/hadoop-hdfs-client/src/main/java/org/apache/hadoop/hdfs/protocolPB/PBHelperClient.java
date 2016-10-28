@@ -76,6 +76,7 @@ import org.apache.hadoop.hdfs.protocol.DirectoryListing;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
 import org.apache.hadoop.hdfs.protocol.FsPermissionExtension;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
@@ -139,6 +140,7 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsPermissionProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsServerDefaultsProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.HdfsFileStatusProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.HdfsFileStatusProto.FileType;
+import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FilesAccessInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto.Builder;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlocksProto;
@@ -645,6 +647,22 @@ public class PBHelperClient {
     default:
       return AdminStates.NORMAL;
     }
+  }
+
+  // FilesAccessInfoProto
+  public static FilesAccessInfo convert(FilesAccessInfoProto proto) {
+    return new FilesAccessInfo(proto.getFilesAccessedList(), proto.getFilesAccessCountsList());
+  }
+
+  public static FilesAccessInfoProto convert(FilesAccessInfo info) {
+    if (info == null) {
+      return null;
+    }
+
+    FilesAccessInfoProto.Builder builder = FilesAccessInfoProto.newBuilder();
+    builder.addAllFilesAccessed(info.getFilesAccessed());
+    builder.addAllFilesAccessCounts(info.getFilesAccessCounts());
+    return builder.build();
   }
 
   // LocatedBlocks

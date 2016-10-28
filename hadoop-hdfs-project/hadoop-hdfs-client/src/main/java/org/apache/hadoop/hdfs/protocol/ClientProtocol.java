@@ -136,6 +136,15 @@ public interface ClientProtocol {
   FsServerDefaults getServerDefaults() throws IOException;
 
   /**
+   *
+   * @param reset if true, the counters will be cleared after return
+   * @return
+   * @throws IOException
+   */
+  @Idempotent
+  FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException;
+
+  /**
    * Create a new file entry in the namespace.
    * <p>
    * This will create an empty file specified by the source path.

@@ -218,6 +218,10 @@ message BlockStoragePolicyProto {
   optional StorageTypesProto replicationFallbackPolicy = 5;
 }
 
+message FilesAccessInfoProto {
+  repeated string filesAccessed = 1;
+  repeated int32 filesAccessCounts = 2;
+}
 
 /**
  * A LocatedBlock gives information about a block and its location.

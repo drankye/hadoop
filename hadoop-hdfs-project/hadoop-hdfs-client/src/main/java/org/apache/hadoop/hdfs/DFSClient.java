@@ -117,6 +117,7 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.EncryptionZoneIterator;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
@@ -666,6 +667,16 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       }
       return token;
     }
+  }
+
+  /**
+   * Get file related access statistics info
+   * @param reset after this call all the counters gets reset if true
+   * @return
+   * @throws IOException
+   */
+  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
+    return namenode.getFilesAccessInfo(reset);
   }
 
   /**
@@ -1598,7 +1609,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Get a partial listing of the indicated directory
    * No block locations need to be fetched
    */
-  public DirectoryListing listPaths(String src,  byte[] startAfter)
+  public DirectoryListing listPaths(String src, byte[] startAfter)
       throws IOException {
     return listPaths(src, startAfter, false);
   }

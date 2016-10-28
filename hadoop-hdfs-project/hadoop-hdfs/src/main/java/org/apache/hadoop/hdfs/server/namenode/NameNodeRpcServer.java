@@ -36,8 +36,10 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -98,6 +100,7 @@ import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FSLimitException;
+import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
 import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
@@ -238,6 +241,21 @@ public class NameNodeRpcServer implements NamenodeProtocols {
   protected final InetSocketAddress clientRpcAddress;
   
   private final String minimumDataNodeVersion;
+
+  private Map<String, Integer> accessCounter = new HashMap<String, Integer>();
+  private Object accessCounterLock = new Object();
+
+  @Override
+  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
+    FilesAccessInfo ret;
+    synchronized (accessCounterLock) {
+      ret = new FilesAccessInfo(accessCounter);
+      if (reset) {
+        accessCounter = new HashMap<String, Integer>();
+      }
+    }
+    return ret;
+  }
 
   public NameNodeRpcServer(Configuration conf, NameNode nn)
       throws IOException {
@@ -703,6 +721,16 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       throws IOException {
     checkNNStartup();
     metrics.incrGetBlockLocations();
+    if(offset == 0) {
+      synchronized (accessCounterLock) {
+        Integer count = accessCounter.get(src);
+        if (count == null) {
+          count = 0;
+        }
+        count++;
+        accessCounter.put(src, count);
+      }
+    }
     return namesystem.getBlockLocations(getClientMachine(), 
                                         src, offset, length);
   }
