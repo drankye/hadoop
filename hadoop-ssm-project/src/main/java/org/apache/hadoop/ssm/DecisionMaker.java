@@ -1,6 +1,10 @@
 package org.apache.hadoop.ssm;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.server.mover.Mover;
+import org.apache.hadoop.util.ToolRunner;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -80,26 +84,41 @@ public class DecisionMaker {
     }
   }
 
-  private boolean moveToSSD(String fileName) {
+  private boolean moveToSSD(DFSClient dfsClient, Configuration conf, String fileName) {
     FileAccess fileAccess = fileMap.get(fileName);
     if (fileAccess == null) {
       return false;
     }
-    fileAccess.isMoving = false;
-    fileAccess.isOnSSD = true;
+    fileAccess.isMoving = true;
+    fileAccess.isOnSSD = false;
     onSSDMap.put(fileName, fileAccess);
+    try {
+      dfsClient.setStoragePolicy(fileName, "ONE_SSD");
+    } catch (Exception e) {
+      return false;
+    }
+    int rc = ToolRunner.run(conf, new Mover.Cli(),
+            new String[] {"-p", fileName});
+    if (rc == 0) {
+      fileAccess.isMoving = false;
+      fileAccess.isOnSSD = true;
+    }
+    else {
+      fileAccess.isMoving = false;
+      fileAccess.isOnSSD = false;
+    }
     return true;
   }
 
-  private void calculateMover() {
+  private void calculateMover(DFSClient dfsClient, Configuration conf) {
     for (String fileName : newFilesExceedThreshold) {
-      moveToSSD(fileName);
+      moveToSSD(dfsClient, conf, fileName);
     }
   }
 
-  public void execution(FilesAccessInfo filesAccessInfo) {
+  public void execution(DFSClient dfsClient, Configuration conf, FilesAccessInfo filesAccessInfo) {
     getFilesAccess(filesAccessInfo);
-    calculateMover();
+    calculateMover(dfsClient, conf);
   }
 }
 

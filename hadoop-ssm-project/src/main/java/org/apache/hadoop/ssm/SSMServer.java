@@ -34,12 +34,12 @@ public class SSMServer {
     public void run() {
       FilesAccessInfo filesAccessInfo;
       try {
-        filesAccessInfo = dfsClient.getFilesAccessInfo(true);
+        filesAccessInfo = dfsClient.getFilesAccessInfo();
       } catch (Exception e) {
         LOG.warn("getFilesAccessInfo exception");
         return;
       }
-      decisionMaker.execution(filesAccessInfo);
+      decisionMaker.execution(dfsClient, conf, filesAccessInfo);
     }
   }
 
