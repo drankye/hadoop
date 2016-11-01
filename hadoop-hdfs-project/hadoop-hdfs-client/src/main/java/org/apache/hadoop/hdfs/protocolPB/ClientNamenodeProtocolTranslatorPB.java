@@ -254,10 +254,9 @@ public class ClientNamenodeProtocolTranslatorPB implements
   }
 
   @Override
-  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
+  public FilesAccessInfo getFilesAccessInfo() throws IOException {
     GetFilesAccessInfoRequestProto req = GetFilesAccessInfoRequestProto
             .newBuilder()
-            .setReset(reset)
             .build();
     try {
       GetFilesAccessInfoResponseProto resp = rpcProxy.getFilesAccessInfo(null, req);

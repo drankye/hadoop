@@ -651,7 +651,11 @@ public class PBHelperClient {
 
   // FilesAccessInfoProto
   public static FilesAccessInfo convert(FilesAccessInfoProto proto) {
-    return new FilesAccessInfo(proto.getFilesAccessedList(), proto.getFilesAccessCountsList());
+    FilesAccessInfo ret = new FilesAccessInfo();
+    ret.setAccessCounter(proto.getFilesAccessedList(), proto.getFilesAccessCountsList());
+    ret.setFilesRenamed(proto.getFilesRenamedSrcList(), proto.getFilesRenamedDstList());
+    ret.setFilesDeleted(proto.getFilesDeletedList());
+    return ret;
   }
 
   public static FilesAccessInfoProto convert(FilesAccessInfo info) {
@@ -662,6 +666,9 @@ public class PBHelperClient {
     FilesAccessInfoProto.Builder builder = FilesAccessInfoProto.newBuilder();
     builder.addAllFilesAccessed(info.getFilesAccessed());
     builder.addAllFilesAccessCounts(info.getFilesAccessCounts());
+    builder.addAllFilesRenamedSrc(info.getFilesRenamedSrc());
+    builder.addAllFilesRenamedDst(info.getFilesRenamedDst());
+    builder.addAllFilesDeleted(info.getFilesDeleted());
     return builder.build();
   }
 

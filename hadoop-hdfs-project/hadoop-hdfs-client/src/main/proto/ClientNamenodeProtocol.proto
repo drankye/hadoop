@@ -261,8 +261,7 @@ message DeleteResponseProto {
     required bool result = 1;
 }
 
-message GetFilesAccessInfoRequestProto {
-    required bool reset = 1;
+message GetFilesAccessInfoRequestProto { // void
 }
 
 message GetFilesAccessInfoResponseProto {

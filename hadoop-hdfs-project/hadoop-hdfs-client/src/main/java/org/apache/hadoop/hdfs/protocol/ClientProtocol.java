@@ -137,12 +137,11 @@ public interface ClientProtocol {
 
   /**
    *
-   * @param reset if true, the counters will be cleared after return
    * @return
    * @throws IOException
    */
   @Idempotent
-  FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException;
+  FilesAccessInfo getFilesAccessInfo() throws IOException;
 
   /**
    * Create a new file entry in the namespace.

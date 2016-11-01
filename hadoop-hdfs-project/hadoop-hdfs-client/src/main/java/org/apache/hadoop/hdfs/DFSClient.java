@@ -671,12 +671,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
   /**
    * Get file related access statistics info
-   * @param reset after this call all the counters gets reset if true
    * @return
    * @throws IOException
    */
-  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
-    return namenode.getFilesAccessInfo(reset);
+  public FilesAccessInfo getFilesAccessInfo() throws IOException {
+    return namenode.getFilesAccessInfo();
   }
 
   /**

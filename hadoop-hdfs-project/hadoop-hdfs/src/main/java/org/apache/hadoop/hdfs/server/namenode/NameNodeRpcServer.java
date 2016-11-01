@@ -33,6 +33,7 @@ import static org.apache.hadoop.util.Time.now;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -243,16 +244,27 @@ public class NameNodeRpcServer implements NamenodeProtocols {
   private final String minimumDataNodeVersion;
 
   private Map<String, Integer> accessCounter = new HashMap<String, Integer>();
-  private Object accessCounterLock = new Object();
+  private List<String> renameSrcCounter = new ArrayList<>();
+  private List<String> renameDstCounter = new ArrayList<>();
+  private List<String> deletedFilesCounter = new ArrayList<>();
 
   @Override
-  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
-    FilesAccessInfo ret;
-    synchronized (accessCounterLock) {
-      ret = new FilesAccessInfo(accessCounter);
-      if (reset) {
-        accessCounter = new HashMap<String, Integer>();
-      }
+  public FilesAccessInfo getFilesAccessInfo() throws IOException {
+    FilesAccessInfo ret = new FilesAccessInfo();
+    synchronized (accessCounter) {
+      ret.setAccessCounter(accessCounter);
+      accessCounter = new HashMap<String, Integer>();
+    }
+
+    synchronized (renameSrcCounter) {
+      ret.setFilesRenamed(renameSrcCounter, renameDstCounter);
+      renameSrcCounter = new ArrayList<>();
+      renameDstCounter = new ArrayList<>();
+    }
+
+    synchronized (deletedFilesCounter) {
+      ret.setFilesDeleted(deletedFilesCounter);
+      deletedFilesCounter = new ArrayList<>();
     }
     return ret;
   }
@@ -722,7 +734,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     checkNNStartup();
     metrics.incrGetBlockLocations();
     if(offset == 0) {
-      synchronized (accessCounterLock) {
+      synchronized (accessCounter) {
         Integer count = accessCounter.get(src);
         if (count == null) {
           count = 0;
@@ -1008,6 +1020,10 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     }
     if (ret) {
       metrics.incrFilesRenamed();
+      synchronized (renameSrcCounter) {
+        renameSrcCounter.add(src);
+        renameDstCounter.add(dst);
+      }
     }
     return ret;
   }
@@ -1052,6 +1068,10 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       success = true;
     } finally {
       RetryCache.setState(cacheEntry, success);
+      synchronized (renameSrcCounter) {
+        renameSrcCounter.add(src);
+        renameDstCounter.add(dst);
+      }
     }
     metrics.incrFilesRenamed();
   }
@@ -1092,8 +1112,12 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     } finally {
       RetryCache.setState(cacheEntry, ret);
     }
-    if (ret) 
+    if (ret) {
       metrics.incrDeleteFileOps();
+      synchronized (deletedFilesCounter) {
+        deletedFilesCounter.add(src);
+      }
+    }
     return ret;
   }
 
