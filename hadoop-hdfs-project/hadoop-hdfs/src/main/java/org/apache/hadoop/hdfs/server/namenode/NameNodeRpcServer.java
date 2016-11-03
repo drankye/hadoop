@@ -33,12 +33,12 @@ import static org.apache.hadoop.util.Time.now;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -109,6 +109,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.protocol.NNEvent;
 import org.apache.hadoop.hdfs.protocol.NSQuotaExceededException;
 import org.apache.hadoop.hdfs.protocol.QuotaByStorageTypeExceededException;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
@@ -244,9 +245,8 @@ public class NameNodeRpcServer implements NamenodeProtocols {
   private final String minimumDataNodeVersion;
 
   private Map<String, Integer> accessCounter = new HashMap<String, Integer>();
-  private List<String> renameSrcCounter = new ArrayList<>();
-  private List<String> renameDstCounter = new ArrayList<>();
-  private List<String> deletedFilesCounter = new ArrayList<>();
+  private List<NNEvent> nnEvents = new LinkedList<>();
+  private Object nnEventsLock = new Object();
 
   @Override
   public FilesAccessInfo getFilesAccessInfo() throws IOException {
@@ -256,15 +256,9 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       accessCounter = new HashMap<String, Integer>();
     }
 
-    synchronized (renameSrcCounter) {
-      ret.setFilesRenamed(renameSrcCounter, renameDstCounter);
-      renameSrcCounter = new ArrayList<>();
-      renameDstCounter = new ArrayList<>();
-    }
-
-    synchronized (deletedFilesCounter) {
-      ret.setFilesDeleted(deletedFilesCounter);
-      deletedFilesCounter = new ArrayList<>();
+    synchronized (nnEventsLock) {
+      ret.setNnEvents(nnEvents);
+      nnEvents = new LinkedList<>();
     }
     return ret;
   }
@@ -1020,9 +1014,8 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     }
     if (ret) {
       metrics.incrFilesRenamed();
-      synchronized (renameSrcCounter) {
-        renameSrcCounter.add(src);
-        renameDstCounter.add(dst);
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_RENAME, src, dst));
       }
     }
     return ret;
@@ -1068,9 +1061,8 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       success = true;
     } finally {
       RetryCache.setState(cacheEntry, success);
-      synchronized (renameSrcCounter) {
-        renameSrcCounter.add(src);
-        renameDstCounter.add(dst);
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_RENAME, src, dst));
       }
     }
     metrics.incrFilesRenamed();
@@ -1114,8 +1106,8 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     }
     if (ret) {
       metrics.incrDeleteFileOps();
-      synchronized (deletedFilesCounter) {
-        deletedFilesCounter.add(src);
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_DELETE, src));
       }
     }
     return ret;
