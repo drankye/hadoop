@@ -1,0 +1,84 @@
+package org.apache.hadoop.ssm.parse
+
+import java.time.Duration
+
+import org.apache.hadoop.ssm.api.Expression._
+import org.apache.hadoop.ssm.Condition
+import scala.util.parsing.combinator.syntactical.StandardTokenParsers
+
+import org.apache.hadoop.ssm.api.Action
+import org.apache.hadoop.ssm.api.Property
+
+object SSMRuleParser extends StandardTokenParsers{
+
+  lexical.delimiters += (".", ":", " ", "(", ")", "|", ">=", "<=", "<", ">", "==", "!=")
+  lexical.reserved += ("file", "name", "matches")
+
+  def parseTime(time: Int, unit: String): Duration = {
+    unit match {
+      case "min" => Duration.ofMinutes(time)
+      case "sec" => Duration.ofSeconds(time)
+      case "hour" => Duration.ofHours(time)
+    }
+  }
+
+  def parse: Parser[SSMRule] =
+    fileFilter ~ ":" ~ propertyExpression ~ "|" ~ action ^^ {
+      case filter ~ ":" ~ tree ~ "|" ~ act => new SSMRule(filter, tree, act)
+    }
+
+  def fileFilter: Parser[FileFilterRule[String]] =
+    "file" ~ "name" ~ "matches" ~ "(" ~ stringLit ~ ")" ^^ {
+      case "file" ~ "name" ~ "matches" ~ "(" ~ regex ~ ")" =>
+        new FileFilterRule[String]((s: String) => s.matches(regex))
+    }
+
+  def propertyExpression: Parser[TreeNode] =
+    propertyRule ~ opt(operator ~ propertyExpression) ^^ {
+      case p ~ None => TreeNode(p, null, null)
+      case p ~ Some(op ~ e) => TreeNode(op, p, e)
+    }
+
+  def propertyRule: Parser[PropertyFilterRule[Int]] =
+    property ~ opt(time) ~ numericExpression ^^ {
+      case p ~ None ~ condition => PropertyFilterRule[Int](condition, p)
+      case p ~ Some(t) ~ condition => PropertyFilterRule[Int](condition, p, Window(t, t))
+    }
+
+  def action: Parser[Action.Value] =
+    ident ^^ { case action => Action.parse(action) }
+
+  def property: Parser[Property.Value] =
+    ident ^^ { case property => Property.parse(property) }
+
+  def numericExpression: Parser[Condition[Int]] =
+    ("<" | "<=" | ">=" | ">" | "==" | "!=") ~ numericLit ^^ {
+      case ">=" ~ num => (arg: Int) => arg >= num.toInt
+      case ">" ~ num => (arg: Int) => arg > num.toInt
+      case "<=" ~ num => (arg: Int) => arg <= num.toInt
+      case "<" ~ num => (arg: Int) => arg < num.toInt
+      case "==" ~ num => (arg: Int) => arg == num.toInt
+      case "!=" ~ num => (arg: Int) => arg != num.toInt
+    }
+
+  def operator: Parser[Operator] = {
+    ident ^^ {
+      case "and" => AND
+      case "or" => OR
+    }
+  }
+
+  def time: Parser[Duration] =
+    "(" ~ numericLit ~ ident ~ ")" ^^ {
+      case "(" ~ amount ~ timeUnit ~ ")" => parseTime(amount.toInt, timeUnit)
+    }
+
+  def parseAll(rule: String) = {
+    parse(new lexical.Scanner(rule.replace(".", " ")))
+  }
+}
+
+object Test extends App {
+  val result = SSMRuleParser.parseAll("file.name.matches('abc*') : accessCount(10 min) >= 10 | cache")
+  println(result)
+}
