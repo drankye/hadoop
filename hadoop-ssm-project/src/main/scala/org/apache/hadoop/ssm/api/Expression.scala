@@ -1,8 +1,8 @@
 package org.apache.hadoop.ssm.api
 
 import org.apache.hadoop.ssm._
-import org.apache.hadoop.ssm.api.Property._
-import org.apache.hadoop.ssm.api.Action._
+import org.apache.hadoop.ssm.Property
+import org.apache.hadoop.ssm.Action
 import java.time.Duration
 
 object Expression {
@@ -22,7 +22,7 @@ object Expression {
     }
 
     def cache: SSMRule = {
-      new SSMRule(null, this, CACHE)
+      new SSMRule(null, this, Action.CACHE)
     }
   }
 
