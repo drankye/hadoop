@@ -6,11 +6,10 @@ import org.apache.hadoop.ssm.api.Expression._
 import org.apache.hadoop.ssm.Condition
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 
-import org.apache.hadoop.ssm.api.Action
-import org.apache.hadoop.ssm.api.Property
+import org.apache.hadoop.ssm.Action
+import org.apache.hadoop.ssm.Property
 
 object SSMRuleParser extends StandardTokenParsers{
-
   lexical.delimiters += (".", ":", " ", "(", ")", "|", ">=", "<=", "<", ">", "==", "!=")
   lexical.reserved += ("file", "name", "matches")
 
@@ -30,7 +29,7 @@ object SSMRuleParser extends StandardTokenParsers{
   def fileFilter: Parser[FileFilterRule[String]] =
     "file" ~ "name" ~ "matches" ~ "(" ~ stringLit ~ ")" ^^ {
       case "file" ~ "name" ~ "matches" ~ "(" ~ regex ~ ")" =>
-        new FileFilterRule[String]((s: String) => s.matches(regex))
+        new FileFilterRule[String]((s: String) => regex.r.pattern.matcher(s).matches())
     }
 
   def propertyExpression: Parser[TreeNode] =
@@ -42,14 +41,14 @@ object SSMRuleParser extends StandardTokenParsers{
   def propertyRule: Parser[PropertyFilterRule[Int]] =
     property ~ opt(time) ~ numericExpression ^^ {
       case p ~ None ~ condition => PropertyFilterRule[Int](condition, p)
-      case p ~ Some(t) ~ condition => PropertyFilterRule[Int](condition, p, Window(t, t))
+      case p ~ Some(t) ~ condition => PropertyFilterRule[Int](condition, p, Window(t, Duration.ofMinutes(1)))
     }
 
-  def action: Parser[Action.Value] =
-    ident ^^ { case action => Action.parse(action) }
+  def action: Parser[Action] =
+    ident ^^ { case action => Action.getActionType(action) }
 
-  def property: Parser[Property.Value] =
-    ident ^^ { case property => Property.parse(property) }
+  def property: Parser[Property] =
+    ident ^^ { case property => Property.getPropertyType(property) }
 
   def numericExpression: Parser[Condition[Int]] =
     ("<" | "<=" | ">=" | ">" | "==" | "!=") ~ numericLit ^^ {
@@ -79,6 +78,6 @@ object SSMRuleParser extends StandardTokenParsers{
 }
 
 object Test extends App {
-  val result = SSMRuleParser.parseAll("file.name.matches('abc*') : accessCount(10 min) >= 10 | cache")
+  val result = SSMRuleParser.parseAll("file.name matches('abc*') : accessCount(10 min) >= 10 | cache")
   println(result)
 }
