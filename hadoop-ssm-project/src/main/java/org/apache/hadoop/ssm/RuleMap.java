@@ -9,13 +9,13 @@ import java.util.List;
 public class RuleMap {
   private long id;
   private LinkedList<FileAccessMap> ruleMaps;
-  private RuleObject ruleObject;
+  //private RuleObject ruleObject;
   private int slideStep;
 
-  public RuleMap(RuleObject ruleObject) {
+  /*public RuleMap(RuleObject ruleObject) {
     this.ruleObject = ruleObject;
     this.id = ruleObject.getId();
     ruleMaps = new FileAccessMap[ruleObject];
-  }
+  }*/
 
 }
