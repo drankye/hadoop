@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,6 +109,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.protocol.NNEvent;
 import org.apache.hadoop.hdfs.protocol.NSQuotaExceededException;
 import org.apache.hadoop.hdfs.protocol.QuotaByStorageTypeExceededException;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
@@ -243,16 +245,20 @@ public class NameNodeRpcServer implements NamenodeProtocols {
   private final String minimumDataNodeVersion;
 
   private Map<String, Integer> accessCounter = new HashMap<String, Integer>();
-  private Object accessCounterLock = new Object();
+  private List<NNEvent> nnEvents = new LinkedList<>();
+  private Object nnEventsLock = new Object();
 
   @Override
-  public FilesAccessInfo getFilesAccessInfo(boolean reset) throws IOException {
-    FilesAccessInfo ret;
-    synchronized (accessCounterLock) {
-      ret = new FilesAccessInfo(accessCounter);
-      if (reset) {
-        accessCounter = new HashMap<String, Integer>();
-      }
+  public FilesAccessInfo getFilesAccessInfo() throws IOException {
+    FilesAccessInfo ret = new FilesAccessInfo();
+    synchronized (accessCounter) {
+      ret.setAccessCounter(accessCounter);
+      accessCounter = new HashMap<String, Integer>();
+    }
+
+    synchronized (nnEventsLock) {
+      ret.setNnEvents(nnEvents);
+      nnEvents = new LinkedList<>();
     }
     return ret;
   }
@@ -722,7 +728,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     checkNNStartup();
     metrics.incrGetBlockLocations();
     if(offset == 0) {
-      synchronized (accessCounterLock) {
+      synchronized (accessCounter) {
         Integer count = accessCounter.get(src);
         if (count == null) {
           count = 0;
@@ -1008,6 +1014,9 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     }
     if (ret) {
       metrics.incrFilesRenamed();
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_RENAME, src, dst));
+      }
     }
     return ret;
   }
@@ -1052,6 +1061,9 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       success = true;
     } finally {
       RetryCache.setState(cacheEntry, success);
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_RENAME, src, dst));
+      }
     }
     metrics.incrFilesRenamed();
   }
@@ -1092,8 +1104,12 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     } finally {
       RetryCache.setState(cacheEntry, ret);
     }
-    if (ret) 
+    if (ret) {
       metrics.incrDeleteFileOps();
+      synchronized (nnEventsLock) {
+        nnEvents.add(new NNEvent(NNEvent.EV_DELETE, src));
+      }
+    }
     return ret;
   }
 

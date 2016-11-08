@@ -384,7 +384,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
           RpcController controller, GetFilesAccessInfoRequestProto req)
     throws ServiceException {
     try {
-      FilesAccessInfo info = server.getFilesAccessInfo(req.getReset());
+      FilesAccessInfo info = server.getFilesAccessInfo();
       GetFilesAccessInfoResponseProto.Builder builder = GetFilesAccessInfoResponseProto.newBuilder();
       if (builder != null) {
         return builder.setAccessInfo(PBHelperClient.convert(info)).build();

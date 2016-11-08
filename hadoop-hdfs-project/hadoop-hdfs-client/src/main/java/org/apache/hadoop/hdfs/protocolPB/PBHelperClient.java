@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,6 +88,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.LocatedStripedBlock;
+import org.apache.hadoop.hdfs.protocol.NNEvent;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeStatus;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
@@ -136,14 +138,15 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeStorageProto.Sto
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DirectoryListingProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ExtendedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ErasureCodingPolicyProto;
+import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FilesAccessInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsPermissionProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsServerDefaultsProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.HdfsFileStatusProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.HdfsFileStatusProto.FileType;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FilesAccessInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto.Builder;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlocksProto;
+import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.NNEventProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.QuotaUsageProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.RollingUpgradeStatusProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.SnapshotDiffReportEntryProto;
@@ -649,9 +652,44 @@ public class PBHelperClient {
     }
   }
 
+  // NNEventProto
+  public static NNEvent convert(NNEventProto proto) {
+    int size = proto.getArgsCount();
+    NNEvent ret = new NNEvent(proto.getEventType(),
+            proto.getArgsList().toArray(new String[size]));
+    return ret;
+  }
+
+  public static NNEventProto convert(NNEvent event) {
+    if (event == null) {
+      return null;
+    }
+
+    NNEventProto.Builder builder = NNEventProto.newBuilder();
+    builder.setEventType(event.getEventType());
+    for (String arg : event.getArgs()) {
+      builder.addArgs(arg);
+    }
+    return builder.build();
+  }
+
   // FilesAccessInfoProto
   public static FilesAccessInfo convert(FilesAccessInfoProto proto) {
-    return new FilesAccessInfo(proto.getFilesAccessedList(), proto.getFilesAccessCountsList());
+    FilesAccessInfo ret = new FilesAccessInfo();
+    ret.setAccessCounter(proto.getFilesAccessedList(),
+            proto.getFilesAccessCountsList());
+    List<NNEventProto> eventsProto = proto.getNnEventsList();
+    List<NNEvent> events;
+    if (eventsProto == null) {
+      events = null;
+    } else {
+      events = new ArrayList<>(eventsProto.size());
+      for (int i = 0; i < eventsProto.size(); i++) {
+        events.add(i, convert(eventsProto.get(i)));
+      }
+    }
+    ret.setNnEvents(events);
+    return ret;
   }
 
   public static FilesAccessInfoProto convert(FilesAccessInfo info) {
@@ -662,6 +700,17 @@ public class PBHelperClient {
     FilesAccessInfoProto.Builder builder = FilesAccessInfoProto.newBuilder();
     builder.addAllFilesAccessed(info.getFilesAccessed());
     builder.addAllFilesAccessCounts(info.getFilesAccessCounts());
+    List<NNEvent> events = info.getNnEvents();
+    List<NNEventProto> eventsProto;
+    if (events == null) {
+      eventsProto = null;
+    } else {
+      eventsProto = new ArrayList<>(events.size());
+      for (int i = 0; i < events.size(); i++) {
+        eventsProto.add(i, convert(events.get(i)));
+      }
+    }
+    builder.addAllNnEvents(eventsProto);
     return builder.build();
   }
 

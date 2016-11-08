@@ -218,9 +218,15 @@ message BlockStoragePolicyProto {
   optional StorageTypesProto replicationFallbackPolicy = 5;
 }
 
+message NNEventProto {
+  required int32 eventType = 1;
+  repeated string args = 2;
+}
+
 message FilesAccessInfoProto {
   repeated string filesAccessed = 1;
   repeated int32 filesAccessCounts = 2;
+  repeated NNEventProto nnEvents = 3;
 }
 
 /**

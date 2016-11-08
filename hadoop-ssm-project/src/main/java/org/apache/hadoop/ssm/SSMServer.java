@@ -34,18 +34,18 @@ public class SSMServer {
     public void run() {
       FilesAccessInfo filesAccessInfo;
       try {
-        filesAccessInfo = dfsClient.getFilesAccessInfo(true);
+        filesAccessInfo = dfsClient.getFilesAccessInfo();
       } catch (Exception e) {
         LOG.warn("getFilesAccessInfo exception");
         return;
       }
-      decisionMaker.execution(filesAccessInfo);
+      decisionMaker.execution(dfsClient, conf, filesAccessInfo);
     }
   }
 
   public static void main(String[] args) throws Exception {
     DFSClient dfsClient = new DFSClient(DFSUtilClient.getNNAddress(conf), conf);
-    DecisionMaker decisionMaker = new DecisionMaker(50);
+    DecisionMaker decisionMaker = new DecisionMaker(50, "ONE_SSD");
     Timer timer = new Timer();
     timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, 5*60*1000L);
   }
