@@ -54,11 +54,11 @@ object Expression {
     }
   }
 
-  case class PropertyFilterRule[T](condition: Condition[T], property: Property,
+  case class PropertyFilterRule[T](condition: Condition[T], threshold: T, property: Property,
     propertyManipulation: PropertyManipulation = Historical) extends Rule[T] {
 
     def in(stateManipulation: PropertyManipulation): PropertyFilterRule[T] = {
-      new PropertyFilterRule(condition, property, stateManipulation)
+      new PropertyFilterRule(condition, threshold, property, stateManipulation)
     }
 
     def meetCondition(arg: T): Boolean = {

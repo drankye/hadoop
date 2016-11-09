@@ -100,8 +100,9 @@ public class DecisionMaker {
     } catch (Exception e) {
       return false;
     }
-    int rc = ToolRunner.run(conf, new Mover.Cli(),
-            new String[] {"-p", fileName});
+    int rc = 0;
+//    int rc = ToolRunner.run(conf, new Mover.Cli(),
+//            new String[] {"-p", fileName});
     if (rc == 0) { // Mover success
       fileAccess.isMoving = false;
       fileAccess.isOnSSD = true;

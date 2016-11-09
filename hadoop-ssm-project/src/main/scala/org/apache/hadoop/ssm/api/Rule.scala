@@ -11,9 +11,9 @@ object FILE {
 //    new FileFilterRule(condition)
 //  }
 
-  def accessCount(condition: Condition[Int]): PropertyFilterRule[Int] = {
-    new PropertyFilterRule(condition, Property.ACCESSCOUNT)
-  }
+//  def accessCount(condition: Condition[Int]): PropertyFilterRule[Int] = {
+//    new PropertyFilterRule(condition, Property.ACCESSCOUNT)
+//  }
 }
 
 object Test extends App {
