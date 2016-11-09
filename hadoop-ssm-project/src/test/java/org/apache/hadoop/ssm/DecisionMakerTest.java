@@ -18,7 +18,7 @@ public class DecisionMakerTest {
     for (int i = 0; i < 10; i++) {
       countMap.put("a" + i, 10*i);
     }
-    FilesAccessInfo filesAccessInfo = new FilesAccessInfo(countMap);
-    decisionMaker.execution(filesAccessInfo);
+//    FilesAccessInfo filesAccessInfo = new FilesAccessInfo(countMap);
+//    decisionMaker.execution(filesAccessInfo);
   }
 }

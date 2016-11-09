@@ -11,13 +11,14 @@ import org.apache.hadoop.ssm.Property
 
 object SSMRuleParser extends StandardTokenParsers{
   lexical.delimiters += (".", ":", " ", "(", ")", "|", ">=", "<=", "<", ">", "==", "!=")
-  lexical.reserved += ("file", "name", "matches")
+  lexical.reserved += ("file", "path", "matches")
 
   def parseTime(time: Int, unit: String): Duration = {
     unit match {
       case "min" => Duration.ofMinutes(time)
       case "sec" => Duration.ofSeconds(time)
       case "hour" => Duration.ofHours(time)
+      case "day" => Duration.ofDays(time)
     }
   }
 
@@ -26,10 +27,9 @@ object SSMRuleParser extends StandardTokenParsers{
       case filter ~ ":" ~ tree ~ "|" ~ act => new SSMRule(filter, tree, act)
     }
 
-  def fileFilter: Parser[FileFilterRule[String]] =
-    "file" ~ "name" ~ "matches" ~ "(" ~ stringLit ~ ")" ^^ {
-      case "file" ~ "name" ~ "matches" ~ "(" ~ regex ~ ")" =>
-        new FileFilterRule[String]((s: String) => regex.r.pattern.matcher(s).matches())
+  def fileFilter: Parser[FileFilterRule] =
+    "file" ~ "path" ~ "matches" ~ "(" ~ stringLit ~ ")" ^^ {
+      case "file" ~ "path" ~ "matches" ~ "(" ~ regex ~ ")" => new FileFilterRule(regex)
     }
 
   def propertyExpression: Parser[TreeNode] =
@@ -38,10 +38,10 @@ object SSMRuleParser extends StandardTokenParsers{
       case p ~ Some(op ~ e) => TreeNode(op, p, e)
     }
 
-  def propertyRule: Parser[PropertyFilterRule[Int]] =
+  def propertyRule: Parser[PropertyFilterRule[_ <: Any]] =
     property ~ opt(time) ~ numericExpression ^^ {
-      case p ~ None ~ condition => PropertyFilterRule[Int](condition, p)
-      case p ~ Some(t) ~ condition => PropertyFilterRule[Int](condition, p, Window(t, Duration.ofMinutes(1)))
+      case p ~ None ~ condition => PropertyFilterRule(condition._1, condition._2, p)
+      case p ~ Some(t) ~ condition => PropertyFilterRule(condition._1, condition._2, p, Window(t, t))
     }
 
   def action: Parser[Action] =
@@ -50,14 +50,15 @@ object SSMRuleParser extends StandardTokenParsers{
   def property: Parser[Property] =
     ident ^^ { case property => Property.getPropertyType(property) }
 
-  def numericExpression: Parser[Condition[Int]] =
-    ("<" | "<=" | ">=" | ">" | "==" | "!=") ~ numericLit ^^ {
-      case ">=" ~ num => (arg: Int) => arg >= num.toInt
-      case ">" ~ num => (arg: Int) => arg > num.toInt
-      case "<=" ~ num => (arg: Int) => arg <= num.toInt
-      case "<" ~ num => (arg: Int) => arg < num.toInt
-      case "==" ~ num => (arg: Int) => arg == num.toInt
-      case "!=" ~ num => (arg: Int) => arg != num.toInt
+  def numericExpression: Parser[(Condition[Long], Long)] =
+    ("<" | "<=" | ">=" | ">" | "==" | "!=") ~
+      (numericLit ^^ {case n => n.toLong} | time ^^ {case t => t.toMillis}) ^^ {
+      case ">=" ~ num => ((arg: Long) => arg >= num, num)
+      case ">" ~ num => ((arg: Long) => arg > num, num)
+      case "<=" ~ num => ((arg: Long) => arg <= num, num)
+      case "<" ~ num => ((arg: Long) => arg < num, num)
+      case "==" ~ num => ((arg: Long) => arg == num, num)
+      case "!=" ~ num => ((arg: Long) => arg != num, num)
     }
 
   def operator: Parser[Operator] = {
@@ -78,6 +79,10 @@ object SSMRuleParser extends StandardTokenParsers{
 }
 
 object Test extends App {
-  val result = SSMRuleParser.parseAll("file.name matches('abc*') : accessCount(10 min) >= 10 | cache")
-  println(result)
+  val result = SSMRuleParser.parseAll("file.path matches('abc*') : age >= 10 | cache")
+  //println(result.get.root.value.asInstanceOf[PropertyFilterRule[Long]].threshold)
+
+  val pathPattern = "^(/[a-zA-Z0-9]+)+".r
+  val path = "/root/user/huafengw/[a-zA-Z0-9]*"
+  println(pathPattern.findFirstIn(path))
 }
