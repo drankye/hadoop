@@ -1,8 +1,16 @@
 package org.apache.hadoop.ssm;
 
+import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.NNEvent;
+import org.apache.hadoop.ssm.api.Expression.FileFilterRule;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+
+import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_DELETE;
+import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_RENAME;
 
 /**
  * Created by root on 11/4/16.
@@ -32,7 +40,9 @@ public class FileAccessMap {
     return fileMap.containsKey(fileName);
   }
 
-  public void rename(String srcName, String dstName){
+  public Set<Map.Entry<String, FileAccess>> entrySet() { return fileMap.entrySet();}
+
+  public void rename(String srcName, String dstName, FileFilterRule fileFilterRule){
     FileAccess srcFileAccess = fileMap.get(srcName);
     FileAccess dstFileAccess = fileMap.get(dstName);
     if (srcFileAccess != null) { // src must be a file
@@ -42,7 +52,9 @@ public class FileAccessMap {
       if (dstFileAccess != null) {
         srcFileAccess.accessCount += dstFileAccess.accessCount;
       }
-      fileMap.put(dstName, srcFileAccess);
+      if (fileFilterRule == null || fileFilterRule.meetCondition(dstName)) {
+        fileMap.put(dstName, srcFileAccess);
+      }
     }
     else { // search all files under this directory
       HashMap<String, FileAccess> renameMap = new HashMap<String, FileAccess>();
@@ -59,7 +71,9 @@ public class FileAccessMap {
             fileAccess.accessCount += dstFileAccess.accessCount;
           }
           it.remove();
-          renameMap.put(fileAccess.fileName, fileAccess);
+          if (fileFilterRule == null || fileFilterRule.meetCondition(dstName)) {
+            renameMap.put(fileAccess.fileName, fileAccess);
+          }
         }
       }
       fileMap.putAll(renameMap);
@@ -81,4 +95,95 @@ public class FileAccessMap {
       }
     }
   }
+
+  /**
+   * Process rename and delete events
+   * @param filesAccessInfo
+   */
+  public void processNnEvents(FilesAccessInfo filesAccessInfo) {
+    if (fileMap == null) {
+      return;
+    }
+    if (filesAccessInfo.getNnEvents() != null) {
+      for (NNEvent nnEvent : filesAccessInfo.getNnEvents()) {
+        switch (nnEvent.getEventType()) {
+          case EV_RENAME:
+            rename(nnEvent.getArgs()[0], nnEvent.getArgs()[1], null);
+            break;
+          case EV_DELETE:
+            delete(nnEvent.getArgs()[0]);
+            break;
+          default:
+        }
+      }
+    }
+  }
+
+  /**
+   * Process rename and delete events with FileFilterRule to decide
+   * whether or not to remove the file according to FileFilterRule after rename
+   * @param filesAccessInfo
+   * @param fileFilterRule
+   */
+  public void processNnEvents(FilesAccessInfo filesAccessInfo, FileFilterRule fileFilterRule) {
+    if (fileMap == null) {
+      return;
+    }
+    if (filesAccessInfo.getNnEvents() != null) {
+      for (NNEvent nnEvent : filesAccessInfo.getNnEvents()) {
+        switch (nnEvent.getEventType()) {
+          case EV_RENAME:
+            rename(nnEvent.getArgs()[0], nnEvent.getArgs()[1], fileFilterRule);
+            break;
+          case EV_DELETE:
+            delete(nnEvent.getArgs()[0]);
+            break;
+          default:
+        }
+      }
+    }
+  }
+
+  /**
+   * Update fileMap
+   * @param filesAccessInfo
+   */
+  public void updateFileMap(FilesAccessInfo filesAccessInfo) {
+    if (filesAccessInfo.getFilesAccessed() != null) {
+      for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
+        String fileName = filesAccessInfo.getFilesAccessed().get(i);
+        Integer fileAccessCount = filesAccessInfo.getFilesAccessCounts().get(i);
+        FileAccess fileAccess = get(fileName);
+        if (fileAccess != null) {
+          fileAccess.accessCount += fileAccessCount;
+        } else {
+          fileAccess = new FileAccess(fileName, fileAccessCount);
+          put(fileName, fileAccess);
+        }
+      }
+    }
+  }
+
+  /**
+   * Update fileMap with FileFilterRule to only store the files which accord to FileFilterRule
+   * @param filesAccessInfo
+   */
+  public void updateFileMap(FilesAccessInfo filesAccessInfo, FileFilterRule fileFilterRule) {
+    if (filesAccessInfo.getFilesAccessed() != null) {
+      for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
+        String fileName = filesAccessInfo.getFilesAccessed().get(i);
+        Integer fileAccessCount = filesAccessInfo.getFilesAccessCounts().get(i);
+        if (fileFilterRule.meetCondition(fileName)) {
+          FileAccess fileAccess = get(fileName);
+          if (fileAccess != null) {
+            fileAccess.accessCount += fileAccessCount;
+          } else {
+            fileAccess = new FileAccess(fileName, fileAccessCount);
+            put(fileName, fileAccess);
+          }
+        }
+      }
+    }
+  }
+
 }

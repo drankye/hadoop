@@ -18,7 +18,7 @@ import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_RENAME;
  */
 public class DecisionMaker {
   private FileAccessMap fileMap;
-  private HashMap<Long, RuleMap> ruleMaps;
+  private HashMap<Long, RuleContainer> ruleMaps;
   private int threshold; // the threshold of access number to move file to SSD
   private String storagePolicy; // the storagePolicy to run Mover
   private HashSet<String> newFilesExceedThreshold;
@@ -50,34 +50,10 @@ public class DecisionMaker {
     newFilesExceedThreshold.clear();
 
     // update fileMap
-    if (filesAccessInfo.getFilesAccessed() != null) {
-      for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
-        String fileName = filesAccessInfo.getFilesAccessed().get(i);
-        Integer fileAccessCount = filesAccessInfo.getFilesAccessCounts().get(i);
-        FileAccess fileAccess = fileMap.get(fileName);
-        if (fileAccess != null) {
-          fileAccess.accessCount += fileAccessCount;
-        } else {
-          fileAccess = new FileAccess(fileName, fileAccessCount);
-          fileMap.put(fileName, fileAccess);
-        }
-      }
-    }
+    fileMap.updateFileMap(filesAccessInfo);
 
     // process nnEvent
-    if (filesAccessInfo.getNnEvents() != null) {
-      for (NNEvent nnEvent : filesAccessInfo.getNnEvents()) {
-        switch (nnEvent.getEventType()) {
-          case EV_RENAME:
-            fileMap.rename(nnEvent.getArgs()[0], nnEvent.getArgs()[1]);
-            break;
-          case EV_DELETE:
-            fileMap.delete(nnEvent.getArgs()[0]);
-            break;
-          default:
-        }
-      }
-    }
+    fileMap.processNnEvents(filesAccessInfo);
   }
 
   /**
