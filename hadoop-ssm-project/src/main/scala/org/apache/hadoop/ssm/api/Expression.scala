@@ -6,6 +6,8 @@ import org.apache.hadoop.ssm.Action
 import java.time.Duration
 
 object Expression {
+  val folderPattern = "^(/[a-zA-Z0-9]+)+".r
+
   sealed trait Operator
 
   case object AND extends Operator
@@ -26,7 +28,7 @@ object Expression {
     }
   }
 
-  case class SSMRule(fileFilterRule: FileFilterRule[String], root: TreeNode, action: Action) {
+  case class SSMRule(fileFilterRule: FileFilterRule, root: TreeNode, action: Action) {
     def getId(): Long = {
       this.hashCode()
     }
@@ -38,19 +40,29 @@ object Expression {
 
   case class Window(size: Duration, step: Duration) extends PropertyManipulation
 
-  class Rule[T](condition: Condition[T]) extends Operator {
-    def meetCondition(arg: T): Boolean = {
-      condition(arg)
+  abstract class Rule[T] extends Operator {
+    def meetCondition(arg: T): Boolean
+  }
+
+  case class FileFilterRule(pathPattern: String) extends Rule[String] {
+    def getPrefix(): String = {
+      folderPattern.findFirstIn(pathPattern).getOrElse("")
+    }
+
+    def meetCondition(arg: String): Boolean = {
+      pathPattern.r.pattern.matcher(arg).matches()
     }
   }
 
-  case class FileFilterRule[T](condition: Condition[T]) extends Rule(condition)
-
   case class PropertyFilterRule[T](condition: Condition[T], property: Property,
-    propertyManipulation: PropertyManipulation = Historical) extends Rule(condition) {
+    propertyManipulation: PropertyManipulation = Historical) extends Rule[T] {
 
     def in(stateManipulation: PropertyManipulation): PropertyFilterRule[T] = {
       new PropertyFilterRule(condition, property, stateManipulation)
+    }
+
+    def meetCondition(arg: T): Boolean = {
+      condition(arg)
     }
   }
 
