@@ -29,8 +29,12 @@ public class MoverExecutor implements Runnable{
         } catch (Exception e) {
           return;
         }
-        //ToolRunner.run(conf, new Mover.Cli(),
-         //   new String[] {"-p", fileName});
+        try {
+          ToolRunner.run(conf, new Mover.Cli(),
+                  new String[]{"-p", fileName});
+        } catch (Exception e) {
+          return;
+        }
         break;
       case CACHE:
         break;
