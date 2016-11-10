@@ -3,15 +3,11 @@ package org.apache.hadoop.ssm;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
-import org.apache.hadoop.hdfs.protocol.NNEvent;
-import org.apache.hadoop.hdfs.server.mover.Mover;
-import org.apache.hadoop.util.ToolRunner;
 
 import java.util.HashMap;
-import java.util.HashSet;
-
-import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_DELETE;
-import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_RENAME;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by root on 10/31/16.
@@ -19,87 +15,71 @@ import static org.apache.hadoop.hdfs.protocol.NNEvent.EV_RENAME;
 public class DecisionMaker {
   private FileAccessMap fileMap;
   private HashMap<Long, RuleContainer> ruleMaps;
-  private int threshold; // the threshold of access number to move file to SSD
-  private String storagePolicy; // the storagePolicy to run Mover
-  private HashSet<String> newFilesExceedThreshold;
+  private DFSClient dfsClient;
+  private Configuration conf;
 
-  public DecisionMaker(int threshold) {
-    this(threshold, "ONE_SSD");
-  }
-
-  public DecisionMaker(int threshold, String storagePolicy) {
+  public DecisionMaker(DFSClient dfsClient, Configuration conf) {
     fileMap = new FileAccessMap();
-    newFilesExceedThreshold = new HashSet<String>();
-    this.threshold = threshold;
-    this.storagePolicy = storagePolicy;
+    ruleMaps = new HashMap<Long, RuleContainer>();
+    this.dfsClient = dfsClient;
+    this.conf = conf;
   }
-
-  public FileAccessMap getFileMap() {
-    return fileMap;
-  }
-
-  public String getStoragePolicy() {return storagePolicy;}
-
-  public void setStoragePolicy(String storagePolicy) {this.storagePolicy = storagePolicy;}
 
   /**
    * Read FilesAccessInfo to refresh file information of DecisionMaker
    * @param filesAccessInfo
    */
   private void getFilesAccess(FilesAccessInfo filesAccessInfo){
-    newFilesExceedThreshold.clear();
-
     // update fileMap
     fileMap.updateFileMap(filesAccessInfo);
-
     // process nnEvent
     fileMap.processNnEvents(filesAccessInfo);
+
+    // update ruleMaps
+    for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
+      entry.getValue().update(filesAccessInfo);
+    }
   }
 
   /**
    * Run Mover tool to move a file.
-   * @param dfsClient
-   * @param conf
-   * @param fileName
+   * @param fileActions
    * @return true if move succeed; else false
    */
-  private boolean runMover(DFSClient dfsClient, Configuration conf, String fileName) {
-    FileAccess fileAccess = fileMap.get(fileName);
-    if (fileAccess == null) {
-      return false;
-    }
-    fileAccess.isMoving = true;
-    fileAccess.isOnSSD = false;
-
-    try {
-      dfsClient.setStoragePolicy(fileName, storagePolicy);
-    } catch (Exception e) {
-      return false;
-    }
-    int rc = 0;
-//    int rc = ToolRunner.run(conf, new Mover.Cli(),
-//            new String[] {"-p", fileName});
-    if (rc == 0) { // Mover success
-      fileAccess.isMoving = false;
-      fileAccess.isOnSSD = true;
-      return true;
-    }
-    else {
-      fileAccess.isMoving = false;
-      fileAccess.isOnSSD = false;
-      return false;
+  private void runMover(HashMap<String, Action> fileActions) {
+    ExecutorService exec = Executors.newCachedThreadPool();
+    for (Map.Entry<String, Action> fileAction : fileActions.entrySet()) {
+      String fileName = fileAction.getKey();
+      Action action = fileAction.getValue();
+      switch (action) {
+        case ARCHIVE:
+          if (!fileMap.get(fileName).isOnArchive) {
+            fileMap.get(fileName).isOnArchive = true;
+            exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
+          }
+          break;
+        case CACHE:
+          if (!fileMap.get(fileName).isOnCache) {
+            fileMap.get(fileName).isOnCache = true;
+            exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
+          }
+          break;
+        default:
+      }
     }
   }
 
-  private void calculateMover(DFSClient dfsClient, Configuration conf) {
-    for (String fileName : newFilesExceedThreshold) {
-      runMover(dfsClient, conf, fileName);
-    }
-  }
 
   public void execution(DFSClient dfsClient, Configuration conf, FilesAccessInfo filesAccessInfo) {
+    // update information
     getFilesAccess(filesAccessInfo);
-    calculateMover(dfsClient, conf);
+
+    // run executor
+    HashMap<String, Action> fileActions = new HashMap<String, Action>();
+    for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
+      fileActions.putAll(entry.getValue().actionEvaluator(fileMap));
+    }
+    runMover(fileActions);
   }
 }
 

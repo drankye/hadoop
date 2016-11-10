@@ -1,33 +1,34 @@
 package org.apache.hadoop.ssm;
 
-import java.sql.Timestamp;
-
 /**
  * Created by root on 11/4/16.
  */
 class FileAccess implements Comparable<FileAccess>{
   String fileName;
   Integer accessCount;
-  Timestamp createTime;
+  Long createTime;
   Boolean isOnSSD;
-  Boolean isMoving;
+  Boolean isOnArchive;
+  Boolean isOnCache;
 
   public FileAccess(String fileName, Integer accessCount) {
-    this(fileName, accessCount, null, false);
+    this(fileName, accessCount, null, false, false, false);
   }
 
-  public FileAccess(String fileName, Timestamp createTime) { this(fileName, 0, createTime, false);}
+  public FileAccess(String fileName, Long createTime) { this(fileName, 0, createTime, false, false, false);}
 
-  public FileAccess(String fileName, Integer accessCount, Timestamp createTime) {
-    this(fileName, accessCount, createTime, false);
+  public FileAccess(String fileName, Integer accessCount, Long createTime) {
+    this(fileName, accessCount, createTime, false, false, false);
   }
 
-  public FileAccess(String fileName, Integer accessCount, Timestamp createTime, Boolean isOnSSD) {
+  public FileAccess(String fileName, Integer accessCount, Long createTime,
+                    Boolean isOnSSD, Boolean isOnArchive, Boolean isOnCache) {
     this.fileName = fileName;
     this.accessCount = accessCount;
     this.createTime = createTime;
     this.isOnSSD = isOnSSD;
-    isMoving = false;
+    this.isOnArchive = isOnArchive;
+    this.isOnCache = isOnCache;
   }
 
   public int compareTo(FileAccess other) {
