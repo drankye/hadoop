@@ -24,21 +24,42 @@ public class MoverExecutor implements Runnable{
   public void run() {
     switch (action) {
       case ARCHIVE:
-        try {
-          dfsClient.setStoragePolicy(fileName, "COLD");
-        } catch (Exception e) {
-          return;
-        }
-        try {
-          ToolRunner.run(conf, new Mover.Cli(),
-                  new String[]{"-p", fileName});
-        } catch (Exception e) {
-          return;
-        }
+        runArchive();
         break;
       case CACHE:
         break;
+      case SSD:
+        runSSD();
+        break;
       default:
+    }
+  }
+
+  private void runArchive() {
+    try {
+      dfsClient.setStoragePolicy(fileName, "COLD");
+    } catch (Exception e) {
+      return;
+    }
+    try {
+      ToolRunner.run(conf, new Mover.Cli(),
+              new String[]{"-p", fileName});
+    } catch (Exception e) {
+      return;
+    }
+  }
+
+  private void runSSD() {
+    try {
+      dfsClient.setStoragePolicy(fileName, "ALL_SSD");
+    } catch (Exception e) {
+      return;
+    }
+    try {
+      ToolRunner.run(conf, new Mover.Cli(),
+              new String[]{"-p", fileName});
+    } catch (Exception e) {
+      return;
     }
   }
 }

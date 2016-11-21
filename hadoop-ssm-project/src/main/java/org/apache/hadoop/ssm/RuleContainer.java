@@ -85,7 +85,7 @@ public class RuleContainer {
       case AGE:
         return ageActionEvaluator();
       default:
-        return null;
+        throw new RuntimeException("No such property");
     }
   }
 
@@ -95,12 +95,19 @@ public class RuleContainer {
       result = windowMap.evaluate();
     }
     else if (propertyFilterRule.propertyManipulation() instanceof Historical$) {
-      for (Map.Entry<String, FileAccess> entry : fileMap.entrySet()) {
-        String fileName = entry.getKey();
-        FileAccess fileAccess = entry.getValue();
-        if (fileFilterRule.meetCondition(fileName) && propertyFilterRule.meetCondition(fileAccess.accessCount)) {
-          result.put(fileName, action);
-        }
+      result = historicalAccessEvaluate(fileMap);
+    }
+    return result;
+  }
+
+  private HashMap<String, Action> historicalAccessEvaluate(FileAccessMap fileMap) {
+    HashMap<String, Action> result;
+    result = new HashMap<String, Action>();
+    for (Map.Entry<String, FileAccess> entry : fileMap.entrySet()) {
+      String fileName = entry.getKey();
+      FileAccess fileAccess = entry.getValue();
+      if (fileFilterRule.meetCondition(fileName) && propertyFilterRule.meetCondition(fileAccess.getAccessCount())) {
+        result.put(fileName, action);
       }
     }
     return result;
@@ -160,7 +167,7 @@ public class RuleContainer {
       // update state at the end of each update
       void updateState() {
         current ++;
-        if (current >= windowStep/updateDuration - 1) {
+        if (current >= windowStep/updateDuration) {
           current = 0;
         }
       }
@@ -185,36 +192,45 @@ public class RuleContainer {
       // add the new map to fileAccessMapInWindow when a windowStep is reached
       // meanwhile remove the first map if mapNumber is reached
       if (state.addNewMap()) {
-        for (Map.Entry<String, FileAccess> entry : currentMap.entrySet()) {
-          String fileName = entry.getKey();
-          FileAccess fileAccess = entry.getValue();
-          FileAccess fileAccessTotal = fileAccessMapInWindow.get(fileName);
-          if (fileAccessTotal != null) {
-            fileAccessTotal.accessCount += fileAccess.accessCount;
-          }
-          else {
-            fileAccessMapInWindow.put(fileName, fileAccess);
-          }
-        }
+        addNewMap();
       }
       if (state.removeOldMap()) {
-        for (Map.Entry<String, FileAccess> entry : windowMaps.getFirst().entrySet()) {
-          String fileName = entry.getKey();
-          FileAccess fileAccess = entry.getValue();
-          FileAccess fileAccessTotal = fileAccessMapInWindow.get(fileName);
-          if (fileAccessTotal != null) {
-            fileAccessTotal.accessCount -= fileAccess.accessCount;
-          }
-        }
+        removeOldMap();
       }
       state.updateState();
+    }
+
+    private void removeOldMap() {
+      for (Map.Entry<String, FileAccess> entry : windowMaps.getFirst().entrySet()) {
+        String fileName = entry.getKey();
+        FileAccess fileAccess = entry.getValue();
+        FileAccess fileAccessTotal = fileAccessMapInWindow.get(fileName);
+        if (fileAccessTotal != null) {
+          fileAccessTotal.decreaseAccessCount(fileAccess.getAccessCount());
+        }
+      }
+      windowMaps.removeFirst();
+    }
+
+    private void addNewMap() {
+      for (Map.Entry<String, FileAccess> entry : windowMaps.getLast().entrySet()) {
+        String fileName = entry.getKey();
+        FileAccess fileAccess = entry.getValue();
+        FileAccess fileAccessTotal = fileAccessMapInWindow.get(fileName);
+        if (fileAccessTotal != null) {
+          fileAccessTotal.increaseAccessCount(fileAccess.getAccessCount());
+        }
+        else {
+          fileAccessMapInWindow.put(fileName, new FileAccess(fileAccess));
+        }
+      }
     }
 
     public HashMap<String, Action> evaluate() {
       HashMap<String, Action> result = new HashMap<String, Action>();
       if (state.readyForEvaluate()) {
         for (Map.Entry<String, FileAccess> entry : fileAccessMapInWindow.entrySet()) {
-          if (propertyFilterRule.meetCondition(entry.getValue().accessCount)) {
+          if (propertyFilterRule.meetCondition((long)entry.getValue().getAccessCount())) {
             result.put(entry.getKey(), action);
           }
         }
@@ -260,7 +276,7 @@ public class RuleContainer {
       }
       else {
         for (Map.Entry<String, FileAccess> entry : ageMap.entrySet()) {
-          if (propertyFilterRule.meetCondition(System.currentTimeMillis() - entry.getValue().createTime)) {
+          if (propertyFilterRule.meetCondition(System.currentTimeMillis() - entry.getValue().getCreateTime())) {
             result.put(entry.getKey(), action);
           }
         }

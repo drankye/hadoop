@@ -41,7 +41,7 @@ object SSMRuleParser extends StandardTokenParsers{
   def propertyRule: Parser[PropertyFilterRule[_ <: Any]] =
     property ~ opt(time) ~ numericExpression ^^ {
       case p ~ None ~ condition => PropertyFilterRule(condition._1, condition._2, p)
-      case p ~ Some(t) ~ condition => PropertyFilterRule(condition._1, condition._2, p, Window(t, t))
+      case p ~ Some(t) ~ condition => PropertyFilterRule(condition._1, condition._2, p, Window(t, Duration.ofMinutes(2)))
     }
 
   def action: Parser[Action] =

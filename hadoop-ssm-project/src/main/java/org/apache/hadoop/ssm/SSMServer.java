@@ -5,6 +5,8 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.ssm.api.Expression.*;
+import org.apache.hadoop.ssm.parse.SSMRuleParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ public class SSMServer {
 
     @Override
     public void run() {
+      LOG.info("Update all information:");
       FilesAccessInfo filesAccessInfo;
       try {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
@@ -45,8 +48,13 @@ public class SSMServer {
 
   public static void main(String[] args) throws Exception {
     DFSClient dfsClient = new DFSClient(DFSUtilClient.getNNAddress(conf), conf);
-    DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf);
+    long updateDuration = 1*60;
+
+    DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 50 | cache").get();
+    decisionMaker.addRule(ruleObject);
+
     Timer timer = new Timer();
-    timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, 5*60*1000L);
+    timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, updateDuration*1000L);
   }
 }

@@ -48,12 +48,13 @@ public class FileAccessMap {
     if (srcFileAccess != null) { // src must be a file
       // update fileMap
       fileMap.remove(srcName);
-      srcFileAccess.fileName = dstName;
+      FileAccess renamedFileAccess = new FileAccess(srcFileAccess);
+      renamedFileAccess.setFileName(dstName);
       if (dstFileAccess != null) {
-        srcFileAccess.accessCount += dstFileAccess.accessCount;
+        renamedFileAccess.increaseAccessCount(dstFileAccess.getAccessCount());
       }
       if (fileFilterRule == null || fileFilterRule.meetCondition(dstName)) {
-        fileMap.put(dstName, srcFileAccess);
+        fileMap.put(dstName, renamedFileAccess);
       }
     }
     else { // search all files under this directory
@@ -65,14 +66,15 @@ public class FileAccessMap {
         if (fileName.startsWith(srcName) &&
                 (srcName.charAt(srcName.length() - 1) == '/' || fileName.charAt(srcName.length()) == '/')) {
           // update fileMap
-          fileAccess.fileName = dstName + fileName.substring(srcName.length());
-          dstFileAccess = fileMap.get(fileAccess.fileName);
+          String newFileName = dstName + fileName.substring(srcName.length());
+          fileAccess.setFileName(newFileName);
+          dstFileAccess = fileMap.get(fileAccess.getFileName());
           if (dstFileAccess != null) {
-            fileAccess.accessCount += dstFileAccess.accessCount;
+            fileAccess.increaseAccessCount(dstFileAccess.getAccessCount());
           }
           it.remove();
           if (fileFilterRule == null || fileFilterRule.meetCondition(dstName)) {
-            renameMap.put(fileAccess.fileName, fileAccess);
+            renameMap.put(fileAccess.getFileName(), fileAccess);
           }
         }
       }
@@ -155,7 +157,7 @@ public class FileAccessMap {
         Integer fileAccessCount = filesAccessInfo.getFilesAccessCounts().get(i);
         FileAccess fileAccess = get(fileName);
         if (fileAccess != null) {
-          fileAccess.accessCount += fileAccessCount;
+          fileAccess.increaseAccessCount(fileAccessCount);
         } else {
           fileAccess = new FileAccess(fileName, fileAccessCount);
           put(fileName, fileAccess);
@@ -176,7 +178,7 @@ public class FileAccessMap {
         if (fileFilterRule.meetCondition(fileName)) {
           FileAccess fileAccess = get(fileName);
           if (fileAccess != null) {
-            fileAccess.accessCount += fileAccessCount;
+            fileAccess.increaseAccessCount(fileAccessCount);
           } else {
             fileAccess = new FileAccess(fileName, fileAccessCount);
             put(fileName, fileAccess);
