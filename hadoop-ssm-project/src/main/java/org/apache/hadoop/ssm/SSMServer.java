@@ -21,7 +21,7 @@ public class SSMServer {
   static {
     conf = new HdfsConfiguration();
   }
-  public static final Logger LOG = LoggerFactory.getLogger(DFSClient.class);
+  public static final Logger LOG = LoggerFactory.getLogger(SSMServer.class);
 
   static class DecisionMakerTask extends TimerTask {
     private DFSClient dfsClient;
@@ -38,6 +38,7 @@ public class SSMServer {
       FilesAccessInfo filesAccessInfo;
       try {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
+        LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
       } catch (Exception e) {
         LOG.warn("getFilesAccessInfo exception");
         return;
@@ -51,9 +52,10 @@ public class SSMServer {
     long updateDuration = 1*60;
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
-    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 50 | ssd").get();
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 20 | ssd").get();
     decisionMaker.addRule(ruleObject);
 
+    LOG.info("Initialization completed");
     Timer timer = new Timer();
     timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, updateDuration*1000L);
   }

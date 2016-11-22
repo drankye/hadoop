@@ -4,6 +4,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
 import org.apache.hadoop.ssm.api.Expression.SSMRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +16,8 @@ import java.util.concurrent.Executors;
  * Created by root on 10/31/16.
  */
 public class DecisionMaker {
+  public static final Logger LOG = LoggerFactory.getLogger(DecisionMaker.class);
+
   private FileAccessMap fileMap;
   private HashMap<Long, RuleContainer> ruleMaps;
 
@@ -87,22 +91,22 @@ public class DecisionMaker {
    * @return true if move succeed; else false
    */
   private void runExecutor(HashMap<String, Action> fileActions) {
-    ExecutorService exec = Executors.newCachedThreadPool();
+    //ExecutorService exec = Executors.newCachedThreadPool();
     for (Map.Entry<String, Action> fileAction : fileActions.entrySet()) {
       String fileName = fileAction.getKey();
       Action action = fileAction.getValue();
       switch (action) {
         case ARCHIVE:
-          if (!fileMap.get(fileName).isOnArchive()) {
+          /*if (!fileMap.get(fileName).isOnArchive()) {
             fileMap.get(fileName).setArchive();
             exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
-          }
+          }*/
           break;
         case CACHE:
-          if (!fileMap.get(fileName).isOnCache()) {
+          /*if (!fileMap.get(fileName).isOnCache()) {
             fileMap.get(fileName).setCache();
             exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
-          }
+          }*/
           break;
         default:
       }
@@ -118,6 +122,9 @@ public class DecisionMaker {
     HashMap<String, Action> fileActions = new HashMap<String, Action>();
     for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
       fileActions.putAll(entry.getValue().actionEvaluator(fileMap));
+    }
+    for (Map.Entry<String, Action> entry : fileActions.entrySet()) {
+      LOG.info("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
     }
     runExecutor(fileActions);
   }
