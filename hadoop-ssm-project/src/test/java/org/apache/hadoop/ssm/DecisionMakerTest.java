@@ -35,7 +35,8 @@ public class DecisionMakerTest {
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
     decisionMaker.addRule(ruleObject);
-    int[] accessCount = {0,1,1,4,4,2,2,10,10,1,1,5,5,10,10,7,7,1,1,2,2};
+    //int[] accessCount = {0,1,1,4,4,2,2,10,10,1,1,5,5,10,10,7,7,1,1,2,2};
+    int[] accessCount = {23,1,1,4,4,2,2,10,10,1,1,5,5,10,10,7,7,1,1,2,2};
     FilesAccessInfo filesAccessInfo = new FilesAccessInfo();
     for (int i = 0; i < accessCount.length; i++) {
       HashMap<String, Integer> map = new HashMap<String, Integer>();
@@ -51,8 +52,11 @@ public class DecisionMakerTest {
         RuleContainer ruleContainer = entry.getValue();
         HashMap<String, Action> fileActions = ruleContainer.actionEvaluator(fileMap);
         switch (i) {
+          case 13:
           case 14:
+          case 15:
           case 16:
+          case 17:
           case 20:
             assertEquals(1, fileActions.size());
             assertEquals(Action.SSD, fileActions.get("/A/a"));

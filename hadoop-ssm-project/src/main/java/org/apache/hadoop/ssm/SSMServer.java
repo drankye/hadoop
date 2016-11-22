@@ -51,7 +51,7 @@ public class SSMServer {
     long updateDuration = 1*60;
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
-    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 50 | cache").get();
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 50 | ssd").get();
     decisionMaker.addRule(ruleObject);
 
     Timer timer = new Timer();
