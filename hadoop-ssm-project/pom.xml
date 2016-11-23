@@ -15,7 +15,7 @@
   <version>3.0.0-alpha2-SNAPSHOT</version>
   <description>Apache Hadoop SSM Project</description>
   <name>Apache Hadoop SSM Project</name>
-  <packaging>pom</packaging>
+  <packaging>jar</packaging>
 
   <properties>
     <junit.version>4.11</junit.version>
