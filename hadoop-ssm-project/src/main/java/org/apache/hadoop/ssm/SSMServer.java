@@ -1,6 +1,7 @@
 package org.apache.hadoop.ssm;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
@@ -20,6 +21,8 @@ public class SSMServer {
   public static final Configuration conf;
   static {
     conf = new HdfsConfiguration();
+    Path path = new Path("/home/hadoop_src/hadoop-2.7.2/hadoop-dist/target/hadoop-2.7.2/etc/hadoop/core-site.xml");
+    conf.addResource(path);
   }
   public static final Logger LOG = LoggerFactory.getLogger(SSMServer.class);
 
