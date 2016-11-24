@@ -38,16 +38,16 @@ public class SSMServer {
     @Override
     public void run() {
       //LOG.info("Update all information:");
-      System.out.println("Update all information:");
+      System.out.println("========Update all information========");
       FilesAccessInfo filesAccessInfo;
       try {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
         //LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
         System.out.println("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
-	for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
-	  System.out.println("fileName\tcount");
-	  System.out.println(filesAccessInfo.getFilesAccessed().get(i) + "\t" + filesAccessInfo.getFilesAccessCounts().get(i));	
-	}
+        for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
+          System.out.println("fileName\tcount");
+          System.out.println(filesAccessInfo.getFilesAccessed().get(i) + "\t" + filesAccessInfo.getFilesAccessCounts().get(i));
+        }
       } catch (Exception e) {
         //LOG.warn("getFilesAccessInfo exception");
         System.out.println("getFilesAccessInfo exception");
@@ -62,7 +62,7 @@ public class SSMServer {
     long updateDuration = 1*60;
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
-    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 20 | ssd").get();
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]*') : accessCount (3 min) >= 10 | ssd").get();
     decisionMaker.addRule(ruleObject);
 
     //LOG.info("Initialization completed");

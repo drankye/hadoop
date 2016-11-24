@@ -118,6 +118,13 @@ public class DecisionMaker {
     // update information
     getFilesAccess(filesAccessInfo);
 
+    // debug
+    System.out.println("1. fileMap");
+    for (Map.Entry<String, FileAccess> entry : fileMap.entrySet()) {
+      System.out.println(entry.getKey() + "\t" + entry.getValue().getAccessCount());
+    }
+
+
     // run executor
     HashMap<String, Action> fileActions = new HashMap<String, Action>();
     for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
