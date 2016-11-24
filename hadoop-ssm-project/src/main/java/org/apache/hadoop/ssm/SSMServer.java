@@ -67,6 +67,8 @@ public class SSMServer {
     //LOG.info("Initialization completed");
     System.out.println("Initialization completed");
 
+    MoverExecutor.getInstance(dfsClient, conf).run();
+
     Timer timer = new Timer();
     timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, updateDuration*1000L);
   }

@@ -95,21 +95,7 @@ public class DecisionMaker {
     for (Map.Entry<String, Action> fileAction : fileActions.entrySet()) {
       String fileName = fileAction.getKey();
       Action action = fileAction.getValue();
-      switch (action) {
-        case ARCHIVE:
-          /*if (!fileMap.get(fileName).isOnArchive()) {
-            fileMap.get(fileName).setArchive();
-            exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
-          }*/
-          break;
-        case CACHE:
-          /*if (!fileMap.get(fileName).isOnCache()) {
-            fileMap.get(fileName).setCache();
-            exec.execute(new MoverExecutor(dfsClient, conf, fileName, action));
-          }*/
-          break;
-        default:
-      }
+      MoverExecutor.getInstance().addActionEvent(fileName, action);
     }
   }
 

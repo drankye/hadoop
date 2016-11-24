@@ -5,61 +5,107 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.server.mover.Mover;
 import org.apache.hadoop.util.ToolRunner;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * Created by root on 11/10/16.
  */
-public class MoverExecutor implements Runnable{
+public class MoverExecutor {
+  private static MoverExecutor instance;
+
   private DFSClient dfsClient;
   Configuration conf;
-  private String fileName;
-  private Action action;
+  Map<String, Action> actionEvents;
 
-  public MoverExecutor(DFSClient dfsClient, Configuration conf, String fileName, Action action) {
+  private MoverExecutor(DFSClient dfsClient, Configuration conf) {
     this.dfsClient = dfsClient;
     this.conf = conf;
-    this.fileName = fileName;
-    this.action = action;
+    actionEvents = new HashMap<String, Action>();
+  }
+
+  public static synchronized MoverExecutor getInstance(DFSClient dfsClient, Configuration conf) {
+    if (instance == null) {
+      instance = new MoverExecutor(dfsClient, conf);
+    }
+    return instance;
+  }
+
+  public static synchronized MoverExecutor getInstance() {
+    return instance;
+  }
+
+  public synchronized void addActionEvent(String fileName, Action action) {
+    actionEvents.put(fileName, action);
+  }
+
+  public synchronized Map<String, Action> getActionEventsWithClear() {
+    try {
+      return new HashMap<String, Action>(actionEvents);
+    } finally {
+      actionEvents.clear();
+    }
   }
 
   public void run() {
-    switch (action) {
-      case ARCHIVE:
-        runArchive();
-        break;
-      case CACHE:
-        break;
-      case SSD:
-        runSSD();
-        break;
-      default:
+    ExecutorService exec = Executors.newCachedThreadPool();
+    exec.execute(new ExecutorRunner());
+  }
+
+  class ExecutorRunner implements Runnable {
+
+    public void run() {
+      while (true) {
+        Map<String, Action> eventsMap = instance.getActionEventsWithClear();
+        for (Map.Entry<String, Action> entry : eventsMap.entrySet()) {
+          String fileName = entry.getKey();
+          Action action = entry.getValue();
+          System.out.println("execute action : fileName = " + fileName + "; action = " + action);
+          switch (action) {
+            case SSD:
+              runSSD(fileName);
+              break;
+            case ARCHIVE:
+              runArchive(fileName);
+              break;
+            case CACHE:
+              break;
+            default:
+          }
+        }
+      }
+    }
+
+    private void runArchive(String fileName) {
+      try {
+        dfsClient.setStoragePolicy(fileName, "COLD");
+      } catch (Exception e) {
+        return;
+      }
+      try {
+        ToolRunner.run(conf, new Mover.Cli(),
+                new String[]{"-p", fileName});
+      } catch (Exception e) {
+        return;
+      }
+    }
+
+    private void runSSD(String fileName) {
+      try {
+        dfsClient.setStoragePolicy(fileName, "ALL_SSD");
+      } catch (Exception e) {
+        return;
+      }
+      try {
+        ToolRunner.run(conf, new Mover.Cli(),
+                new String[]{"-p", fileName});
+      } catch (Exception e) {
+        return;
+      }
     }
   }
 
-  private void runArchive() {
-    try {
-      dfsClient.setStoragePolicy(fileName, "COLD");
-    } catch (Exception e) {
-      return;
-    }
-    try {
-      ToolRunner.run(conf, new Mover.Cli(),
-              new String[]{"-p", fileName});
-    } catch (Exception e) {
-      return;
-    }
-  }
 
-  private void runSSD() {
-    try {
-      dfsClient.setStoragePolicy(fileName, "ALL_SSD");
-    } catch (Exception e) {
-      return;
-    }
-    try {
-      ToolRunner.run(conf, new Mover.Cli(),
-              new String[]{"-p", fileName});
-    } catch (Exception e) {
-      return;
-    }
-  }
 }
