@@ -43,9 +43,8 @@ public class SSMServer {
       try {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
         //LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
-        System.out.println("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
+        System.out.println("1. filesAccessInfo");
         for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
-          System.out.println("fileName\tcount");
           System.out.println(filesAccessInfo.getFilesAccessed().get(i) + "\t" + filesAccessInfo.getFilesAccessCounts().get(i));
         }
       } catch (Exception e) {
@@ -62,7 +61,7 @@ public class SSMServer {
     long updateDuration = 1*60;
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
-    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]*') : accessCount (3 min) >= 10 | ssd").get();
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]* ') : accessCount (3 min) >= 10 | ssd").get();
     decisionMaker.addRule(ruleObject);
 
     //LOG.info("Initialization completed");

@@ -259,6 +259,7 @@ public class RuleContainer {
 
     public HashMap<String, Action> evaluate() {
       HashMap<String, Action> result = new HashMap<String, Action>();
+      // update file createTime of local cache from namenode
       if (lastUpdateTime == null || System.currentTimeMillis() - lastUpdateTime > ageThreshold) {
         lastUpdateTime = System.currentTimeMillis();
         List<String> fileNames = null;
@@ -274,6 +275,7 @@ public class RuleContainer {
           }
         }
       }
+      // use local cache of createTime
       else {
         for (Map.Entry<String, FileAccess> entry : ageMap.entrySet()) {
           if (propertyFilterRule.meetCondition(System.currentTimeMillis() - entry.getValue().getCreateTime())) {

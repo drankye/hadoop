@@ -119,7 +119,7 @@ public class DecisionMaker {
     getFilesAccess(filesAccessInfo);
 
     // debug
-    System.out.println("1. fileMap");
+    System.out.println("2. fileMap");
     for (Map.Entry<String, FileAccess> entry : fileMap.entrySet()) {
       System.out.println(entry.getKey() + "\t" + entry.getValue().getAccessCount());
     }
