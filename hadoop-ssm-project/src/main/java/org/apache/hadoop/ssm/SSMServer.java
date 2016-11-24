@@ -21,7 +21,7 @@ public class SSMServer {
   public static final Configuration conf;
   static {
     conf = new HdfsConfiguration();
-    Path path = new Path("/home/hadoop_src/hadoop-2.7.2/hadoop-dist/target/hadoop-2.7.2/etc/hadoop/core-site.xml");
+    Path path = new Path("/home/sorttest/hadoop/etc/hadoop/core-site.xml");
     conf.addResource(path);
   }
   public static final Logger LOG = LoggerFactory.getLogger(SSMServer.class);
@@ -37,13 +37,16 @@ public class SSMServer {
 
     @Override
     public void run() {
-      LOG.info("Update all information:");
+      //LOG.info("Update all information:");
+      System.out.println("Update all information:");
       FilesAccessInfo filesAccessInfo;
       try {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
-        LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
+        //LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
+        System.out.println("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
       } catch (Exception e) {
-        LOG.warn("getFilesAccessInfo exception");
+        //LOG.warn("getFilesAccessInfo exception");
+        System.out.println("getFilesAccessInfo exception");
         return;
       }
       decisionMaker.execution(dfsClient, conf, filesAccessInfo);
@@ -58,7 +61,9 @@ public class SSMServer {
     SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/A/[a-z]*') : accessCount (10 min) >= 20 | ssd").get();
     decisionMaker.addRule(ruleObject);
 
-    LOG.info("Initialization completed");
+    //LOG.info("Initialization completed");
+    System.out.println("Initialization completed");
+
     Timer timer = new Timer();
     timer.schedule(new DecisionMakerTask(dfsClient, decisionMaker), 2*1000L, updateDuration*1000L);
   }

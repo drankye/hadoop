@@ -124,7 +124,8 @@ public class DecisionMaker {
       fileActions.putAll(entry.getValue().actionEvaluator(fileMap));
     }
     for (Map.Entry<String, Action> entry : fileActions.entrySet()) {
-      LOG.info("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
+      //LOG.info("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
+      System.out.println("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
     }
     runExecutor(fileActions);
   }
