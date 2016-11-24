@@ -44,6 +44,10 @@ public class SSMServer {
         filesAccessInfo = dfsClient.getFilesAccessInfo();
         //LOG.info("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
         System.out.println("Number of accessed files = " + filesAccessInfo.getFilesAccessed().size());
+	for (int i = 0; i < filesAccessInfo.getFilesAccessed().size(); i++) {
+	  System.out.println("fileName\tcount");
+	  System.out.println(filesAccessInfo.getFilesAccessed().get(i) + "\t" + filesAccessInfo.getFilesAccessCounts().get(i));	
+	}
       } catch (Exception e) {
         //LOG.warn("getFilesAccessInfo exception");
         System.out.println("getFilesAccessInfo exception");
