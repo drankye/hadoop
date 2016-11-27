@@ -118,6 +118,7 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZoneIterator;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
@@ -676,6 +677,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public FilesAccessInfo getFilesAccessInfo() throws IOException {
     return namenode.getFilesAccessInfo();
+  }
+
+  public FilesInfo getFilesInfo(String[] filePaths, int infoType,
+      boolean expandDir, boolean includeDir) throws IOException {
+    return namenode.getFilesInfo(filePaths, infoType, expandDir, includeDir);
   }
 
   /**

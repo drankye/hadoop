@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -61,6 +62,7 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
@@ -101,6 +103,8 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.FsyncR
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetAdditionalDatanodeRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFilesAccessInfoRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFilesAccessInfoResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFilesInfoRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFilesInfoResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetBlockLocationsRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetBlockLocationsResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetContentSummaryRequestProto;
@@ -206,7 +210,8 @@ import com.google.protobuf.ServiceException;
 import org.apache.hadoop.util.concurrent.AsyncGet;
 
 /**
- * This class forwards NN's ClientProtocol calls as RPC calls to the NN server
+ * This class forwards NN's ClientProtocol calls as RPClientNamenodeProtocolTranslatorPB
+ * C calls to the NN server
  * while translating from the parameter types used in ClientProtocol to the
  * new PB types.
  */
@@ -251,6 +256,31 @@ public class ClientNamenodeProtocolTranslatorPB implements
   @Override
   public void close() {
     RPC.stopProxy(rpcProxy);
+  }
+
+  @Override
+  public FilesInfo getFilesInfo(String[] filePaths, int infoType,
+      boolean expandDir, boolean includeDir) throws IOException {
+    if(filePaths == null || filePaths.length == 0) {
+      return null;
+    }
+    List<String> fps = new LinkedList<>();
+    for (String f : filePaths) {
+      fps.add(f);
+    }
+    GetFilesInfoRequestProto req = GetFilesInfoRequestProto
+        .newBuilder()
+        .addAllFilePaths(fps)
+        .setInfoType(infoType)
+        .setExpandDir(expandDir)
+        .setIncludeDir(includeDir)
+        .build();
+    try {
+      GetFilesInfoResponseProto resp = rpcProxy.getFilesInfo(null, req);
+      return PBHelperClient.convert(resp.getInfo());
+    } catch (ServiceException e) {
+      throw ProtobufHelper.getRemoteException(e);
+    }
   }
 
   @Override

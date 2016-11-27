@@ -78,6 +78,7 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.hdfs.protocol.FsPermissionExtension;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
@@ -139,6 +140,7 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DirectoryListingProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ExtendedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ErasureCodingPolicyProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FilesAccessInfoProto;
+import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FilesInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsPermissionProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.FsServerDefaultsProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.HdfsFileStatusProto;
@@ -670,6 +672,73 @@ public class PBHelperClient {
     for (String arg : event.getArgs()) {
       builder.addArgs(arg);
     }
+    return builder.build();
+  }
+
+  public static FilesInfo convert(FilesInfoProto proto) {
+    FilesInfo info = new FilesInfo(proto.getVaildItems());
+    info.setAccessTime(proto.getAccessTimeList());
+    info.setAllPaths(proto.getAllPathsList());
+    List<Short> reps = null;
+    List<Integer> ints = proto.getBlockReplicationList();
+    if (ints != null) {
+      reps = new LinkedList<>();
+      for (Integer s : ints) {
+        reps.add(s.shortValue());
+      }
+    }
+    info.setBlockReplication(reps);
+    info.setBlocksize(proto.getBlockSizeList());
+    info.setChildrenNum(proto.getChildrenNumList());
+    info.setFileId(proto.getFileIdList());
+    info.setLength(proto.getLengthList());
+    info.setGroup(proto.getGroupsList());
+    info.setOwner(proto.getOwnerList());
+    info.setIsdir(proto.getIsdirList());
+    info.setModificationTime(proto.getModificationTimeList());
+    List<Byte> origPolicy = null;
+    List<Integer> tranPolicy = proto.getStoragePolicyList();
+    if (tranPolicy != null) {
+      origPolicy = new LinkedList<>();
+      for (Integer s : tranPolicy) {
+        origPolicy.add(s.byteValue());
+      }
+    }
+    info.setStoragePolicy(origPolicy);
+    return info;
+  }
+
+  public static FilesInfoProto convert(FilesInfo info) {
+    FilesInfoProto.Builder builder = FilesInfoProto.newBuilder();
+    builder.setVaildItems(info.getVaildItems());
+    builder.addAllAccessTime(info.getAccessTime());
+    builder.addAllAllPaths(info.getAllPaths());
+    List<Short> reps = info.getBlockReplication();
+    List<Integer> ints = null;
+    if (reps != null) {
+      ints = new LinkedList<>();
+      for (Short s : reps) {
+        ints.add(s.intValue());
+      }
+    }
+    builder.addAllBlockReplication(ints);
+    builder.addAllBlockSize(info.getBlocksize());
+    builder.addAllChildrenNum(info.getChildrenNum());
+    builder.addAllFileId(info.getFileId());
+    builder.addAllLength(info.getLength());
+    builder.addAllGroups(info.getGroup());
+    builder.addAllOwner(info.getOwner());
+    builder.addAllIsdir(info.getIsdir());
+    builder.addAllModificationTime(info.getModificationTime());
+    List<Byte> origPolicy = info.getStoragePolicy();
+    List<Integer> tranPolicy = null;
+    if (origPolicy != null) {
+      tranPolicy = new LinkedList<>();
+      for (Byte s : origPolicy) {
+        tranPolicy.add(s.intValue());
+      }
+    }
+    builder.addAllStoragePolicy(tranPolicy);
     return builder.build();
   }
 

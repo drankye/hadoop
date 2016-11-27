@@ -102,6 +102,7 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FSLimitException;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
@@ -261,6 +262,46 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       nnEvents = new LinkedList<>();
     }
     return ret;
+  }
+
+  @Override
+  public FilesInfo getFilesInfo(String[] filePaths, int infoType,
+      boolean expandDir, boolean includeDir) throws IOException {
+    int types = infoType & FilesInfo.ALL;
+    FilesInfo info = new FilesInfo(types);
+    if (types == 0 || filePaths.length == 0) {
+      return info;
+    }
+
+    for(String filePath : filePaths) {
+      doGetFileInfo(info, filePath, types, expandDir, includeDir);
+    }
+    return info;
+  }
+
+  private void doGetFileInfo(FilesInfo info, String filePath,
+      int types, boolean expandDir, boolean includeDir) throws IOException {
+    HdfsFileStatus fileStatus = filePath == null ? null : getFileInfo(filePath);
+    if (fileStatus == null) {
+      return;
+    }
+
+    if (!fileStatus.isDir() || (fileStatus.isDir() && includeDir)) {
+      info.addPath(filePath);
+      info.addValue(types, fileStatus);
+    }
+
+    if (expandDir && fileStatus.isDir()) {
+      DirectoryListing listing = getListing(filePath, HdfsFileStatus.EMPTY_NAME, false);
+      HdfsFileStatus[] hs = listing == null ? null : listing.getPartialListing();
+      if (hs == null) {
+        return;
+      }
+
+      for (HdfsFileStatus h : hs) {
+        doGetFileInfo(info, h.getFullName(filePath), types, expandDir, includeDir);
+      }
+    }
   }
 
   public NameNodeRpcServer(Configuration conf, NameNode nn)
