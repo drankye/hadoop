@@ -139,6 +139,8 @@ public class RuleContainer {
       state = new State();
     }
 
+    public LinkedList<FileAccessMap> getWindowMaps() { return windowMaps;}
+
     class State {
       private int current;
 
@@ -252,6 +254,8 @@ public class RuleContainer {
       ageMap = new FileAccessMap();
       lastUpdateTime = null;
     }
+
+    public FileAccessMap getAgeMap() { return ageMap;}
 
     public void update(FilesAccessInfo filesAccessInfo) {
       ageMap.processNnEvents(filesAccessInfo, fileFilterRule);
