@@ -48,6 +48,10 @@ public class RuleContainer {
     }
   }
 
+  public WindowMap getWindowMap() {return windowMap;}
+
+  public AgeMap getAgeMap() { return ageMap;}
+
   /**
    * Update information with filesAccessInfo
    * @param filesAccessInfo
@@ -140,6 +144,8 @@ public class RuleContainer {
     }
 
     public LinkedList<FileAccessMap> getWindowMaps() { return windowMaps;}
+
+    public FileAccessMap getFileAccessMapInWindow() {return fileAccessMapInWindow;}
 
     class State {
       private int current;
