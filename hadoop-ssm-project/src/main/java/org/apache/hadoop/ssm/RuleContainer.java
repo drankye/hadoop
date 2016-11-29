@@ -2,10 +2,13 @@ package org.apache.hadoop.ssm;
 
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.FilesAccessInfo;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.ssm.api.Expression.*;
 
 import java.time.Duration;
 import java.util.*;
+
+import static org.apache.hadoop.hdfs.protocol.FilesInfo.MODIFICATION_TIME;
 
 /**
  * Created by root on 11/8/16.
@@ -110,7 +113,7 @@ public class RuleContainer {
     for (Map.Entry<String, FileAccess> entry : fileMap.entrySet()) {
       String fileName = entry.getKey();
       FileAccess fileAccess = entry.getValue();
-      if (fileFilterRule.meetCondition(fileName) && propertyFilterRule.meetCondition(fileAccess.getAccessCount())) {
+      if (fileFilterRule.meetCondition(fileName) && propertyFilterRule.meetCondition((long)fileAccess.getAccessCount())) {
         result.put(fileName, action);
       }
     }
@@ -200,9 +203,11 @@ public class RuleContainer {
       // add the new map to fileAccessMapInWindow when a windowStep is reached
       // meanwhile remove the first map if mapNumber is reached
       if (state.addNewMap()) {
+        System.out.println(">>>add new map");
         addNewMap();
       }
       if (state.removeOldMap()) {
+        System.out.println(">>>remove old map");
         removeOldMap();
       }
       state.updateState();
@@ -237,7 +242,10 @@ public class RuleContainer {
     public HashMap<String, Action> evaluate() {
       HashMap<String, Action> result = new HashMap<String, Action>();
       if (state.readyForEvaluate()) {
+        System.out.println(">>>ready for evaluate");
+        System.out.println("4. total window map");
         for (Map.Entry<String, FileAccess> entry : fileAccessMapInWindow.entrySet()) {
+          System.out.println(entry.getKey() + "\t" + entry.getValue().getAccessCount());
           if (propertyFilterRule.meetCondition((long)entry.getValue().getAccessCount())) {
             result.put(entry.getKey(), action);
           }
@@ -251,6 +259,8 @@ public class RuleContainer {
    * AgeMap class to maintain information for age map
    */
   class AgeMap {
+    final private int UPDATE_STEP = 10;
+
     private FileAccessMap ageMap;
     private Long lastUpdateTime;
     private Long ageThreshold;
@@ -270,30 +280,38 @@ public class RuleContainer {
     public HashMap<String, Action> evaluate() {
       HashMap<String, Action> result = new HashMap<String, Action>();
       // update file createTime of local cache from namenode
-      if (lastUpdateTime == null || System.currentTimeMillis() - lastUpdateTime > ageThreshold) {
+      if (lastUpdateTime == null || System.currentTimeMillis() - lastUpdateTime > ageThreshold/UPDATE_STEP) {
         lastUpdateTime = System.currentTimeMillis();
-        List<String> fileNames = null;
-        List<Long> createTimes = null;
-        for (int i = 0; i <  fileNames.size(); i++) {
-          String fileName = fileNames.get(i);
-          Long createTime = createTimes.get(i);
-          if (fileFilterRule.meetCondition(fileName)) {
-            ageMap.put(fileName, new FileAccess(fileName, createTime));
-          }
-          if (propertyFilterRule.meetCondition(System.currentTimeMillis() - createTime)) {
-            result.put(fileName, action);
-          }
-        }
+        updateAgeMap();
       }
-      // use local cache of createTime
-      else {
-        for (Map.Entry<String, FileAccess> entry : ageMap.entrySet()) {
-          if (propertyFilterRule.meetCondition(System.currentTimeMillis() - entry.getValue().getCreateTime())) {
-            result.put(entry.getKey(), action);
-          }
+      Long currentTime = System.currentTimeMillis();
+      System.out.println("now : " + currentTime);
+      for (Map.Entry<String, FileAccess> entry : ageMap.entrySet()) {
+        System.out.println(entry.getKey() + "\t" + entry.getValue().getCreateTime());
+        if (propertyFilterRule.meetCondition(currentTime - entry.getValue().getCreateTime())) {
+          result.put(entry.getKey(), action);
         }
       }
       return result;
+    }
+
+    private void updateAgeMap() {
+      String[] searchPaths = {fileFilterRule.getPrefix()};
+      FilesInfo ageInfo;
+      try {
+        ageInfo = dfsClient.getFilesInfo(searchPaths, MODIFICATION_TIME, true, false);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+      List<String> fileNames = ageInfo.getAllPaths();
+      List<Long> modificationTimes = ageInfo.getModificationTime();
+      for (int i = 0; i < fileNames.size(); i++) {
+        String fileName = fileNames.get(i);
+        Long modificationTime = modificationTimes.get(i);
+        if (fileFilterRule.meetCondition(fileName)) {
+          ageMap.put(fileName, new FileAccess(fileName, modificationTime));
+        }
+      }
     }
   }
 

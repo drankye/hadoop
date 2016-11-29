@@ -22,6 +22,7 @@ public class SSMServer {
   static {
     conf = new HdfsConfiguration();
     Path path = new Path("/home/sorttest/hadoop/etc/hadoop/core-site.xml");
+    //Path path = new Path("/home/hadoop_src/hadoop-2.7.2/hadoop-dist/target/hadoop-2.7.2/etc/hadoop/core-site.xml");
     conf.addResource(path);
   }
   public static final Logger LOG = LoggerFactory.getLogger(SSMServer.class);
@@ -49,8 +50,7 @@ public class SSMServer {
         }
       } catch (Exception e) {
         //LOG.warn("getFilesAccessInfo exception");
-        System.out.println("getFilesAccessInfo exception");
-        return;
+        throw new RuntimeException(e);
       }
       decisionMaker.execution(dfsClient, conf, filesAccessInfo);
     }
@@ -61,7 +61,9 @@ public class SSMServer {
     long updateDuration = 1*60;
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
-    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]* ') : accessCount (3 min) >= 10 | ssd").get();
+    SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]*') : accessCount (3 min) >= 10 | ssd").get();
+    decisionMaker.addRule(ruleObject);
+    ruleObject = SSMRuleParser.parseAll("file.path matches('/home/[a-z]*') : age >= 1200000 | archive").get(); //20min
     decisionMaker.addRule(ruleObject);
 
     //LOG.info("Initialization completed");
