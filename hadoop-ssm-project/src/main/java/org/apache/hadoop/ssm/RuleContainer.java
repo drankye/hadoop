@@ -203,11 +203,11 @@ public class RuleContainer {
       // add the new map to fileAccessMapInWindow when a windowStep is reached
       // meanwhile remove the first map if mapNumber is reached
       if (state.addNewMap()) {
-        System.out.println(">>>add new map");
+        //System.out.println(">>>add new map");
         addNewMap();
       }
       if (state.removeOldMap()) {
-        System.out.println(">>>remove old map");
+        //System.out.println(">>>remove old map");
         removeOldMap();
       }
       state.updateState();
@@ -242,7 +242,7 @@ public class RuleContainer {
     public HashMap<String, Action> evaluate() {
       HashMap<String, Action> result = new HashMap<String, Action>();
       if (state.readyForEvaluate()) {
-        System.out.println(">>>ready for evaluate");
+        //System.out.println(">>>ready for evaluate");
         System.out.println("4. total window map");
         for (Map.Entry<String, FileAccess> entry : fileAccessMapInWindow.entrySet()) {
           System.out.println(entry.getKey() + "\t" + entry.getValue().getAccessCount());

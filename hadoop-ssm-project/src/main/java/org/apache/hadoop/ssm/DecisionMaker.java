@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -87,14 +89,13 @@ public class DecisionMaker {
 
   /**
    * Run Mover tool to move a file.
-   * @param fileActions
-   * @return true if move succeed; else false
+   * @param fileNames
+   * @param actions
    */
-  private void runExecutor(HashMap<String, Action> fileActions) {
-    //ExecutorService exec = Executors.newCachedThreadPool();
-    for (Map.Entry<String, Action> fileAction : fileActions.entrySet()) {
-      String fileName = fileAction.getKey();
-      Action action = fileAction.getValue();
+  private void runExecutor(List<String> fileNames, List<Action> actions) {
+    for (int i = 0; i < fileNames.size(); i++) {
+      String fileName = fileNames.get(i);
+      Action action = actions.get(i);
       MoverExecutor.getInstance().addActionEvent(fileName, action);
     }
   }
@@ -112,11 +113,16 @@ public class DecisionMaker {
 
 
     // run executor
-    HashMap<String, Action> fileActions = new HashMap<String, Action>();
-    for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
-      fileActions.putAll(entry.getValue().actionEvaluator(fileMap));
+    List<String> fileNames = new LinkedList<String>();
+    List<Action> actions = new LinkedList<Action>();
+    for (Map.Entry<Long, RuleContainer> ruleMapsEntry : ruleMaps.entrySet()) {
+      HashMap<String, Action> fileAction = ruleMapsEntry.getValue().actionEvaluator(fileMap);
+      for (Map.Entry<String, Action> fileActionEntry : fileAction.entrySet()) {
+        fileNames.add(fileActionEntry.getKey());
+        actions.add(fileActionEntry.getValue());
+      }
     }
-    runExecutor(fileActions);
+    runExecutor(fileNames, actions);
   }
 
   public HashMap<Long, RuleContainer> getRuleMaps() {

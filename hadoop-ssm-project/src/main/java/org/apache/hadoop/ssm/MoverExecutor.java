@@ -2,6 +2,7 @@ package org.apache.hadoop.ssm;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.protocol.FilesInfo;
 import org.apache.hadoop.hdfs.server.mover.Mover;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -11,11 +12,26 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import static org.apache.hadoop.hdfs.protocol.FilesInfo.STORAGEPOLICY;
+
 /**
  * Created by root on 11/10/16.
  */
 public class MoverExecutor {
   private static MoverExecutor instance;
+
+  public static final byte MEMORY_STORAGE_POLICY_ID = 15;
+  public static final String MEMORY_STORAGE_POLICY_NAME = "LAZY_PERSIST";
+  public static final byte ALLSSD_STORAGE_POLICY_ID = 12;
+  public static final String ALLSSD_STORAGE_POLICY_NAME = "ALL_SSD";
+  public static final byte ONESSD_STORAGE_POLICY_ID = 10;
+  public static final String ONESSD_STORAGE_POLICY_NAME = "ONE_SSD";
+  public static final byte HOT_STORAGE_POLICY_ID = 7;
+  public static final String HOT_STORAGE_POLICY_NAME = "HOT";
+  public static final byte WARM_STORAGE_POLICY_ID = 5;
+  public static final String WARM_STORAGE_POLICY_NAME = "WARM";
+  public static final byte COLD_STORAGE_POLICY_ID = 2;
+  public static final String COLD_STORAGE_POLICY_NAME = "COLD";
 
   private DFSClient dfsClient;
   Configuration conf;
@@ -91,6 +107,9 @@ public class MoverExecutor {
     }
 
     private void runArchive(String fileName) {
+      if (getStoragePolicy(fileName) == COLD_STORAGE_POLICY_ID) {
+        return;
+      }
       System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "archive");
       try {
         dfsClient.setStoragePolicy(fileName, "COLD");
@@ -106,6 +125,9 @@ public class MoverExecutor {
     }
 
     private void runSSD(String fileName) {
+      if (getStoragePolicy(fileName) == ALLSSD_STORAGE_POLICY_ID) {
+        return;
+      }
       System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "ssd");
       try {
         dfsClient.setStoragePolicy(fileName, "ALL_SSD");
@@ -121,5 +143,16 @@ public class MoverExecutor {
     }
   }
 
+  private byte getStoragePolicy(String fileName) {
+    String[] paths = {fileName};
+    FilesInfo filesInfo;
+    try {
+       filesInfo = dfsClient.getFilesInfo(paths, STORAGEPOLICY, false, false);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    byte storagePolicy = filesInfo.getStoragePolicy().get(0);
+    return storagePolicy;
+  }
 
 }
