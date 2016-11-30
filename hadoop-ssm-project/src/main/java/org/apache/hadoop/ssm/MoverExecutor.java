@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by root on 11/10/16.
@@ -18,12 +19,22 @@ public class MoverExecutor {
 
   private DFSClient dfsClient;
   Configuration conf;
-  Map<String, Action> actionEvents;
+  private LinkedBlockingQueue<FileAction> actionEvents;
+
+  class FileAction {
+    String fileName;
+    Action action;
+
+    FileAction(String fileName, Action action) {
+      this.fileName = fileName;
+      this.action = action;
+    }
+  }
 
   private MoverExecutor(DFSClient dfsClient, Configuration conf) {
     this.dfsClient = dfsClient;
     this.conf = conf;
-    actionEvents = new HashMap<String, Action>();
+    this.actionEvents = new LinkedBlockingQueue<>();
   }
 
   public static synchronized MoverExecutor getInstance(DFSClient dfsClient, Configuration conf) {
@@ -37,15 +48,19 @@ public class MoverExecutor {
     return instance;
   }
 
-  public synchronized void addActionEvent(String fileName, Action action) {
-    actionEvents.put(fileName, action);
+  public void addActionEvent(String fileName, Action action) {
+    try {
+      actionEvents.put(new FileAction(fileName, action));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
-  public synchronized Map<String, Action> getActionEventsWithClear() {
+  public FileAction getActionEvent() {
     try {
-      return new HashMap<String, Action>(actionEvents);
-    } finally {
-      actionEvents.clear();
+      return actionEvents.take();
+    } catch (Exception e){
+      throw new RuntimeException(e);
     }
   }
 
@@ -58,27 +73,25 @@ public class MoverExecutor {
 
     public void run() {
       while (true) {
-        Map<String, Action> eventsMap = instance.getActionEventsWithClear();
-        for (Map.Entry<String, Action> entry : eventsMap.entrySet()) {
-          String fileName = entry.getKey();
-          Action action = entry.getValue();
-          System.out.println("execute action : fileName = " + fileName + "; action = " + action);
-          switch (action) {
-            case SSD:
-              runSSD(fileName);
-              break;
-            case ARCHIVE:
-              runArchive(fileName);
-              break;
-            case CACHE:
-              break;
-            default:
-          }
+        FileAction fileAction = instance.getActionEvent();
+        String fileName = fileAction.fileName;
+        Action action = fileAction.action;
+        switch (action) {
+          case SSD:
+            runSSD(fileName);
+            break;
+          case ARCHIVE:
+            runArchive(fileName);
+            break;
+          case CACHE:
+            break;
+          default:
         }
       }
     }
 
     private void runArchive(String fileName) {
+      System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "archive");
       try {
         dfsClient.setStoragePolicy(fileName, "COLD");
       } catch (Exception e) {
@@ -93,6 +106,7 @@ public class MoverExecutor {
     }
 
     private void runSSD(String fileName) {
+      System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "ssd");
       try {
         dfsClient.setStoragePolicy(fileName, "ALL_SSD");
       } catch (Exception e) {

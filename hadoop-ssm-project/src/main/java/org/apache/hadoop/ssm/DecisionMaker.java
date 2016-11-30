@@ -28,13 +28,13 @@ public class DecisionMaker {
 
   private HashMap<Long, SSMRule> newRules;
 
-  public DecisionMaker(DFSClient dfsClient, Configuration conf, Long updateDuration) {
+  public DecisionMaker(DFSClient dfsClient, Configuration conf, Long updateDurationInSecond) {
     fileMap = new FileAccessMap();
     ruleMaps = new HashMap<Long, RuleContainer>();
     newRules = new HashMap<Long, SSMRule>();
     this.dfsClient = dfsClient;
     this.conf = conf;
-    this.updateDuration = updateDuration;
+    this.updateDuration = updateDurationInSecond;
     isInitialized = false;
   }
 
@@ -115,10 +115,6 @@ public class DecisionMaker {
     HashMap<String, Action> fileActions = new HashMap<String, Action>();
     for (Map.Entry<Long, RuleContainer> entry : ruleMaps.entrySet()) {
       fileActions.putAll(entry.getValue().actionEvaluator(fileMap));
-    }
-    for (Map.Entry<String, Action> entry : fileActions.entrySet()) {
-      //LOG.info("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
-      System.out.println("fileActions : fileName = " + entry.getKey() + "; action = " + entry.getValue());
     }
     runExecutor(fileActions);
   }

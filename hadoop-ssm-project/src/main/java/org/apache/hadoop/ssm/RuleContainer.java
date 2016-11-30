@@ -28,13 +28,13 @@ public class RuleContainer {
   // Age map
   private AgeMap ageMap;
 
-  public RuleContainer(SSMRule ruleObject, long updateDuration, DFSClient dfsClient) {
+  public RuleContainer(SSMRule ruleObject, long updateDurationInSecond, DFSClient dfsClient) {
     this.id = ruleObject.getId();
     this.property = ((PropertyFilterRule)ruleObject.root().value()).property();
     this.action = ruleObject.action();
     this.fileFilterRule = ruleObject.fileFilterRule();
     this.propertyFilterRule = (PropertyFilterRule)ruleObject.root().value();
-    this.updateDuration = updateDuration;
+    this.updateDuration = updateDurationInSecond;
     this.dfsClient = dfsClient;
     switch (property) {
       case ACCESSCOUNT:
@@ -136,10 +136,10 @@ public class RuleContainer {
     private long updateDuration;
     private State state;
 
-    public WindowMap(long windowStep, long windowSize, long updateDuration) {
+    public WindowMap(long windowStep, long windowSize, long updateDurationInSecond) {
       this.windowStep = windowStep;
       this.windowSize = windowSize;
-      this.updateDuration = updateDuration;
+      this.updateDuration = updateDurationInSecond;
       this.mapNumber = (int)(windowSize/windowStep);
       windowMaps = new LinkedList<FileAccessMap>();
       fileAccessMapInWindow = new FileAccessMap();
@@ -285,10 +285,10 @@ public class RuleContainer {
         updateAgeMap();
       }
       Long currentTime = System.currentTimeMillis();
-      System.out.println("now : " + currentTime);
       for (Map.Entry<String, FileAccess> entry : ageMap.entrySet()) {
-        System.out.println(entry.getKey() + "\t" + entry.getValue().getCreateTime());
-        if (propertyFilterRule.meetCondition(currentTime - entry.getValue().getCreateTime())) {
+        Long age = currentTime - entry.getValue().getCreateTime();
+        if (propertyFilterRule.meetCondition(age)) {
+          System.out.println("Age met : " + entry.getKey() + "\t" + age/1000 + "sec");
           result.put(entry.getKey(), action);
         }
       }
