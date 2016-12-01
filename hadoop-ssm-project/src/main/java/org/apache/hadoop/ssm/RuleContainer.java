@@ -128,6 +128,8 @@ public class RuleContainer {
    * WindowMap class to maintain information for windowed access count
    */
   class WindowMap {
+    private final int MAX_MAP_NUMBER = 20;
+
     private LinkedList<FileAccessMap> windowMaps;
     private int mapNumber;
     private FileAccessMap fileAccessMapInWindow;
@@ -141,6 +143,12 @@ public class RuleContainer {
       this.windowSize = windowSize;
       this.updateDuration = updateDurationInSecond;
       this.mapNumber = (int)(windowSize/windowStep);
+      if (mapNumber > MAX_MAP_NUMBER) {
+        this.mapNumber = MAX_MAP_NUMBER;
+        this.windowStep = windowSize/MAX_MAP_NUMBER;
+        this.windowSize = this.windowStep*MAX_MAP_NUMBER;
+        System.out.println("window size treated as : " + this.windowSize + " sec");
+      }
       windowMaps = new LinkedList<FileAccessMap>();
       fileAccessMapInWindow = new FileAccessMap();
       state = new State();
