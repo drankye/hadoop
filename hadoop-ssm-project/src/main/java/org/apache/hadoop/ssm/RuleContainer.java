@@ -147,7 +147,7 @@ public class RuleContainer {
         this.mapNumber = MAX_MAP_NUMBER;
         this.windowStep = windowSize/MAX_MAP_NUMBER;
         this.windowSize = this.windowStep*MAX_MAP_NUMBER;
-        System.out.println("window size treated as : " + this.windowSize + " sec");
+        System.out.println("Window size treated as : " + this.windowSize + " sec");
       }
       windowMaps = new LinkedList<FileAccessMap>();
       fileAccessMapInWindow = new FileAccessMap();
