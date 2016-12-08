@@ -6,10 +6,7 @@ import org.apache.hadoop.fs.InvalidRequestException;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
-import org.apache.hadoop.hdfs.protocol.FilesInfo;
+import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.server.mover.Mover;
 import org.apache.hadoop.hdfs.tools.CacheAdmin;
 import org.apache.hadoop.util.ToolRunner;
@@ -120,23 +117,26 @@ public class MoverExecutor {
     }
 
     private void runCache(String fileName) {
+      createPool();
+      if (isCached(fileName)) {
+        return;
+      }
+      System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "cache");
+      addDirective(fileName);
+    }
+
+    private void createPool() {
       try {
+        RemoteIterator<CachePoolEntry> poolEntries = dfsClient.listCachePools();
+        while (poolEntries.hasNext()) {
+          CachePoolEntry poolEntry = poolEntries.next();
+          if (poolEntry.getInfo().getPoolName().equals(SSMPOOL)) {
+            return;
+          }
+        }
         dfsClient.addCachePool(new CachePoolInfo(SSMPOOL));
       } catch (Exception e) {
-        System.out.println(e.getMessage());
-        if (!e.getMessage().equals("Cache pool " + SSMPOOL + " already exists.")) {
-          return;
-        }
-      }
-      try {
-        if (isCached(fileName)) {
-          return;
-        }
-        System.out.println("*" + System.currentTimeMillis() + " : " + fileName + " -> " + "cache");
-        addDirective(fileName);
-      } catch (Exception e) {
-        System.out.println(e.getMessage());
-        return;
+        throw new RuntimeException(e);
       }
     }
 
