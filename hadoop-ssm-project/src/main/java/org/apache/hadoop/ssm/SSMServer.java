@@ -62,8 +62,10 @@ public class SSMServer {
 
     DecisionMaker decisionMaker = new DecisionMaker(dfsClient, conf, updateDuration);
     SSMRule ruleObject = SSMRuleParser.parseAll("file.path matches('/home/SSDtest/[a-z]*') : accessCount (3 min) >= 10 | ssd").get();
-    decisionMaker.addRule(ruleObject);
+    //decisionMaker.addRule(ruleObject);
     ruleObject = SSMRuleParser.parseAll("file.path matches('/home/ARCHIVEtest/[a-z]*') : age >= 1200000 | archive").get(); //20min
+    //decisionMaker.addRule(ruleObject);
+    ruleObject = SSMRuleParser.parseAll("file.path matches('/home/CACHEtest/[a-z]*') : accessCount (3 min) >= 10 | cache").get(); //20min
     decisionMaker.addRule(ruleObject);
 
     //LOG.info("Initialization completed");
