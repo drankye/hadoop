@@ -24,6 +24,7 @@ import java.util.Comparator;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FileEncryptionInfo;
+import org.apache.hadoop.hdfs.DFSClient;
 
 /**
  * Collection of blocks with their locations and the file length.
@@ -151,6 +152,12 @@ public class LocatedBlocks {
             return 1;
           }
         };
+    DFSClient.LOG.info("block[0] Storgetype:"+blocks.get(0).getStorageTypes().toString()+"      storgeID:"+blocks.get(0).getStorageIDs().toString());
+    DFSClient.LOG.info("block[1] Storgetype:"+blocks.get(1).getStorageTypes().toString()+"      storgeID:"+blocks.get(1).getStorageIDs().toString());
+    DFSClient.LOG.info("block[2] Storgetype:"+blocks.get(2).getStorageTypes().toString()+"      storgeID:"+blocks.get(2).getStorageIDs().toString());
+    DFSClient.LOG.info("block[3] Storgetype:"+blocks.get(3).getStorageTypes().toString()+"      storgeID:"+blocks.get(3).getStorageIDs().toString());
+    DFSClient.LOG.info("block[4] Storgetype:"+blocks.get(4).getStorageTypes().toString()+"      storgeID:"+blocks.get(4).getStorageIDs().toString());
+    DFSClient.LOG.info("block[5] Storgetype:"+blocks.get(5).getStorageTypes().toString()+"      storgeID:"+blocks.get(5).getStorageIDs().toString());
     return Collections.binarySearch(blocks, key, comp);
   }
 

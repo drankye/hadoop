@@ -422,6 +422,7 @@ public class DFSInputStream extends FSInputStream
       else {
         // search cached blocks first
         int targetBlockIdx = locatedBlocks.findBlock(offset);
+        DFSClient.LOG.info("!!!targetBlockIdx: "+targetBlockIdx+"   offser"+offset);
         if (targetBlockIdx < 0) { // block is not cached
           targetBlockIdx = LocatedBlocks.getInsertIndex(targetBlockIdx);
           // fetch more blocks
@@ -901,11 +902,12 @@ public class DFSInputStream extends FSInputStream
       Collection<DatanodeInfo> ignoredNodes) {
     DatanodeInfo[] nodes = block.getLocations();
     StorageType[] storageTypes = block.getStorageTypes();
-    DFSClient.LOG.info("block name:" + block.toString() + "。block-cacheedLocation_DNinfo" + block.getCachedLocations().toString());
+    DFSClient.LOG.info("for the test|||"+"block Cache Location info :"+block.getCachedLocations()+"   blocklength:  "+block.getCachedLocations().length);
     DatanodeInfo chosenNode = null;
     StorageType storageType = null;
     if (nodes != null) {
       for (int i = 0; i < nodes.length; i++) {
+        DFSClient.LOG.info("node info: i= "+i+"node datanode name=  "+ nodes[i].getHostName());
         if (!deadNodes.containsKey(nodes[i])
             && (ignoredNodes == null || !ignoredNodes.contains(nodes[i]))) {
           chosenNode = nodes[i];
@@ -913,8 +915,7 @@ public class DFSInputStream extends FSInputStream
           // index to get storage type.
           if (storageTypes != null && i < storageTypes.length) {
             storageType = storageTypes[i];
-            DFSClient.LOG.info("nodes name" + nodes[i].getName() + "%DNreport:" + nodes[i].getDatanodeReport() + "%CacheUsed:" + nodes[i].getCacheUsed() + "%CacheCapacity:" + nodes[i].getCacheCapacity()
-                    + " .DFSInputStream: getBestNodeDNAddrPair: client = " + dfsClient.clientName +
+            DFSClient.LOG.info("node info: i= "+i+"node datanode name=  "+ nodes[i].getHostName()+
                     "; chosenNode = " + chosenNode.getHostName() + "; StorageType = " + storageType.toString());
           }
           break;
