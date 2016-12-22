@@ -152,12 +152,10 @@ public class LocatedBlocks {
             return 1;
           }
         };
-    DFSClient.LOG.info("block[0] Storgetype:"+blocks.get(0).getStorageTypes().toString()+"      storgeID:"+blocks.get(0).getStorageIDs().toString());
-    DFSClient.LOG.info("block[1] Storgetype:"+blocks.get(1).getStorageTypes().toString()+"      storgeID:"+blocks.get(1).getStorageIDs().toString());
-    DFSClient.LOG.info("block[2] Storgetype:"+blocks.get(2).getStorageTypes().toString()+"      storgeID:"+blocks.get(2).getStorageIDs().toString());
-    DFSClient.LOG.info("block[3] Storgetype:"+blocks.get(3).getStorageTypes().toString()+"      storgeID:"+blocks.get(3).getStorageIDs().toString());
-    DFSClient.LOG.info("block[4] Storgetype:"+blocks.get(4).getStorageTypes().toString()+"      storgeID:"+blocks.get(4).getStorageIDs().toString());
-    DFSClient.LOG.info("block[5] Storgetype:"+blocks.get(5).getStorageTypes().toString()+"      storgeID:"+blocks.get(5).getStorageIDs().toString());
+        int blocksNum = blocks.size();
+    for(int num=0;num<blocksNum;num++){
+      DFSClient.LOG.info("Num:  "+num+"   block Storgetype:"+blocks.get(num).getStorageTypes().toString()+"      storgeID:"+blocks.get(num).getStorageIDs().toString());
+    }
     return Collections.binarySearch(blocks, key, comp);
   }
 
