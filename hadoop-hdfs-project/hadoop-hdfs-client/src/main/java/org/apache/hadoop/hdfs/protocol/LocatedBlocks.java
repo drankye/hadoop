@@ -24,7 +24,6 @@ import java.util.Comparator;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FileEncryptionInfo;
-import org.apache.hadoop.hdfs.DFSClient;
 
 /**
  * Collection of blocks with their locations and the file length.
@@ -152,10 +151,6 @@ public class LocatedBlocks {
             return 1;
           }
         };
-        int blocksNum = blocks.size();
-    for(int num=0;num<blocksNum;num++){
-      DFSClient.LOG.info("Num:  "+num+"   block Storgetype:"+blocks.get(num).getStorageTypes().toString()+"      storgeID:"+blocks.get(num).getStorageIDs().toString());
-    }
     return Collections.binarySearch(blocks, key, comp);
   }
 

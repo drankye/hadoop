@@ -902,7 +902,14 @@ public class DFSInputStream extends FSInputStream
       Collection<DatanodeInfo> ignoredNodes) {
     DatanodeInfo[] nodes = block.getLocations();
     StorageType[] storageTypes = block.getStorageTypes();
-    DFSClient.LOG.info("for the test|||"+"block Cache Location info :"+block.getCachedLocations()+"   blocklength:  "+block.getCachedLocations().length);
+    int blckNum=block.getCachedLocations().length;
+    DFSClient.LOG.info("for the test|||"+"   block.getCachedLocations().length:  "+block.getCachedLocations().length);
+    for(int kk=0;kk<blckNum;kk++){
+      DFSClient.LOG.info("blockNum: "+kk+"  block-CachedLocation-Hostname:  "+
+              block.getCachedLocations()[kk].getHostName()+"block-CachedLocation-name:  "+
+              block.getCachedLocations()[kk].getName());
+    }
+
     DatanodeInfo chosenNode = null;
     StorageType storageType = null;
     if (nodes != null) {
@@ -915,7 +922,7 @@ public class DFSInputStream extends FSInputStream
           // index to get storage type.
           if (storageTypes != null && i < storageTypes.length) {
             storageType = storageTypes[i];
-            DFSClient.LOG.info("node info: i= "+i+"node datanode name=  "+ nodes[i].getHostName()+
+            DFSClient.LOG.info("node info: i= "+i+
                     "; chosenNode = " + chosenNode.getHostName() + "; StorageType = " + storageType.toString());
           }
           break;
