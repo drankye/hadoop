@@ -903,18 +903,16 @@ public class DFSInputStream extends FSInputStream
     DatanodeInfo[] nodes = block.getLocations();
     StorageType[] storageTypes = block.getStorageTypes();
     int blckNum=block.getCachedLocations().length;
-    DFSClient.LOG.info("for the test|||"+"   block.getCachedLocations().length:  "+block.getCachedLocations().length);
+    DFSClient.LOG.info("for the test|||"+"   block.getCachedLocations().length:  "+block.getCachedLocations().length+"   block-name:"+block.getBlock().getBlockName()+" block-size:"+block.getBlockSize()+" block_poolId:"+block.getBlock().getBlockPoolId());
     for(int kk=0;kk<blckNum;kk++){
-      DFSClient.LOG.info("blockNum: "+kk+"  block-CachedLocation-Hostname:  "+
-              block.getCachedLocations()[kk].getHostName()+"block-CachedLocation-name:  "+
-              block.getCachedLocations()[kk].getName());
+      DFSClient.LOG.info("blockNum: "+kk+"  block-CachedLocation-Hostname:"+
+              block.getCachedLocations()[kk].getHostName());
     }
-
     DatanodeInfo chosenNode = null;
     StorageType storageType = null;
     if (nodes != null) {
       for (int i = 0; i < nodes.length; i++) {
-        DFSClient.LOG.info("node info: i= "+i+"node datanode name=  "+ nodes[i].getHostName());
+        DFSClient.LOG.info("node info: i= "+i+" node datanode name=  "+ nodes[i].getHostName());
         if (!deadNodes.containsKey(nodes[i])
             && (ignoredNodes == null || !ignoredNodes.contains(nodes[i]))) {
           chosenNode = nodes[i];
@@ -922,8 +920,7 @@ public class DFSInputStream extends FSInputStream
           // index to get storage type.
           if (storageTypes != null && i < storageTypes.length) {
             storageType = storageTypes[i];
-            DFSClient.LOG.info("node info: i= "+i+
-                    "; chosenNode = " + chosenNode.getHostName() + "; StorageType = " + storageType.toString());
+            DFSClient.LOG.info("chosenNode = " + chosenNode.getHostName());
           }
           break;
         }
