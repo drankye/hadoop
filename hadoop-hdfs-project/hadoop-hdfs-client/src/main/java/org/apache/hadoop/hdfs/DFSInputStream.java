@@ -852,7 +852,6 @@ public class DFSInputStream extends FSInputStream
           throw new BlockMissingException(src, description,
               block.getStartOffset());
         }
-
         DatanodeInfo[] nodes = block.getLocations();
         if (nodes == null || nodes.length == 0) {
           DFSClient.LOG.info("No node available for " + blockInfo);
